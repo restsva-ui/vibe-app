@@ -2,25 +2,24 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VIBE PRO</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
 <div class="app">
     <div class="logo">VIBE PRO 🎙️</div>
     <div class="voice-section">
-        <button id="recBtn" class="rec-btn" onclick="toggleRec()">🎤 Записати зразок голосу</button>
+        <button class="rec-btn">🎤 Записати мій голос</button>
     </div>
     <div class="chars">
-        <div class="card active" id="Diplomat" onclick="sel('Diplomat')"><div class="circle">🤝</div><span style="color:#00d2ff">Дипломат</span></div>
-        <div class="card" id="Shark" onclick="sel('Shark')"><div class="circle">🦈</div><span style="color:#ff4b2b">Акула</span></div>
-        <div class="card" id="Aristocrat" onclick="sel('Aristocrat')"><div class="circle">👑</div><span style="color:#ffd700">Аристократ</span></div>
+        <div class="card active" id="Diplomat" onclick="sel('Diplomat')"><div class="circle">🤝</div><span>Дипломат</span></div>
+        <div class="card" id="Shark" onclick="sel('Shark')"><div class="circle">🦈</div><span>Акула</span></div>
+        <div class="card" id="Aristocrat" onclick="sel('Aristocrat')"><div class="circle">👑</div><span>Аристократ</span></div>
     </div>
-    <textarea id="inp" placeholder="Вставте текст..."></textarea>
+    <textarea id="inp" placeholder="Опишіть ситуацію..."></textarea>
     <div id="res"></div>
-    <button id="b-gen" class="btn" onclick="ask()">✨ ГЕНЕРУВАТИ ТА ОЗВУЧИТИ</button>
+    <button class="btn" onclick="ask()">✨ ГЕНЕРУВАТИ ТА ОЗВУЧИТИ</button>
 </div>
 <script src="app.js"></script>
 </body>
