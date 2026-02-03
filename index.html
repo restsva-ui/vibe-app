@@ -4,113 +4,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>VIBE PRO</title>
+    <link rel="stylesheet" href="style.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        body { background: #0d1012; color: white; font-family: sans-serif; display: flex; justify-content: center; padding: 15px; margin: 0; overflow-x: hidden; }
-        .app { width: 100%; max-width: 380px; background: #161a1d; border-radius: 30px; padding: 24px; border: 1px solid #2d3139; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .logo { text-align: center; font-weight: 800; color: #00d2ff; font-size: 24px; margin-bottom: 20px; letter-spacing: 2px; text-shadow: 0 0 10px rgba(0,210,255,0.3); }
-        
-        .voice-box { background: rgba(255, 75, 43, 0.1); border-radius: 20px; padding: 15px; margin-bottom: 20px; border: 1px dashed #ff4b2b; text-align: center; }
-        .rec-btn { background: #ff4b2b; color: white; border: none; padding: 10px 20px; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 14px; }
-        .rec-btn.active { background: #ff0000; animation: blink 1s infinite; }
-
-        .chars { display: flex; justify-content: space-between; margin-bottom: 20px; gap: 8px; }
-        .card { flex: 1; text-align: center; cursor: pointer; opacity: 0.3; transition: 0.3s; }
-        .card.active { opacity: 1; transform: scale(1.1); }
-        .circle { width: 55px; height: 55px; border-radius: 50%; background: #23282e; margin: 0 auto 8px; border: 2px solid #2d3139; display: flex; align-items: center; justify-content: center; font-size: 28px; }
-        
-        #Diplomat.active .circle { border-color: #00d2ff; box-shadow: 0 0 15px #00d2ff; }
-        #Shark.active .circle { border-color: #ff4b2b; box-shadow: 0 0 15px #ff4b2b; }
-        #Aristocrat.active .circle { border-color: #ffd700; box-shadow: 0 0 15px #ffd700; }
-
-        textarea { width: 100%; background: #000; border: 1px solid #1e2227; color: white; border-radius: 15px; padding: 15px; height: 100px; outline: none; box-sizing: border-box; font-size: 16px; margin-bottom: 15px; resize: none; }
-        #res { padding: 15px; border-radius: 12px; background: #0b0d0e; color: #4ade80; display: none; border: 1px solid #2d3139; margin-bottom: 15px; line-height: 1.4; font-size: 15px; }
-        .btn { width: 100%; padding: 18px; border-radius: 15px; border: none; font-weight: bold; font-size: 16px; background: linear-gradient(135deg, #00d2ff, #0080ff); color: white; cursor: pointer; }
-        
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
-    </style>
 </head>
 <body>
+
 <div class="app">
     <div class="logo">VIBE PRO 🎙️</div>
     
     <div class="voice-box">
         <button id="recBtn" class="rec-btn" onclick="toggleRec()">🎤 Записати мій голос</button>
-        <div id="v-status" style="font-size: 10px; color: #888; margin-top: 5px;">Для клонування в Premium</div>
+        <div style="font-size: 10px; color: #666; margin-top: 8px;">Доступно для Premium акаунтів</div>
     </div>
 
     <div class="chars">
-        <div class="card active" id="Diplomat" onclick="sel('Diplomat')"><div class="circle">🤝</div><span style="color:#00d2ff">Дипломат</span></div>
-        <div class="card" id="Shark" onclick="sel('Shark')"><div class="circle">🦈</div><span style="color:#ff4b2b">Акула</span></div>
-        <div class="card" id="Aristocrat" onclick="sel('Aristocrat')"><div class="circle">👑</div><span style="color:#ffd700">Аристократ</span></div>
+        <div class="card active" id="Diplomat" onclick="sel('Diplomat')">
+            <div class="circle">🤝</div>
+            <span>Дипломат</span>
+        </div>
+        <div class="card" id="Shark" onclick="sel('Shark')">
+            <div class="circle">🦈</div>
+            <span>Акула</span>
+        </div>
+        <div class="card" id="Aristocrat" onclick="sel('Aristocrat')">
+            <div class="circle">👑</div>
+            <span>Аристократ</span>
+        </div>
     </div>
 
     <textarea id="inp" placeholder="Опишіть ситуацію..."></textarea>
     <div id="res"></div>
+    
     <button id="b-gen" class="btn" onclick="ask()">✨ ГЕНЕРУВАТИ ТА ОЗВУЧИТИ</button>
 </div>
 
-<script>
-    let mode = 'Diplomat';
-    let isRec = false;
-    const tg = window.Telegram.WebApp;
-    tg.expand();
+<script src="app.js"></script>
 
-    function sel(m) {
-        mode = m;
-        document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
-        document.getElementById(m).classList.add('active');
-    }
-
-    function toggleRec() {
-        isRec = !isRec;
-        const btn = document.getElementById('recBtn');
-        btn.innerHTML = isRec ? "🛑 Зупинити запис" : "🎤 Перезаписати голос";
-        btn.classList.toggle('active', isRec);
-    }
-
-    async function ask() {
-        const text = document.getElementById('inp').value;
-        const resDiv = document.getElementById('res');
-        const btn = document.getElementById('b-gen');
-        if(!text.trim()) return;
-
-        btn.disabled = true;
-        resDiv.style.display = "block";
-        resDiv.innerHTML = "<i>VIBE аналізує...</i>";
-
-        try {
-            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer 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'
-                },
-                body: JSON.stringify({
-                    model: "llama-3.3-70b-versatile",
-                    messages: [
-                        {role: "system", content: "Ти " + mode + ". Відповідай мовою запиту дуже коротко, влучно і харизматично."},
-                        {role: "user", content: text}
-                    ]
-                })
-            });
-            const data = await response.json();
-            const answer = data.choices[0].message.content;
-            
-            // Показуємо текст
-            resDiv.innerHTML = "<b>" + mode.toUpperCase() + ":</b><br>" + answer;
-
-            // Озвучуємо
-            const speech = new SpeechSynthesisUtterance(answer);
-            speech.lang = 'uk-UA';
-            window.speechSynthesis.speak(speech);
-
-        } catch (e) {
-            resDiv.innerHTML = "⚠️ Помилка зв'язку. Спробуйте ще раз.";
-        } finally {
-            btn.disabled = false;
-        }
-    }
-</script>
 </body>
 </html>
