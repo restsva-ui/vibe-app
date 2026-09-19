@@ -2,21 +2,54 @@ const tg=window.Telegram?.WebApp;if(tg){tg.ready();tg.expand();tg.setHeaderColor
 
 const SUPABASE_URL="https://qifxxzpnuxchnkowxzgp.supabase.co";
 const SUPABASE_KEY="sb_publishable_a-yy3lcgCXbDJosdQAWbPQ_bRLnN_LF";
-const api=async(path,options={})=>{const r=await fetch(SUPABASE_URL+"/rest/v1/"+path,{...options,headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json",Prefer:"return=representation",...(options.headers||{})}});if(!r.ok)throw new Error(await r.text());const text=await r.text();return text?JSON.parse(text):null};
 const TELEGRAM_AUTH_URL=SUPABASE_URL+"/functions/v1/telegram-auth";
-async function verifyTelegramAuth(){const initData=tg?.initData;if(!initData){console.warn("VYBE auth: Telegram initData missing");return {ok:false,error:"Open VYBE from Telegram bot"};}try{const r=await fetch(TELEGRAM_AUTH_URL,{method:"POST",headers:{"Content-Type":"application/json",apikey:SUPABASE_KEY},body:JSON.stringify({action:"me",initData})});const text=await r.text();let body=null;try{body=text?JSON.parse(text):null}catch{}console.log("VYBE telegram-auth",r.status,body||text);if(!r.ok)return {ok:false,status:r.status,error:body?.error||text||"Auth failed"};return body||{ok:true};}catch(e){console.error("VYBE telegram-auth network",e);return {ok:false,error:e?.message||"Network error"};}}
+
+async function secureApi(action,payload={}){
+  const initData=tg?.initData;
+  if(!initData)return {ok:false,error:"Відкрий VYBE через Telegram-бота"};
+  try{
+    const r=await fetch(TELEGRAM_AUTH_URL,{method:"POST",headers:{"Content-Type":"application/json",apikey:SUPABASE_KEY},body:JSON.stringify({action,initData,...payload})});
+    const text=await r.text();let body=null;try{body=text?JSON.parse(text):null}catch{}
+    if(!r.ok||!body?.ok)throw new Error(body?.error||text||"Server request failed");
+    return body;
+  }catch(e){console.error("VYBE secure API",action,e);return {ok:false,error:e?.message||"Network error"}}
+}
+async function verifyTelegramAuth(){return secureApi("me")}
+
 let profile=load("vybeProfile",null),now=load("vybeNow",null),matches=load("vybeMatches",[]),index=0,filter="Усе",remotePeople=[];
 const demoPeople=[{id:"demo1",name:"Аліна",age:28,intent:"Флірт",icon:"🔥",bio:"Сьогодні хочу легке спілкування без банальних «привіт, як справи?»",meta:"Демо • онлайн",img:"https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=900&q=85"}];
 const intentIcon=x=>({"Поговорити":"💬","Флірт":"🔥","Вірт":"🌙","Дружба":"🫶","Голос":"🎙","Зустріч":"☕"}[x]||"⚡");
-const currentTelegramId=()=>tuser?.id?String(tuser.id):null;
 $("hello").textContent="Привіт, "+(tuser?.first_name||profile?.name||"")+" 👋";
 
-async function syncProfile(){if(!profile||!currentTelegramId())return;try{const uid=currentTelegramId();const userRows=await api("users?telegram_id=eq."+encodeURIComponent(uid)+"&select=id");let userId=userRows?.[0]?.id;if(!userId){const created=await api("users",{method:"POST",body:JSON.stringify({telegram_id:Number(uid),username:tuser?.username||null,first_name:tuser?.first_name||profile.name})});userId=created?.[0]?.id}if(!userId)return;profile.user_id=userId;const rows=await api("profiles?user_id=eq."+userId+"&select=user_id");const payload={user_id:userId,name:profile.name,age:profile.age,city:profile.city||null,gender:profile.gender||null,looking_for:profile.looking||null,bio:profile.bio||null};if(rows?.length)await api("profiles?user_id=eq."+userId,{method:"PATCH",body:JSON.stringify(payload)});else await api("profiles",{method:"POST",body:JSON.stringify(payload)});store("vybeProfile",profile)}catch(e){console.error("VYBE profile sync",e)}}
-
-async function syncNow(){if(!profile?.user_id||!validNow())return;try{const rows=await api("intents?user_id=eq."+profile.user_id+"&select=id");const payload={user_id:profile.user_id,intent:now.intent,expires_at:new Date(now.expires).toISOString()};if(rows?.length)await api("intents?user_id=eq."+profile.user_id,{method:"PATCH",body:JSON.stringify(payload)});else await api("intents",{method:"POST",body:JSON.stringify(payload)})}catch(e){console.error("VYBE NOW sync",e)}}
-
-async function loadPeople(){try{const rows=await api("profiles?select=user_id,name,age,city,bio&limit=50");remotePeople=(rows||[]).filter(p=>p.user_id!==profile?.user_id).map(p=>({id:p.user_id,name:p.name||"VYBE",age:p.age||18,intent:"Поговорити",icon:"💬",bio:p.bio||"Новий користувач VYBE",meta:(p.city||"VYBE")+" • реальна анкета",img:null}));index=0;renderCard()}catch(e){console.error("VYBE discovery",e)}}
-async function begin(){const auth=await verifyTelegramAuth();window.__vybeAuth=auth;if(!auth?.ok)console.warn("VYBE secure auth not confirmed",auth);if(!profile)showOnboarding();else{renderProfile();await syncProfile();await loadPeople()}renderNow();renderCard();renderMatches();renderChats()}
+async function syncProfile(){
+  if(!profile)return false;
+  const r=await secureApi("save_profile",{profile});
+  if(!r.ok)return false;
+  profile={...profile,user_id:r.user_id};store("vybeProfile",profile);return true;
+}
+async function syncNow(hours=1){
+  if(!now)return false;
+  const r=await secureApi("set_intent",{intent:now.intent,hours});
+  if(!r.ok)return false;
+  if(r.expires_at){now.expires=new Date(r.expires_at).getTime();store("vybeNow",now);renderNow()}
+  return true;
+}
+async function loadPeople(){
+  const r=await secureApi("discover");if(!r.ok)return;
+  remotePeople=(r.people||[]).map(p=>({id:p.user_id,name:p.name||"VYBE",age:p.age||18,intent:p.intent||"Поговорити",icon:intentIcon(p.intent),bio:p.bio||"Новий користувач VYBE",meta:(p.city||"VYBE")+" • реальна анкета",img:null}));
+  index=0;renderCard();
+}
+async function hydrateProfile(){
+  const r=await secureApi("profile_get");if(!r.ok)return;
+  if(r.profile){profile={name:r.profile.name,age:r.profile.age,city:r.profile.city||"",gender:r.profile.gender||"",looking:r.profile.looking_for||"",bio:r.profile.bio||"",user_id:r.user_id};store("vybeProfile",profile)}
+}
+async function begin(){
+  const auth=await verifyTelegramAuth();window.__vybeAuth=auth;
+  if(!auth?.ok){console.warn("VYBE secure auth not confirmed",auth);tg?.showAlert?.("Не вдалося підтвердити Telegram-авторизацію. Відкрий VYBE заново через бота.");return}
+  await hydrateProfile();
+  if(!profile)showOnboarding();else{renderProfile();await syncProfile();await loadPeople()}
+  renderNow();renderCard();renderMatches();renderChats();
+}
 const age=$("ageConfirm");age.onchange=()=>$("enterBtn").disabled=!age.checked;$("enterBtn").onclick=()=>{localStorage.setItem("vybe18","yes");$("ageGate").classList.add("hidden");begin()};if(localStorage.getItem("vybe18")==="yes"){$("ageGate").classList.add("hidden");setTimeout(begin,0)}
 function showOnboarding(){const o=$("onboarding");o.classList.remove("hidden");$("obName").value=profile?.name||tuser?.first_name||"";$("obAge").value=profile?.age||"";$("obCity").value=profile?.city||"";$("obGender").value=profile?.gender||"";$("obLooking").value=profile?.looking||"";$("obBio").value=profile?.bio||""}
 $("saveProfile").onclick=async()=>{const age=+$("obAge").value;if(!$("obName").value.trim()||age<18||age>99){tg?.showAlert?.("Вкажи ім’я та вік 18+.");return}profile={...profile,name:$("obName").value.trim(),age,city:$("obCity").value.trim(),gender:$("obGender").value.trim(),looking:$("obLooking").value.trim(),bio:$("obBio").value.trim()};store("vybeProfile",profile);$("onboarding").classList.add("hidden");renderProfile();await syncProfile();await loadPeople();tg?.HapticFeedback?.notificationOccurred("success")};
