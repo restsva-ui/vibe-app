@@ -12,7 +12,10 @@ async function telegram(method: string, body: unknown) {
     body: JSON.stringify(body),
   });
   const data = await r.json();
-  if (!r.ok || !data?.ok) throw new Error(`Telegram API ${method} failed`);
+  if (!r.ok || !data?.ok) {
+    const description = typeof data?.description === "string" ? data.description.slice(0, 240) : "unknown error";
+    throw new Error(`Telegram API ${method} failed: ${description}`);
+  }
   return data;
 }
 
