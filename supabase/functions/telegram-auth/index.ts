@@ -214,8 +214,37 @@ Deno.serve(async (req: Request) => {
 
     if (action === "referral_stats") {
       const rows = await db(`referrals?referrer_id=eq.${encodeURIComponent(user.id)}&select=id,activated_at,created_at&order=created_at.desc&limit=500`) ?? [];
+      const activated = rows.filter((x: any) => !!x.activated_at).length;
+      const milestones = [
+        { milestone: 1, reward_type: "supervybe", reward_amount: 1, label: "1 SuperVYBE" },
+        { milestone: 3, reward_type: "spotlight", reward_amount: 1, label: "1 Spotlight" },
+        { milestone: 5, reward_type: "vybe_plus", reward_amount: 3, label: "VYBE+ на 3 дні" },
+      ];
+      let granted = await db(`referral_rewards?user_id=eq.${encodeURIComponent(user.id)}&select=milestone,reward_type,reward_amount,granted_at&order=milestone.asc`) ?? [];
+      const grantedSet = new Set(granted.map((x: any) => Number(x.milestone)));
+      for (const reward of milestones) {
+        if (activated >= reward.milestone && !grantedSet.has(reward.milestone)) {
+          try {
+            await db("referral_rewards", { method: "POST", body: JSON.stringify({
+              user_id: user.id,
+              milestone: reward.milestone,
+              reward_type: reward.reward_type,
+              reward_amount: reward.reward_amount,
+            }) });
+            grantedSet.add(reward.milestone);
+          } catch (e) {
+            console.warn("referral_reward:grant_failed", { user_id: user.id, milestone: reward.milestone });
+          }
+        }
+      }
+      granted = await db(`referral_rewards?user_id=eq.${encodeURIComponent(user.id)}&select=milestone,reward_type,reward_amount,granted_at&order=milestone.asc`) ?? [];
+      const rewards = milestones.map((r) => ({
+        ...r,
+        unlocked: granted.some((g: any) => Number(g.milestone) === r.milestone),
+        progress: Math.min(activated, r.milestone),
+      }));
       const code = referralCode(user.telegram_id);
-      return json({ ok: true, code, invited: rows.length, activated: rows.filter((x: any) => !!x.activated_at).length });
+      return json({ ok: true, code, invited: rows.length, activated, rewards });
     }
 
     if (action === "set_intent") {
