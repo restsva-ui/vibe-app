@@ -35,3 +35,6 @@ jobs:
 
       - name: Deploy telegram-auth
         run: supabase functions deploy telegram-auth --project-ref "$SUPABASE_PROJECT_ID" --use-api
+
+      - name: Deploy telegram-bot
+        run: supabase functions deploy telegram-bot --project-ref "$SUPABASE_PROJECT_ID" --use-api
