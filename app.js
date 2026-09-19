@@ -17,7 +17,8 @@ async function secureApi(action,payload={}){
 async function verifyTelegramAuth(){return secureApi("me")}
 async function claimReferral(){
   const initParams=new URLSearchParams(tg?.initData||"");
-  const code=String(tg?.initDataUnsafe?.start_param||initParams.get("start_param")||new URLSearchParams(location.search).get("tgWebAppStartParam")||"").trim().toLowerCase();
+  const pageParams=new URLSearchParams(location.search);
+  const code=String(tg?.initDataUnsafe?.start_param||initParams.get("start_param")||pageParams.get("tgWebAppStartParam")||pageParams.get("ref")||"").trim().toLowerCase();
   if(!code)return;
   const r=await secureApi("referral_claim",{code});
   if(r.ok&&(r.claimed===true||r.reason==="already_claimed"))localStorage.setItem("vybeReferral:"+code,"1");
