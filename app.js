@@ -16,12 +16,21 @@ async function secureApi(action,payload={}){
 }
 async function verifyTelegramAuth(){return secureApi("me")}
 async function claimReferral(){
-  const initParams=new URLSearchParams(tg?.initData||"");
-  const code=String(tg?.initDataUnsafe?.start_param||initParams.get("start_param")||new URLSearchParams(location.search).get("tgWebAppStartParam")||"").trim().toLowerCase();
-  if(!code)return;
-  const key="vybeReferral:"+code;
+  const unsafeCode=String(tg?.initDataUnsafe?.start_param||"").trim().toLowerCase();
+  const signedCode=String(new URLSearchParams(tg?.initData||"").get("start_param")||"").trim().toLowerCase();
+  const urlCode=String(new URLSearchParams(location.search).get("tgWebAppStartParam")||"").trim().toLowerCase();
+  const code=unsafeCode||signedCode||urlCode;
+  const diag=`Referral debug\\nunsafe: ${unsafeCode||"—"}\\nsigned: ${signedCode||"—"}\\nurl: ${urlCode||"—"}\\nselected: ${code||"—"}`;
+  console.log(diag);
+  if(!code){
+    tg?.showAlert?.(diag);
+    return;
+  }
   const r=await secureApi("referral_claim",{code});
-  if(r.ok&&(r.claimed===true||r.reason==="already_claimed"))localStorage.setItem(key,"1");
+  const result=`${diag}\\nAPI: ${r.ok?"ok":"error"}\\nclaimed: ${String(r.claimed??"—")}\\nreason: ${r.reason||r.error||"—"}`;
+  console.log(result);
+  tg?.showAlert?.(result);
+  if(r.ok&&(r.claimed===true||r.reason==="already_claimed"))localStorage.setItem("vybeReferral:"+code,"1");
   else console.warn("VYBE referral claim failed",r);
 }
 async function openReferral(){
