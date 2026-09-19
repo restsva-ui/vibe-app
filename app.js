@@ -16,7 +16,7 @@ async function secureApi(action,payload={}){
 }
 async function verifyTelegramAuth(){return secureApi("me")}
 
-let profile=load("vybeProfile",null),now=load("vybeNow",null),matches=load("vybeMatches",[]),index=0,filter="Усе",remotePeople=[];
+let profile=load("vybeProfile",null),now=load("vybeNow",null),matches=[],index=0,filter="Усе",remotePeople=[];localStorage.removeItem("vybeMatches");
 const demoPeople=[{id:"demo1",name:"Аліна",age:28,intent:"Флірт",icon:"🔥",bio:"Сьогодні хочу легке спілкування без банальних «привіт, як справи?»",meta:"Демо • онлайн",img:"https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=900&q=85"}];
 const intentIcon=x=>({"Поговорити":"💬","Флірт":"🔥","Вірт":"🌙","Дружба":"🫶","Голос":"🎙","Зустріч":"☕"}[x]||"⚡");
 $("hello").textContent="Привіт, "+(tuser?.first_name||profile?.name||"")+" 👋";
@@ -48,7 +48,7 @@ async function begin(){
   if(!auth?.ok){console.warn("VYBE secure auth not confirmed",auth);tg?.showAlert?.("Не вдалося підтвердити Telegram-авторизацію. Відкрий VYBE заново через бота.");return}
   await hydrateProfile();
   if(!profile)showOnboarding();else{renderProfile();await syncProfile();await loadPeople()}
-  renderNow();renderCard();renderMatches();renderChats();
+  await loadMatches();renderNow();renderCard();renderMatches();renderChats();
 }
 const age=$("ageConfirm");age.onchange=()=>$("enterBtn").disabled=!age.checked;$("enterBtn").onclick=()=>{localStorage.setItem("vybe18","yes");$("ageGate").classList.add("hidden");begin()};if(localStorage.getItem("vybe18")==="yes"){$("ageGate").classList.add("hidden");setTimeout(begin,0)}
 function showOnboarding(){const o=$("onboarding");o.classList.remove("hidden");$("obName").value=profile?.name||tuser?.first_name||"";$("obAge").value=profile?.age||"";$("obCity").value=profile?.city||"";$("obGender").value=profile?.gender||"";$("obLooking").value=profile?.looking||"";$("obBio").value=profile?.bio||""}
@@ -68,8 +68,30 @@ smart.dataset.until=String(target.getTime());}content.querySelectorAll(".choice[
 $("setNow").onclick=()=>openSheet("now");$("premiumBtn").onclick=()=>openSheet("premium");$("filterBtn").onclick=()=>openSheet("filter");$("safetyBtn").onclick=()=>openSheet("safety");
 function people(){return remotePeople.length?remotePeople:demoPeople}function filtered(){const arr=people();return filter==="Усе"?arr:arr.filter(p=>p.intent===filter)}
 function renderCard(){const arr=filtered();if(!arr.length||index>=arr.length){$("cardStack").innerHTML='<div class="empty">Анкет за цим вайбом поки немає.<br>Спробуй інший фільтр.</div>';return}const p=arr[index];const visual=p.img?'<img src="'+p.img+'" alt="'+p.name+'">':'<div class="generatedAvatar">'+(p.name?.[0]||"V")+'</div>';$("cardStack").innerHTML='<article class="personCard">'+visual+'<div class="gradient"></div><div class="personMeta"><div class="nameRow"><h2>'+p.name+", "+p.age+'</h2></div><div class="intent">'+p.icon+" "+p.intent+'</div><p class="bio">'+p.bio+'</p><div class="meta">'+p.meta+"</div></div></article>"}
-function next(kind){const arr=filtered(),p=arr[index];if(kind==="like"&&p&&!matches.some(x=>x.id===p.id)){matches.push(p);store("vybeMatches",matches);renderMatches();renderChats()}index++;renderCard();tg?.HapticFeedback?.impactOccurred("light")}
+async function loadMatches(){
+  const r=await secureApi("matches");if(!r.ok)return false;
+  matches=(r.matches||[]).map(m=>({match_id:m.match_id,id:m.user_id,name:m.profile?.name||"VYBE",age:m.profile?.age||"",city:m.profile?.city||"",bio:m.profile?.bio||"",icon:"♡"}));
+  renderMatches();renderChats();return true;
+}
+async function next(kind){
+  const arr=filtered(),p=arr[index];
+  if(kind==="like"&&p){
+    if(String(p.id).startsWith("demo")){tg?.showAlert?.("Це демо-анкета. Реальний лайк працює тільки для реальних користувачів.");return}
+    const r=await secureApi("like",{target_user_id:p.id,kind:"like"});
+    if(!r.ok){tg?.showAlert?.("Не вдалося поставити лайк. Спробуй ще раз.");return}
+    if(r.matched){await loadMatches();tg?.HapticFeedback?.notificationOccurred("success");tg?.showAlert?.("У вас взаємний VYBE 💜")}
+  }
+  index++;renderCard();tg?.HapticFeedback?.impactOccurred("light");
+}
 $("skipBtn").onclick=()=>next("skip");$("likeBtn").onclick=()=>next("like");$("sparkBtn").onclick=()=>openSheet("premium");document.querySelectorAll(".mood").forEach(b=>b.onclick=()=>{document.querySelectorAll(".mood").forEach(x=>x.classList.remove("active"));b.classList.add("active");filter=b.dataset.mood;index=0;renderCard()});
-function renderMatches(){$("matchCount").textContent=matches.length;$("matchesList").innerHTML=matches.length?matches.map(p=>'<div class="listItem"><div class="avatar">'+p.icon+'</div><div class="itemMain"><b>'+p.name+'</b><small>Тестовий лайк • '+p.intent+'</small></div><span>›</span></div>').join(""):'<div class="empty">Поки немає збігів.</div>'}
-function renderChats(){$("chatList").innerHTML=matches.length?matches.map(p=>'<div class="listItem"><div class="avatar">♡</div><div class="itemMain"><b>'+p.name+'</b><small>Реальний чат — наступний серверний етап</small></div><span>›</span></div>').join(""):'<div class="empty">Чати з’являться після взаємних збігів.</div>'}
+function renderMatches(){$("matchCount").textContent=matches.length;$("matchesList").innerHTML=matches.length?matches.map(p=>'<div class="listItem" data-match="'+p.match_id+'"><div class="avatar">♡</div><div class="itemMain"><b>'+p.name+(p.age?", "+p.age:"")+'</b><small>Взаємний VYBE'+(p.city?" • "+p.city:"")+'</small></div><span>›</span></div>').join(""):'<div class="empty">Поки немає взаємних збігів.</div>'}
+function renderChats(){$("chatList").innerHTML=matches.length?matches.map(p=>'<button class="listItem chatOpen" data-match="'+p.match_id+'" data-name="'+String(p.name).replace(/"/g,"&quot;")+'"><div class="avatar">✉</div><div class="itemMain"><b>'+p.name+'</b><small>Відкрити приватний чат</small></div><span>›</span></button>').join(""):'<div class="empty">Чати з’являться після взаємних збігів.</div>';$("chatList").querySelectorAll(".chatOpen").forEach(b=>b.onclick=()=>openChat(b.dataset.match,b.dataset.name))}
+async function openChat(matchId,name){
+  const r=await secureApi("messages_list",{match_id:matchId});if(!r.ok){tg?.showAlert?.("Не вдалося відкрити чат.");return}
+  const msgs=(r.messages||[]).map(m=>'<div style="padding:8px 0"><b>'+(String(m.sender_id)===String(profile?.user_id)?"Ти":name)+':</b> '+escapeHtml(m.body)+'</div>').join("");
+  content.innerHTML='<h2>'+escapeHtml(name)+'</h2><div style="max-height:45vh;overflow:auto;margin:12px 0">'+(msgs||'<p>Почни розмову 👋</p>')+'</div><textarea id="chatMessage" class="field" maxlength="2000" placeholder="Напиши повідомлення…"></textarea><button id="sendMessage" class="primary">Надіслати</button>';
+  sheet.classList.remove("hidden");
+  $("sendMessage").onclick=async()=>{const message=$("chatMessage").value.trim();if(!message)return;const x=await secureApi("message_send",{match_id:matchId,message});if(!x.ok){tg?.showAlert?.("Не вдалося надіслати повідомлення.");return}await openChat(matchId,name);tg?.HapticFeedback?.notificationOccurred("success")};
+}
+function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 document.querySelectorAll(".navItem").forEach(b=>b.onclick=()=>{document.querySelectorAll(".navItem").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));$(b.dataset.target).classList.add("active")});setInterval(renderNow,60000);
