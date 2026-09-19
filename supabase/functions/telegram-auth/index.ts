@@ -172,18 +172,43 @@ Deno.serve(async (req: Request) => {
 
     if (action === "referral_claim") {
       const code = clean(body.code, 64).toLowerCase();
+      console.log("referral_claim:start", { user_id: user.id, code });
       const ownCode = referralCode(user.telegram_id);
-      if (!/^v[0-9a-z]+$/.test(code) || code === ownCode) return json({ ok: false, error: "Invalid referral code" }, 400);
+      if (!/^v[0-9a-z]+$/.test(code) || code === ownCode) {
+        console.warn("referral_claim:invalid_code", { user_id: user.id, code, is_own: code === ownCode });
+        return json({ ok: false, error: "Invalid referral code" }, 400);
+      }
       const existing = await db(`referrals?referred_id=eq.${encodeURIComponent(user.id)}&select=id&limit=1`);
-      if (existing?.length) return json({ ok: true, claimed: false, reason: "already_claimed" });
+      if (existing?.length) {
+        console.log("referral_claim:already_claimed", { user_id: user.id });
+        return json({ ok: true, claimed: false, reason: "already_claimed" });
+      }
       let refTelegramId: string;
-      try { refTelegramId = BigInt(parseInt(code.slice(1), 36)).toString(); } catch { return json({ ok: false, error: "Invalid referral code" }, 400); }
+      try {
+        let n = 0n;
+        for (const ch of code.slice(1)) {
+          const digit = BigInt(parseInt(ch, 36));
+          n = n * 36n + digit;
+        }
+        refTelegramId = n.toString();
+      } catch {
+        console.warn("referral_claim:decode_failed", { user_id: user.id, code });
+        return json({ ok: false, error: "Invalid referral code" }, 400);
+      }
+      console.log("referral_claim:decoded", { user_id: user.id, referrer_telegram_id: refTelegramId });
       const refs = await db(`users?telegram_id=eq.${encodeURIComponent(refTelegramId)}&select=id,telegram_id&limit=1`);
       const referrer = refs?.[0];
-      if (!referrer || String(referrer.id) === String(user.id)) return json({ ok: false, error: "Referrer not found" }, 404);
+      if (!referrer || String(referrer.id) === String(user.id)) {
+        console.warn("referral_claim:referrer_not_found", { user_id: user.id, referrer_telegram_id: refTelegramId });
+        return json({ ok: false, error: "Referrer not found" }, 404);
+      }
       await db("referrals", { method: "POST", body: JSON.stringify({ referrer_id: referrer.id, referred_id: user.id, referral_code: code }) });
+      console.log("referral_claim:inserted", { user_id: user.id, referrer_id: referrer.id });
       const p = await getProfile(db, user.id);
-      if (p) await db(`referrals?referred_id=eq.${encodeURIComponent(user.id)}`, { method: "PATCH", body: JSON.stringify({ activated_at: new Date().toISOString() }) });
+      if (p) {
+        await db(`referrals?referred_id=eq.${encodeURIComponent(user.id)}`, { method: "PATCH", body: JSON.stringify({ activated_at: new Date().toISOString() }) });
+        console.log("referral_claim:activated", { user_id: user.id });
+      }
       return json({ ok: true, claimed: true });
     }
 
