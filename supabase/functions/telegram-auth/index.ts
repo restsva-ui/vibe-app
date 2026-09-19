@@ -193,6 +193,62 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true, people });
     }
 
+
+    if (action === "like") {
+      const targetId = clean(body.target_user_id, 80);
+      const kind = body.kind === "super" ? "super" : "like";
+      if (!targetId || targetId === user.id) return json({ ok: false, error: "Invalid like target" }, 400);
+      const target = await db(`users?id=eq.${encodeURIComponent(targetId)}&select=id&limit=1`);
+      if (!target?.[0]) return json({ ok: false, error: "User not found" }, 404);
+
+      const existing = await db(`likes?from_user_id=eq.${encodeURIComponent(user.id)}&to_user_id=eq.${encodeURIComponent(targetId)}&select=id&limit=1`);
+      if (existing?.length) {
+        await db(`likes?id=eq.${encodeURIComponent(existing[0].id)}`, { method: "PATCH", body: JSON.stringify({ kind }) });
+      } else {
+        await db("likes", { method: "POST", body: JSON.stringify({ from_user_id: user.id, to_user_id: targetId, kind }) });
+      }
+
+      const reciprocal = await db(`likes?from_user_id=eq.${encodeURIComponent(targetId)}&to_user_id=eq.${encodeURIComponent(user.id)}&select=id&limit=1`);
+      if (!reciprocal?.length) return json({ ok: true, matched: false });
+
+      const [userA, userB] = [String(user.id), String(targetId)].sort();
+      let matchRows = await db(`matches?user_a_id=eq.${encodeURIComponent(userA)}&user_b_id=eq.${encodeURIComponent(userB)}&select=id,user_a_id,user_b_id,created_at&limit=1`);
+      if (!matchRows?.length) {
+        matchRows = await db("matches", { method: "POST", body: JSON.stringify({ user_a_id: userA, user_b_id: userB }) });
+      }
+      return json({ ok: true, matched: true, match: matchRows?.[0] ?? null });
+    }
+
+    if (action === "matches") {
+      const rows = await db(`matches?or=(user_a_id.eq.${encodeURIComponent(user.id)},user_b_id.eq.${encodeURIComponent(user.id)})&select=id,user_a_id,user_b_id,created_at&order=created_at.desc&limit=100`) ?? [];
+      const otherIds = [...new Set(rows.map((m: any) => String(m.user_a_id) === String(user.id) ? String(m.user_b_id) : String(m.user_a_id)))];
+      let profiles: any[] = [];
+      if (otherIds.length) profiles = await db(`profiles?user_id=in.(${otherIds.map((x) => encodeURIComponent(x)).join(",")})&select=user_id,name,age,city,bio`) ?? [];
+      const byId = new Map(profiles.map((p: any) => [String(p.user_id), p]));
+      return json({ ok: true, matches: rows.map((m: any) => {
+        const otherId = String(m.user_a_id) === String(user.id) ? String(m.user_b_id) : String(m.user_a_id);
+        return { match_id: m.id, created_at: m.created_at, user_id: otherId, profile: byId.get(otherId) ?? null };
+      }) });
+    }
+
+    if (action === "messages_list") {
+      const matchId = clean(body.match_id, 80);
+      const owned = await db(`matches?id=eq.${encodeURIComponent(matchId)}&or=(user_a_id.eq.${encodeURIComponent(user.id)},user_b_id.eq.${encodeURIComponent(user.id)})&select=id&limit=1`);
+      if (!owned?.length) return json({ ok: false, error: "Match not found" }, 404);
+      const messages = await db(`messages?match_id=eq.${encodeURIComponent(matchId)}&select=id,match_id,sender_id,body,created_at&order=created_at.asc&limit=200`) ?? [];
+      return json({ ok: true, messages });
+    }
+
+    if (action === "message_send") {
+      const matchId = clean(body.match_id, 80);
+      const message = clean(body.message, 2000);
+      if (!message) return json({ ok: false, error: "Message is empty" }, 400);
+      const owned = await db(`matches?id=eq.${encodeURIComponent(matchId)}&or=(user_a_id.eq.${encodeURIComponent(user.id)},user_b_id.eq.${encodeURIComponent(user.id)})&select=id&limit=1`);
+      if (!owned?.length) return json({ ok: false, error: "Match not found" }, 404);
+      const created = await db("messages", { method: "POST", body: JSON.stringify({ match_id: matchId, sender_id: user.id, body: message }) });
+      return json({ ok: true, message: created?.[0] ?? null });
+    }
+
     return json({ ok: false, error: "Unknown action" }, 400);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
