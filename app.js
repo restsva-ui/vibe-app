@@ -27,7 +27,8 @@ async function claimReferral(){
 async function openReferral(){
   const r=await secureApi("referral_stats");if(!r.ok){tg?.showAlert?.("Не вдалося завантажити реферальну статистику.");return}
   const link="https://t.me/vybe_now_bot?start="+encodeURIComponent("ref_"+r.code);
-  content.innerHTML='<h2>Запросити друзів 🔗</h2><p>Запрошено: <b>'+r.invited+'</b> • Активували анкету: <b>'+r.activated+'</b></p><p>Реферал зараховується один раз, а активним стає після створення анкети 18+.</p><button id="shareReferral" class="primary">Поділитися запрошенням</button><button id="copyReferral" class="choice" style="width:100%;margin-top:10px">Скопіювати посилання</button>';
+  const rewards=(r.rewards||[]).map(x=>'<div class="choice" style="margin-top:8px;opacity:'+(x.unlocked?'1':'.72')+'"><b>'+(x.unlocked?'✅ ':'🔒 ')+x.milestone+' активн.</b> — '+x.label+'<br><small>'+(x.unlocked?'Отримано':'Прогрес: '+x.progress+'/'+x.milestone)+'</small></div>').join("");
+  content.innerHTML='<h2>Запросити друзів 🔗</h2><p>Запрошено: <b>'+r.invited+'</b> • Активували анкету: <b>'+r.activated+'</b></p><h3 style="margin:14px 0 6px">Нагороди 🎁</h3>'+rewards+'<p style="margin-top:12px">Зараховуються лише друзі, які створили анкету 18+.</p><button id="shareReferral" class="primary">Поділитися запрошенням</button><button id="copyReferral" class="choice" style="width:100%;margin-top:10px">Скопіювати посилання</button>';
   sheet.classList.remove("hidden");
   $("shareReferral").onclick=()=>{const u="https://t.me/share/url?url="+encodeURIComponent(link)+"&text="+encodeURIComponent("Приєднуйся до VYBE 💜. Відкрий бота та натисни кнопку запуску VYBE.");tg?.openTelegramLink?.(u)};
   $("copyReferral").onclick=async()=>{try{await navigator.clipboard.writeText(link);tg?.showAlert?.("Посилання скопійовано ✅")}catch{tg?.showAlert?.(link)}};
