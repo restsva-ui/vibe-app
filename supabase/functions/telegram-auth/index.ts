@@ -238,6 +238,22 @@ Deno.serve(async (req: Request) => {
         }
       }
       granted = await db(`referral_rewards?user_id=eq.${encodeURIComponent(user.id)}&select=milestone,reward_type,reward_amount,granted_at&order=milestone.asc`) ?? [];
+
+      // Materialize newly-earned VYBE+ days into the entitlement exactly once.
+      const plusReward = granted.find((g: any) => g.reward_type === "vybe_plus");
+      if (plusReward) {
+        const existingPlus = await db(`user_entitlements?user_id=eq.${encodeURIComponent(user.id)}&select=id,vybe_plus_until,referral_plus_milestone&limit=1`) ?? [];
+        const appliedMilestone = Number(existingPlus?.[0]?.referral_plus_milestone || 0);
+        const rewardMilestone = Number(plusReward.milestone || 0);
+        if (rewardMilestone > appliedMilestone) {
+          const base = Math.max(Date.now(), existingPlus?.[0]?.vybe_plus_until ? new Date(existingPlus[0].vybe_plus_until).getTime() : 0);
+          const until = new Date(base + Number(plusReward.reward_amount || 0) * 86400000).toISOString();
+          const payload = { vybe_plus_until: until, referral_plus_milestone: rewardMilestone, updated_at: new Date().toISOString() };
+          if (existingPlus?.length) await db(`user_entitlements?id=eq.${encodeURIComponent(existingPlus[0].id)}`, { method: "PATCH", body: JSON.stringify(payload) });
+          else await db("user_entitlements", { method: "POST", body: JSON.stringify({ user_id: user.id, ...payload }) });
+        }
+      }
+
       const rewards = milestones.map((r) => ({
         ...r,
         unlocked: granted.some((g: any) => Number(g.milestone) === r.milestone),
