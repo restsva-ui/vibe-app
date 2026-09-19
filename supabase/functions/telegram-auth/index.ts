@@ -168,7 +168,7 @@ Deno.serve(async (req: Request) => {
       const allowed = new Set(["Поговорити", "Флірт", "Вірт", "Дружба", "Голос", "Зустріч"]);
       const intent = clean(body.intent, 30);
       const hours = Number(body.hours);
-      if (!allowed.has(intent) || ![1, 3, 8].includes(hours)) return json({ ok: false, error: "Invalid intent" }, 400);
+      if (!allowed.has(intent) || !Number.isFinite(hours) || hours < 0.05 || hours > 24) return json({ ok: false, error: "Invalid intent duration" }, 400);
       const expiresAt = new Date(Date.now() + hours * 3600000).toISOString();
       const rows = await db(`intents?user_id=eq.${encodeURIComponent(user.id)}&select=id&limit=1`);
       const payload = { user_id: user.id, intent, expires_at: expiresAt };
