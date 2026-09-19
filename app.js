@@ -16,29 +16,19 @@ async function secureApi(action,payload={}){
 }
 async function verifyTelegramAuth(){return secureApi("me")}
 async function claimReferral(){
-  const unsafeCode=String(tg?.initDataUnsafe?.start_param||"").trim().toLowerCase();
-  const signedCode=String(new URLSearchParams(tg?.initData||"").get("start_param")||"").trim().toLowerCase();
-  const urlCode=String(new URLSearchParams(location.search).get("tgWebAppStartParam")||"").trim().toLowerCase();
-  const code=unsafeCode||signedCode||urlCode;
-  const diag=`Referral debug\\nunsafe: ${unsafeCode||"—"}\\nsigned: ${signedCode||"—"}\\nurl: ${urlCode||"—"}\\nselected: ${code||"—"}`;
-  console.log(diag);
-  if(!code){
-    tg?.showAlert?.(diag);
-    return;
-  }
+  const initParams=new URLSearchParams(tg?.initData||"");
+  const code=String(tg?.initDataUnsafe?.start_param||initParams.get("start_param")||new URLSearchParams(location.search).get("tgWebAppStartParam")||"").trim().toLowerCase();
+  if(!code)return;
   const r=await secureApi("referral_claim",{code});
-  const result=`${diag}\\nAPI: ${r.ok?"ok":"error"}\\nclaimed: ${String(r.claimed??"—")}\\nreason: ${r.reason||r.error||"—"}`;
-  console.log(result);
-  tg?.showAlert?.(result);
   if(r.ok&&(r.claimed===true||r.reason==="already_claimed"))localStorage.setItem("vybeReferral:"+code,"1");
   else console.warn("VYBE referral claim failed",r);
 }
 async function openReferral(){
   const r=await secureApi("referral_stats");if(!r.ok){tg?.showAlert?.("Не вдалося завантажити реферальну статистику.");return}
-  const link="https://t.me/vybe_now_bot?startapp="+encodeURIComponent(r.code);
+  const link="https://t.me/vybe_now_bot?start="+encodeURIComponent("ref_"+r.code);
   content.innerHTML='<h2>Запросити друзів 🔗</h2><p>Запрошено: <b>'+r.invited+'</b> • Активували анкету: <b>'+r.activated+'</b></p><p>Реферал зараховується один раз, а активним стає після створення анкети 18+.</p><button id="shareReferral" class="primary">Поділитися запрошенням</button><button id="copyReferral" class="choice" style="width:100%;margin-top:10px">Скопіювати посилання</button>';
   sheet.classList.remove("hidden");
-  $("shareReferral").onclick=()=>{const u="https://t.me/share/url?url="+encodeURIComponent(link)+"&text="+encodeURIComponent("Приєднуйся до VYBE 💜");tg?.openTelegramLink?.(u)};
+  $("shareReferral").onclick=()=>{const u="https://t.me/share/url?url="+encodeURIComponent(link)+"&text="+encodeURIComponent("Приєднуйся до VYBE 💜. Відкрий бота та натисни кнопку запуску VYBE.");tg?.openTelegramLink?.(u)};
   $("copyReferral").onclick=async()=>{try{await navigator.clipboard.writeText(link);tg?.showAlert?.("Посилання скопійовано ✅")}catch{tg?.showAlert?.(link)}};
 }
 
