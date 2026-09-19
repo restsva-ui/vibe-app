@@ -16,10 +16,13 @@ async function secureApi(action,payload={}){
 }
 async function verifyTelegramAuth(){return secureApi("me")}
 async function claimReferral(){
-  const code=String(tg?.initDataUnsafe?.start_param||"").trim().toLowerCase();
+  const initParams=new URLSearchParams(tg?.initData||"");
+  const code=String(tg?.initDataUnsafe?.start_param||initParams.get("start_param")||new URLSearchParams(location.search).get("tgWebAppStartParam")||"").trim().toLowerCase();
   if(!code)return;
-  const key="vybeReferral:"+code;if(localStorage.getItem(key))return;
-  const r=await secureApi("referral_claim",{code});if(r.ok)localStorage.setItem(key,"1");
+  const key="vybeReferral:"+code;
+  const r=await secureApi("referral_claim",{code});
+  if(r.ok&&(r.claimed===true||r.reason==="already_claimed"))localStorage.setItem(key,"1");
+  else console.warn("VYBE referral claim failed",r);
 }
 async function openReferral(){
   const r=await secureApi("referral_stats");if(!r.ok){tg?.showAlert?.("Не вдалося завантажити реферальну статистику.");return}
