@@ -23,7 +23,7 @@ Deno.serve(async (req: Request) => {
   const url = new URL(req.url);
   if (req.method === "GET" && url.searchParams.get("setup") === "webhook") {
     try {
-      const webhookUrl = `${url.origin}/telegram-bot`;
+      const webhookUrl = "https://qifxxzpnuxchnkowxzgp.supabase.co/functions/v1/telegram-bot";
       const result = await telegram("setWebhook", {
         url: webhookUrl,
         allowed_updates: ["message"],
