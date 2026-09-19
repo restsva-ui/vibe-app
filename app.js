@@ -15,6 +15,20 @@ async function secureApi(action,payload={}){
   }catch(e){console.error("VYBE secure API",action,e);return {ok:false,error:e?.message||"Network error"}}
 }
 async function verifyTelegramAuth(){return secureApi("me")}
+async function claimReferral(){
+  const code=String(tg?.initDataUnsafe?.start_param||"").trim().toLowerCase();
+  if(!code)return;
+  const key="vybeReferral:"+code;if(localStorage.getItem(key))return;
+  const r=await secureApi("referral_claim",{code});if(r.ok)localStorage.setItem(key,"1");
+}
+async function openReferral(){
+  const r=await secureApi("referral_stats");if(!r.ok){tg?.showAlert?.("Не вдалося завантажити реферальну статистику.");return}
+  const link="https://t.me/vybe_now_bot?startapp="+encodeURIComponent(r.code);
+  content.innerHTML='<h2>Запросити друзів 🔗</h2><p>Запрошено: <b>'+r.invited+'</b> • Активували анкету: <b>'+r.activated+'</b></p><p>Реферал зараховується один раз, а активним стає після створення анкети 18+.</p><button id="shareReferral" class="primary">Поділитися запрошенням</button><button id="copyReferral" class="choice" style="width:100%;margin-top:10px">Скопіювати посилання</button>';
+  sheet.classList.remove("hidden");
+  $("shareReferral").onclick=()=>{const u="https://t.me/share/url?url="+encodeURIComponent(link)+"&text="+encodeURIComponent("Приєднуйся до VYBE 💜");tg?.openTelegramLink?.(u)};
+  $("copyReferral").onclick=async()=>{try{await navigator.clipboard.writeText(link);tg?.showAlert?.("Посилання скопійовано ✅")}catch{tg?.showAlert?.(link)}};
+}
 
 let profile=load("vybeProfile",null),now=load("vybeNow",null),matches=[],index=0,filter="Усе",remotePeople=[];localStorage.removeItem("vybeMatches");
 const demoPeople=[{id:"demo1",name:"Аліна",age:28,intent:"Флірт",icon:"🔥",bio:"Сьогодні хочу легке спілкування без банальних «привіт, як справи?»",meta:"Демо • онлайн",img:"https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=900&q=85"}];
@@ -46,6 +60,7 @@ async function hydrateProfile(){
 async function begin(){
   const auth=await verifyTelegramAuth();window.__vybeAuth=auth;
   if(!auth?.ok){console.warn("VYBE secure auth not confirmed",auth);tg?.showAlert?.("Не вдалося підтвердити Telegram-авторизацію. Відкрий VYBE заново через бота.");return}
+  await claimReferral();
   await hydrateProfile();
   if(!profile)showOnboarding();else{renderProfile();await syncProfile();await loadPeople()}
   await loadMatches();renderNow();renderCard();renderMatches();renderChats();
@@ -95,3 +110,4 @@ async function openChat(matchId,name){
 }
 function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 document.querySelectorAll(".navItem").forEach(b=>b.onclick=()=>{document.querySelectorAll(".navItem").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));$(b.dataset.target).classList.add("active")});setInterval(renderNow,60000);
+const referralBtn=document.getElementById("referralBtn");if(referralBtn)referralBtn.onclick=openReferral;
