@@ -17,6 +17,22 @@ async function telegram(method: string, body: unknown) {
 }
 
 Deno.serve(async (req: Request) => {
+  const url = new URL(req.url);
+  if (req.method === "GET" && url.searchParams.get("setup") === "webhook") {
+    try {
+      const webhookUrl = `${url.origin}/telegram-bot`;
+      const result = await telegram("setWebhook", {
+        url: webhookUrl,
+        allowed_updates: ["message"],
+        drop_pending_updates: false,
+      });
+      console.log("telegram-bot:webhook_configured", { webhookUrl });
+      return json({ ok: true, webhook_configured: true, telegram: result?.description ?? "Webhook was set" });
+    } catch (e) {
+      console.error("telegram-bot:webhook_setup_failed", e instanceof Error ? e.message : String(e));
+      return json({ ok: false, error: "Webhook setup failed" }, 500);
+    }
+  }
   if (req.method !== "POST") return json({ ok: false }, 405);
   try {
     const update = await req.json();
