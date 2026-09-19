@@ -247,6 +247,38 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true, code, invited: rows.length, activated, rewards });
     }
 
+    if (action === "entitlements") {
+      const rewards = await db(`referral_rewards?user_id=eq.${encodeURIComponent(user.id)}&select=reward_type,reward_amount,granted_at`) ?? [];
+      const uses = await db(`reward_uses?user_id=eq.${encodeURIComponent(user.id)}&select=reward_type,reward_amount,used_at`) ?? [];
+      const sum = (rows: any[], type: string) => rows.filter((x: any) => x.reward_type === type).reduce((n: number, x: any) => n + Number(x.reward_amount || 0), 0);
+      const supervybe = Math.max(0, sum(rewards, "supervybe") - sum(uses, "supervybe"));
+      const spotlight = Math.max(0, sum(rewards, "spotlight") - sum(uses, "spotlight"));
+      const plusRows = await db(`user_entitlements?user_id=eq.${encodeURIComponent(user.id)}&select=vybe_plus_until&limit=1`) ?? [];
+      const vybePlusUntil = plusRows?.[0]?.vybe_plus_until ?? null;
+      return json({ ok: true, balances: { supervybe, spotlight }, vybe_plus_until: vybePlusUntil });
+    }
+
+    if (action === "reward_use") {
+      const type = clean(body.reward_type, 30);
+      if (!["supervybe", "spotlight"].includes(type)) return json({ ok: false, error: "Invalid reward type" }, 400);
+      const rewards = await db(`referral_rewards?user_id=eq.${encodeURIComponent(user.id)}&reward_type=eq.${encodeURIComponent(type)}&select=reward_amount`) ?? [];
+      const uses = await db(`reward_uses?user_id=eq.${encodeURIComponent(user.id)}&reward_type=eq.${encodeURIComponent(type)}&select=reward_amount`) ?? [];
+      const total = rewards.reduce((n: number, x: any) => n + Number(x.reward_amount || 0), 0);
+      const used = uses.reduce((n: number, x: any) => n + Number(x.reward_amount || 0), 0);
+      if (total - used < 1) return json({ ok: false, error: "No reward balance" }, 409);
+      await db("reward_uses", { method: "POST", body: JSON.stringify({ user_id: user.id, reward_type: type, reward_amount: 1 }) });
+      if (type === "spotlight") {
+        const now = Date.now();
+        const existing = await db(`user_entitlements?user_id=eq.${encodeURIComponent(user.id)}&select=id,spotlight_until&limit=1`) ?? [];
+        const current = existing?.[0]?.spotlight_until ? new Date(existing[0].spotlight_until).getTime() : 0;
+        const until = new Date(Math.max(now, current) + 30 * 60 * 1000).toISOString();
+        if (existing?.length) await db(`user_entitlements?id=eq.${encodeURIComponent(existing[0].id)}`, { method: "PATCH", body: JSON.stringify({ spotlight_until: until }) });
+        else await db("user_entitlements", { method: "POST", body: JSON.stringify({ user_id: user.id, spotlight_until: until }) });
+        return json({ ok: true, reward_type: type, spotlight_until: until, balance: total - used - 1 });
+      }
+      return json({ ok: true, reward_type: type, balance: total - used - 1 });
+    }
+
     if (action === "set_intent") {
       const allowed = new Set(["Поговорити", "Флірт", "Вірт", "Дружба", "Голос", "Зустріч"]);
       const intent = clean(body.intent, 30);
