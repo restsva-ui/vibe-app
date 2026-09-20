@@ -142,11 +142,26 @@ function renderMatches(){
 }
 function renderChats(){$("chatList").innerHTML=matches.length?matches.map(p=>'<button class="listItem chatOpen" data-match="'+p.match_id+'" data-name="'+String(p.name).replace(/"/g,"&quot;")+'"><div class="avatar">✉</div><div class="itemMain"><b>'+p.name+'</b><small>Відкрити приватний чат</small></div><span>›</span></button>').join(""):'<div class="empty">Чати з’являться після взаємних збігів.</div>';$("chatList").querySelectorAll(".chatOpen").forEach(b=>b.onclick=()=>openChat(b.dataset.match,b.dataset.name))}
 async function openChat(matchId,name){
-  const r=await secureApi("messages_list",{match_id:matchId});if(!r.ok){tg?.showAlert?.("Не вдалося відкрити чат.");return}
-  const msgs=(r.messages||[]).map(m=>'<div style="padding:8px 0"><b>'+(String(m.sender_id)===String(profile?.user_id)?"Ти":name)+':</b> '+escapeHtml(m.body)+'</div>').join("");
-  content.innerHTML='<h2>'+escapeHtml(name)+'</h2><div style="max-height:45vh;overflow:auto;margin:12px 0">'+(msgs||'<p>Почни розмову 👋</p>')+'</div><textarea id="chatMessage" class="field" maxlength="2000" placeholder="Напиши повідомлення…"></textarea><button id="sendMessage" class="primary">Надіслати</button>';
+  const r=await secureApi("messages_list",{match_id:matchId});
+  if(!r.ok){tg?.showAlert?.("Не вдалося відкрити чат.");return}
+  const messages=r.messages||[];
+  const msgs=messages.map(m=>{
+    const mine=String(m.sender_id)===String(profile?.user_id);
+    const sender=mine?"Ти":name;
+    const initial=escapeHtml((sender||"V").trim().charAt(0).toUpperCase());
+    return '<div class="msgRow '+(mine?"mine":"theirs")+'"><div class="msgAvatar">'+initial+'</div><div class="msgWrap"><div class="msgSender">'+escapeHtml(sender)+'</div><div class="msgBubble">'+escapeHtml(m.body)+'</div></div></div>';
+  }).join("");
+  content.innerHTML='<div class="chatHeader"><div class="chatAvatar">'+escapeHtml((name||"V").trim().charAt(0).toUpperCase())+'</div><div><h2>'+escapeHtml(name)+'</h2><small>Ваш взаємний VYBE 💜</small></div></div><div id="chatMessages" class="chatMessages">'+(msgs||'<div class="chatEmpty">Почни розмову 👋</div>')+'</div><div class="chatComposer"><textarea id="chatMessage" class="field" maxlength="2000" placeholder="Напиши повідомлення…"></textarea><button id="sendMessage" class="primary">Надіслати</button></div>';
   sheet.classList.remove("hidden");
-  $("sendMessage").onclick=async()=>{const message=$("chatMessage").value.trim();if(!message)return;const x=await secureApi("message_send",{match_id:matchId,message});if(!x.ok){tg?.showAlert?.("Не вдалося надіслати повідомлення.");return}await openChat(matchId,name);tg?.HapticFeedback?.notificationOccurred("success")};
+  const box=$("chatMessages");if(box)box.scrollTop=box.scrollHeight;
+  $("sendMessage").onclick=async()=>{
+    const message=$("chatMessage").value.trim();if(!message)return;
+    $("sendMessage").disabled=true;
+    const x=await secureApi("message_send",{match_id:matchId,message});
+    if(!x.ok){$("sendMessage").disabled=false;tg?.showAlert?.("Не вдалося надіслати повідомлення.");return}
+    await openChat(matchId,name);
+    tg?.HapticFeedback?.notificationOccurred("success");
+  };
 }
 function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 document.querySelectorAll(".navItem").forEach(b=>b.onclick=()=>{document.querySelectorAll(".navItem").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));$(b.dataset.target).classList.add("active")});setInterval(renderNow,60000);
