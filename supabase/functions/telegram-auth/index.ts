@@ -83,6 +83,31 @@ function dbClient() {
   };
 }
 
+async function rpc(name: string, payload: Record<string, unknown>) {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("Database configuration missing");
+  const response = await fetch(`${url}/rest/v1/rpc/${name}`, {
+    method: "POST",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  const text = await response.text();
+  let data: any = null;
+  try { data = text ? JSON.parse(text) : null; } catch {}
+  if (!response.ok) {
+    const message = data?.message || data?.details || text || `RPC error ${response.status}`;
+    const error: any = new Error(message);
+    error.status = response.status;
+    throw error;
+  }
+  return data;
+}
+
 async function ensureUser(db: ReturnType<typeof dbClient>, tgUser: any) {
   const telegramId = String(tgUser.id);
   const rows = await db(`users?telegram_id=eq.${encodeURIComponent(telegramId)}&select=id,telegram_id&limit=1`);
@@ -324,6 +349,25 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true, people });
     }
 
+
+    if (action === "super_like") {
+      const targetId = clean(body.target_user_id, 80);
+      if (!targetId || targetId === user.id) return json({ ok: false, error: "Invalid like target" }, 400);
+      try {
+        const result = await rpc("use_supervybe_and_like", {
+          p_user_id: user.id,
+          p_target_user_id: targetId,
+        });
+        return json({ ok: true, ...(result ?? {}) });
+      } catch (e: any) {
+        const message = String(e?.message || "");
+        if (message.includes("NO_SUPERVYBE")) return json({ ok: false, error: "No SuperVYBE balance" }, 409);
+        if (message.includes("TARGET_NOT_FOUND")) return json({ ok: false, error: "User not found" }, 404);
+        if (message.includes("INVALID_TARGET")) return json({ ok: false, error: "Invalid like target" }, 400);
+        console.error("super_like:rpc_failed", { user_id: user.id, target_id: targetId, error: message.slice(0, 180) });
+        return json({ ok: false, error: "SuperVYBE transaction failed" }, 500);
+      }
+    }
 
     if (action === "like") {
       const targetId = clean(body.target_user_id, 80);
