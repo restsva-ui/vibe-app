@@ -1,7 +1,7 @@
-<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b0b12"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><title>VYBE 0.5.2</title><link rel="stylesheet" href="./styles.css?v=20260919-secure2"><script src="https://telegram.org/js/telegram-web-app.js"></script></head><body>
+<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b0b12"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><title>VYBE 0.5.3</title><link rel="stylesheet" href="./styles.css?v=20260919-secure2"><script src="https://telegram.org/js/telegram-web-app.js"></script></head><body>
 <div id="ageGate" class="overlay"><div class="modal"><div class="logoMark">V</div><h1>VYBE</h1><p>Знайомства, флірт, дружба та приватне спілкування для дорослих.</p><div class="ageBadge">18+</div><label class="checkRow"><input id="ageConfirm" type="checkbox"><span>Мені виповнилося 18 років, я приймаю правила спільноти.</span></label><button id="enterBtn" class="primary" disabled>Увійти</button><small>Заборонені неповнолітні, примус, шантаж, продаж сексуальних послуг і незаконний контент.</small></div></div>
 <div id="onboarding" class="overlay hidden"><div class="modal onboarding"><div class="stepDots"><i class="on"></i><i></i><i></i></div><h2>Створи свою анкету</h2><p>Анкета синхронізується з VYBE. Не додавай приватні контактні дані в опис.</p><label>Ім’я<input id="obName" class="field" maxlength="30"></label><div class="two"><label>Вік<input id="obAge" class="field" type="number" min="18" max="99"></label><label>Місто<input id="obCity" class="field" maxlength="40" placeholder="Київ"></label></div><label>Я<input id="obGender" class="field" maxlength="30" placeholder="Чоловік / Жінка / Інше"></label><label>Кого шукаю<input id="obLooking" class="field" maxlength="50" placeholder="Напр. жінок 25–40"></label><label>Про себе<textarea id="obBio" class="field" maxlength="180" placeholder="Коротко й живо — що варто знати про тебе?"></textarea></label><button id="saveProfile" class="primary">Зберегти →</button></div></div>
-<main class="app"><header class="topbar"><div><div class="eyebrow">VYBE 0.5.2 • ENTRY FIX</div><div id="hello" class="hello">Привіт 👋</div></div><button class="iconBtn" id="premiumBtn">✦</button></header>
+<main class="app"><header class="topbar"><div><div class="eyebrow">VYBE 0.5.3 • STABLE</div><div id="hello" class="hello">Привіт 👋</div></div><button class="iconBtn" id="premiumBtn">✦</button></header>
 <section class="nowCard"><div><b id="nowLabel">⚡ VYBE NOW не задано</b><small id="nowTime">Покажи, чого хочеш саме зараз</small></div><button id="setNow">Задати</button></section>
 <section class="moodStrip"><button class="mood active" data-mood="Усе">Усе</button><button class="mood" data-mood="Поговорити">💬 Поговорити</button><button class="mood" data-mood="Флірт">🔥 Флірт</button><button class="mood" data-mood="Вірт">🌙 Вірт</button><button class="mood" data-mood="Дружба">🫶 Дружба</button><button class="mood" data-mood="Голос">🎙 Голос</button></section>
 <section id="discoverView" class="view active"><div class="sectionTitle"><span>Люди по твоєму вайбу</span><button class="textBtn" id="filterBtn">Фільтри</button></div><div id="cardStack" class="cardStack"></div><div class="actions"><button class="action" id="skipBtn">✕</button><button class="action super" id="sparkBtn">✦</button><button class="action like" id="likeBtn">♥</button></div></section>
@@ -89,10 +89,8 @@ age.addEventListener("change",syncAgeButton);
 age.addEventListener("input",syncAgeButton);
 enterBtn.addEventListener("click",async()=>{
   if(!age.checked)return;
-  enterBtn.disabled=true;
-  enterBtn.textContent="Входимо…";
-  localStorage.setItem("vybe18","yes");
-  $("ageGate").classList.add("hidden");
+  enterBtn.disabled=true;enterBtn.textContent="Входимо…";
+  localStorage.setItem("vybe18","yes");$("ageGate").classList.add("hidden");
   try{await begin()}finally{enterBtn.textContent="Увійти";syncAgeButton()}
 });
 syncAgeButton();
@@ -133,7 +131,7 @@ async function next(kind){
     if(!r.ok){tg?.showAlert?.("Не вдалося надіслати VYBE. Спробуй ще раз.");return}
     if(kind==="super")await loadEntitlements();
     if(r.matched){await loadMatches();tg?.HapticFeedback?.notificationOccurred("success");tg?.showAlert?.("У вас взаємний VYBE 💜")}
-    else if(kind==="super")tg?.showAlert?.("SuperVYBE надіслано ✦")}
+    else if(kind==="super")tg?.showAlert?.("SuperVYBE надіслано ✦")
   }
   index++;renderCard();tg?.HapticFeedback?.impactOccurred("light");
 }
