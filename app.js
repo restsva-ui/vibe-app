@@ -115,11 +115,11 @@ async function next(kind){
     if(kind==="super"){
       await loadEntitlements();
       if(Number(entitlements?.balances?.supervybe||0)<1){openSheet("premium");return}
-      const spent=await secureApi("reward_use",{reward_type:"supervybe"});
-      if(!spent.ok){tg?.showAlert?.("Не вдалося використати SuperVYBE.");return}
     }
-    const r=await secureApi("like",{target_user_id:p.id,kind:kind==="super"?"super":"like"});
-    if(!r.ok){tg?.showAlert?.("Не вдалося надіслати VYBE. Спробуй ще раз.");return}
+    const r=kind==="super"
+      ? await secureApi("super_like",{target_user_id:p.id})
+      : await secureApi("like",{target_user_id:p.id,kind:"like"});
+    if(!r.ok){tg?.showAlert?.(kind==="super"?"SuperVYBE не списано. Спробуй ще раз.":"Не вдалося надіслати VYBE. Спробуй ще раз.");return}
     if(kind==="super")await loadEntitlements();
     if(r.matched){await loadMatches();tg?.HapticFeedback?.notificationOccurred("success");tg?.showAlert?.("У вас взаємний VYBE 💜")}
     else if(kind==="super")tg?.showAlert?.("SuperVYBE надіслано ✦")
