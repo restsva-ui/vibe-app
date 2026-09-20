@@ -356,10 +356,15 @@ Deno.serve(async (req: Request) => {
       let profiles: any[] = [];
       if (otherIds.length) profiles = await db(`profiles?user_id=in.(${otherIds.map((x) => encodeURIComponent(x)).join(",")})&select=user_id,name,age,city,bio`) ?? [];
       const byId = new Map(profiles.map((p: any) => [String(p.user_id), p]));
-      return json({ ok: true, matches: rows.map((m: any) => {
+      const enriched = await Promise.all(rows.map(async (m: any) => {
         const otherId = String(m.user_a_id) === String(user.id) ? String(m.user_b_id) : String(m.user_a_id);
-        return { match_id: m.id, created_at: m.created_at, user_id: otherId, profile: byId.get(otherId) ?? null };
-      }) });
+        const reads = await db(`match_reads?user_id=eq.${encodeURIComponent(user.id)}&match_id=eq.${encodeURIComponent(m.id)}&select=last_read_at&limit=1`) ?? [];
+        const lastRead = reads?.[0]?.last_read_at ?? "1970-01-01T00:00:00.000Z";
+        const unread = await db(`messages?match_id=eq.${encodeURIComponent(m.id)}&sender_id=neq.${encodeURIComponent(user.id)}&created_at=gt.${encodeURIComponent(lastRead)}&select=id`) ?? [];
+        const latest = await db(`messages?match_id=eq.${encodeURIComponent(m.id)}&select=body,created_at&order=created_at.desc&limit=1`) ?? [];
+        return { match_id:m.id, created_at:m.created_at, user_id:otherId, profile:byId.get(otherId) ?? null, unread_count:unread.length, last_message:latest?.[0]?.body ?? "" };
+      }));
+      return json({ ok:true, matches:enriched, unread_total:enriched.reduce((n:any,m:any)=>n+Number(m.unread_count||0),0) });
     }
 
     if (action === "messages_list") {
@@ -367,6 +372,10 @@ Deno.serve(async (req: Request) => {
       const owned = await db(`matches?id=eq.${encodeURIComponent(matchId)}&or=(user_a_id.eq.${encodeURIComponent(user.id)},user_b_id.eq.${encodeURIComponent(user.id)})&select=id&limit=1`);
       if (!owned?.length) return json({ ok: false, error: "Match not found" }, 404);
       const messages = await db(`messages?match_id=eq.${encodeURIComponent(matchId)}&select=id,match_id,sender_id,body,created_at&order=created_at.asc&limit=200`) ?? [];
+      const now = new Date().toISOString();
+      const readRows = await db(`match_reads?user_id=eq.${encodeURIComponent(user.id)}&match_id=eq.${encodeURIComponent(matchId)}&select=user_id&limit=1`) ?? [];
+      if (readRows.length) await db(`match_reads?user_id=eq.${encodeURIComponent(user.id)}&match_id=eq.${encodeURIComponent(matchId)}`, { method:"PATCH", body:JSON.stringify({last_read_at:now}) });
+      else await db("match_reads", { method:"POST", body:JSON.stringify({user_id:user.id,match_id:matchId,last_read_at:now}) });
       return json({ ok: true, messages });
     }
 
