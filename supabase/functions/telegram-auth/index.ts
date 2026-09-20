@@ -291,12 +291,32 @@ Deno.serve(async (req: Request) => {
     if (action === "entitlements") {
       const rewards = await db(`referral_rewards?user_id=eq.${encodeURIComponent(user.id)}&select=reward_type,reward_amount,granted_at`) ?? [];
       const uses = await db(`reward_uses?user_id=eq.${encodeURIComponent(user.id)}&select=reward_type,reward_amount,used_at`) ?? [];
-      const sum = (rows: any[], type: string) => rows.filter((x: any) => x.reward_type === type).reduce((n: number, x: any) => n + Number(x.reward_amount || 0), 0);
-      const supervybe = Math.max(0, sum(rewards, "supervybe") - sum(uses, "supervybe"));
-      const spotlight = Math.max(0, sum(rewards, "spotlight") - sum(uses, "spotlight"));
+      const sum = (rows: any[], type: string) => rows.filter((x: any) => String(x.reward_type).toLowerCase() === type).reduce((n: number, x: any) => n + Number(x.reward_amount || 0), 0);
+      const earnedSupervybe = sum(rewards, "supervybe");
+      const usedSupervybe = sum(uses, "supervybe");
+      const earnedSpotlight = sum(rewards, "spotlight");
+      const usedSpotlight = sum(uses, "spotlight");
+      const supervybe = Math.max(0, earnedSupervybe - usedSupervybe);
+      const spotlight = Math.max(0, earnedSpotlight - usedSpotlight);
       const plusRows = await db(`user_entitlements?user_id=eq.${encodeURIComponent(user.id)}&select=vybe_plus_until&limit=1`) ?? [];
       const vybePlusUntil = plusRows?.[0]?.vybe_plus_until ?? null;
-      return json({ ok: true, balances: { supervybe, spotlight }, vybe_plus_until: vybePlusUntil });
+      console.log("entitlements:balance", {
+        telegram_id: user.telegram_id,
+        user_id: user.id,
+        earned_supervybe: earnedSupervybe,
+        used_supervybe: usedSupervybe,
+        supervybe,
+        earned_spotlight: earnedSpotlight,
+        used_spotlight: usedSpotlight,
+        spotlight,
+      });
+      return json({
+        ok: true,
+        balances: { supervybe, spotlight },
+        earned: { supervybe: earnedSupervybe, spotlight: earnedSpotlight },
+        used: { supervybe: usedSupervybe, spotlight: usedSpotlight },
+        vybe_plus_until: vybePlusUntil,
+      });
     }
 
     if (action === "reward_use") {
