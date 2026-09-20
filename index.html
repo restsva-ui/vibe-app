@@ -1,7 +1,7 @@
-<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b0b12"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><title>VYBE 0.5.5</title><link rel="stylesheet" href="./styles.css?v=20260919-secure2"><script src="https://telegram.org/js/telegram-web-app.js"></script></head><body>
+<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b0b12"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><title>VYBE 0.5.6</title><link rel="stylesheet" href="./styles.css?v=20260920-chat056"><script src="https://telegram.org/js/telegram-web-app.js"></script></head><body>
 <div id="ageGate" class="overlay"><div class="modal"><div class="logoMark">V</div><h1>VYBE</h1><p>Знайомства, флірт, дружба та приватне спілкування для дорослих.</p><div class="ageBadge">18+</div><label class="checkRow"><input id="ageConfirm" type="checkbox"><span>Мені виповнилося 18 років, я приймаю правила спільноти.</span></label><button id="enterBtn" class="primary" disabled>Увійти</button><small>Заборонені неповнолітні, примус, шантаж, продаж сексуальних послуг і незаконний контент.</small></div></div>
 <div id="onboarding" class="overlay hidden"><div class="modal onboarding"><div class="stepDots"><i class="on"></i><i></i><i></i></div><h2>Створи свою анкету</h2><p>Анкета синхронізується з VYBE. Не додавай приватні контактні дані в опис.</p><label>Ім’я<input id="obName" class="field" maxlength="30"></label><div class="two"><label>Вік<input id="obAge" class="field" type="number" min="18" max="99"></label><label>Місто<input id="obCity" class="field" maxlength="40" placeholder="Київ"></label></div><label>Я<input id="obGender" class="field" maxlength="30" placeholder="Чоловік / Жінка / Інше"></label><label>Кого шукаю<input id="obLooking" class="field" maxlength="50" placeholder="Напр. жінок 25–40"></label><label>Про себе<textarea id="obBio" class="field" maxlength="180" placeholder="Коротко й живо — що варто знати про тебе?"></textarea></label><button id="saveProfile" class="primary">Зберегти →</button></div></div>
-<main class="app"><header class="topbar"><div><div class="eyebrow">VYBE 0.5.5 • MATCH OPEN</div><div id="hello" class="hello">Привіт 👋</div></div><button class="iconBtn" id="premiumBtn">✦</button></header>
+<main class="app"><header class="topbar"><div><div class="eyebrow">VYBE 0.5.6 • CHAT UI</div><div id="hello" class="hello">Привіт 👋</div></div><button class="iconBtn" id="premiumBtn">✦</button></header>
 <section class="nowCard"><div><b id="nowLabel">⚡ VYBE NOW не задано</b><small id="nowTime">Покажи, чого хочеш саме зараз</small></div><button id="setNow">Задати</button></section>
 <section class="moodStrip"><button class="mood active" data-mood="Усе">Усе</button><button class="mood" data-mood="Поговорити">💬 Поговорити</button><button class="mood" data-mood="Флірт">🔥 Флірт</button><button class="mood" data-mood="Вірт">🌙 Вірт</button><button class="mood" data-mood="Дружба">🫶 Дружба</button><button class="mood" data-mood="Голос">🎙 Голос</button></section>
 <section id="discoverView" class="view active"><div class="sectionTitle"><span>Люди по твоєму вайбу</span><button class="textBtn" id="filterBtn">Фільтри</button></div><div id="cardStack" class="cardStack"></div><div class="actions"><button class="action" id="skipBtn">✕</button><button class="action super" id="sparkBtn">✦</button><button class="action like" id="likeBtn">♥</button></div></section>
@@ -152,11 +152,26 @@ function renderMatches(){
 }
 function renderChats(){$("chatList").innerHTML=matches.length?matches.map(p=>'<button class="listItem chatOpen" data-match="'+p.match_id+'" data-name="'+String(p.name).replace(/"/g,"&quot;")+'"><div class="avatar">✉</div><div class="itemMain"><b>'+p.name+'</b><small>Відкрити приватний чат</small></div><span>›</span></button>').join(""):'<div class="empty">Чати з’являться після взаємних збігів.</div>';$("chatList").querySelectorAll(".chatOpen").forEach(b=>b.onclick=()=>openChat(b.dataset.match,b.dataset.name))}
 async function openChat(matchId,name){
-  const r=await secureApi("messages_list",{match_id:matchId});if(!r.ok){tg?.showAlert?.("Не вдалося відкрити чат.");return}
-  const msgs=(r.messages||[]).map(m=>'<div style="padding:8px 0"><b>'+(String(m.sender_id)===String(profile?.user_id)?"Ти":name)+':</b> '+escapeHtml(m.body)+'</div>').join("");
-  content.innerHTML='<h2>'+escapeHtml(name)+'</h2><div style="max-height:45vh;overflow:auto;margin:12px 0">'+(msgs||'<p>Почни розмову 👋</p>')+'</div><textarea id="chatMessage" class="field" maxlength="2000" placeholder="Напиши повідомлення…"></textarea><button id="sendMessage" class="primary">Надіслати</button>';
+  const r=await secureApi("messages_list",{match_id:matchId});
+  if(!r.ok){tg?.showAlert?.("Не вдалося відкрити чат.");return}
+  const messages=r.messages||[];
+  const msgs=messages.map(m=>{
+    const mine=String(m.sender_id)===String(profile?.user_id);
+    const sender=mine?"Ти":name;
+    const initial=escapeHtml((sender||"V").trim().charAt(0).toUpperCase());
+    return '<div class="msgRow '+(mine?"mine":"theirs")+'"><div class="msgAvatar">'+initial+'</div><div class="msgWrap"><div class="msgSender">'+escapeHtml(sender)+'</div><div class="msgBubble">'+escapeHtml(m.body)+'</div></div></div>';
+  }).join("");
+  content.innerHTML='<div class="chatHeader"><div class="chatAvatar">'+escapeHtml((name||"V").trim().charAt(0).toUpperCase())+'</div><div><h2>'+escapeHtml(name)+'</h2><small>Ваш взаємний VYBE 💜</small></div></div><div id="chatMessages" class="chatMessages">'+(msgs||'<div class="chatEmpty">Почни розмову 👋</div>')+'</div><div class="chatComposer"><textarea id="chatMessage" class="field" maxlength="2000" placeholder="Напиши повідомлення…"></textarea><button id="sendMessage" class="primary">Надіслати</button></div>';
   sheet.classList.remove("hidden");
-  $("sendMessage").onclick=async()=>{const message=$("chatMessage").value.trim();if(!message)return;const x=await secureApi("message_send",{match_id:matchId,message});if(!x.ok){tg?.showAlert?.("Не вдалося надіслати повідомлення.");return}await openChat(matchId,name);tg?.HapticFeedback?.notificationOccurred("success")};
+  const box=$("chatMessages");if(box)box.scrollTop=box.scrollHeight;
+  $("sendMessage").onclick=async()=>{
+    const message=$("chatMessage").value.trim();if(!message)return;
+    $("sendMessage").disabled=true;
+    const x=await secureApi("message_send",{match_id:matchId,message});
+    if(!x.ok){$("sendMessage").disabled=false;tg?.showAlert?.("Не вдалося надіслати повідомлення.");return}
+    await openChat(matchId,name);
+    tg?.HapticFeedback?.notificationOccurred("success");
+  };
 }
 function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 document.querySelectorAll(".navItem").forEach(b=>b.onclick=()=>{document.querySelectorAll(".navItem").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));$(b.dataset.target).classList.add("active")});setInterval(renderNow,60000);
