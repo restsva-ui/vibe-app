@@ -102,9 +102,10 @@ smart.dataset.until=String(target.getTime());}content.querySelectorAll(".choice[
 $("setNow").onclick=()=>openSheet("now");$("premiumBtn").onclick=()=>openSheet("premium");$("filterBtn").onclick=()=>openSheet("filter");$("safetyBtn").onclick=()=>openSheet("safety");
 function people(){return remotePeople.length?remotePeople:demoPeople}function filtered(){const arr=people();return filter==="Усе"?arr:arr.filter(p=>p.intent===filter)}
 function renderCard(){const arr=filtered();if(!arr.length||index>=arr.length){$("cardStack").innerHTML='<div class="empty">Анкет за цим вайбом поки немає.<br>Спробуй інший фільтр.</div>';return}const p=arr[index];const visual=p.img?'<img src="'+p.img+'" alt="'+p.name+'">':'<div class="generatedAvatar">'+(p.name?.[0]||"V")+'</div>';$("cardStack").innerHTML='<article class="personCard">'+visual+'<div class="gradient"></div><div class="personMeta"><div class="nameRow"><h2>'+p.name+", "+p.age+'</h2></div><div class="intent">'+p.icon+" "+p.intent+'</div><p class="bio">'+p.bio+'</p><div class="meta">'+p.meta+"</div></div></article>"}
+function updateUnreadBadge(total){const nav=[...document.querySelectorAll(".navItem")].find(x=>x.dataset.target==="chatsView");if(!nav)return;let badge=nav.querySelector(".navUnread");if(!badge){badge=document.createElement("b");badge.className="navUnread";nav.appendChild(badge)}badge.textContent=total>99?"99+":String(total);badge.classList.toggle("hidden",!total)}
 async function loadMatches(){
   const r=await secureApi("matches");if(!r.ok)return false;
-  matches=(r.matches||[]).map(m=>({match_id:m.match_id,id:m.user_id,name:m.profile?.name||"VYBE",age:m.profile?.age||"",city:m.profile?.city||"",bio:m.profile?.bio||"",icon:"♡"}));
+  matches=(r.matches||[]).map(m=>({match_id:m.match_id,id:m.user_id,name:m.profile?.name||"VYBE",age:m.profile?.age||"",city:m.profile?.city||"",bio:m.profile?.bio||"",icon:"♡",unread_count:Number(m.unread_count||0),last_message:m.last_message||""})); updateUnreadBadge(Number(r.unread_total||0));
   renderMatches();renderChats();return true;
 }
 async function next(kind){
@@ -163,7 +164,7 @@ async function openChat(matchId,name){
   }).join("");
   content.innerHTML='<div class="chatHeader"><div class="chatAvatar">'+escapeHtml((name||"V").trim().charAt(0).toUpperCase())+'</div><div><h2>'+escapeHtml(name)+'</h2><small>Ваш взаємний VYBE 💜</small></div></div><div id="chatMessages" class="chatMessages">'+(msgs||'<div class="chatEmpty">Почни розмову 👋</div>')+'</div><div class="chatComposer"><textarea id="chatMessage" class="field" maxlength="2000" placeholder="Напиши повідомлення…"></textarea><button id="sendMessage" class="primary">Надіслати</button></div>';
   sheet.classList.remove("hidden");
-  const box=$("chatMessages");if(box)box.scrollTop=box.scrollHeight;
+  const box=$("chatMessages");if(box)box.scrollTop=box.scrollHeight;const current=matches.find(x=>String(x.match_id)===String(matchId));if(current){current.unread_count=0;renderChats()}loadMatches();
   $("sendMessage").onclick=async()=>{
     const message=$("chatMessage").value.trim();if(!message)return;
     $("sendMessage").disabled=true;
