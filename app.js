@@ -73,7 +73,18 @@ async function begin(){
   if(!profile)showOnboarding();else{renderProfile();await syncProfile();await loadPeople()}
   await loadEntitlements();await loadMatches();renderNow();renderCard();renderMatches();renderChats();
 }
-const age=$("ageConfirm");age.onchange=()=>$("enterBtn").disabled=!age.checked;$("enterBtn").onclick=()=>{localStorage.setItem("vybe18","yes");$("ageGate").classList.add("hidden");begin()};if(localStorage.getItem("vybe18")==="yes"){$("ageGate").classList.add("hidden");setTimeout(begin,0)}
+const age=$("ageConfirm"),enterBtn=$("enterBtn");
+function syncAgeButton(){enterBtn.disabled=!age.checked}
+age.addEventListener("change",syncAgeButton);
+age.addEventListener("input",syncAgeButton);
+enterBtn.addEventListener("click",async()=>{
+  if(!age.checked)return;
+  enterBtn.disabled=true;enterBtn.textContent="Входимо…";
+  localStorage.setItem("vybe18","yes");$("ageGate").classList.add("hidden");
+  try{await begin()}finally{enterBtn.textContent="Увійти";syncAgeButton()}
+});
+syncAgeButton();
+if(localStorage.getItem("vybe18")==="yes"){$("ageGate").classList.add("hidden");setTimeout(begin,0)}
 function showOnboarding(){const o=$("onboarding");o.classList.remove("hidden");$("obName").value=profile?.name||tuser?.first_name||"";$("obAge").value=profile?.age||"";$("obCity").value=profile?.city||"";$("obGender").value=profile?.gender||"";$("obLooking").value=profile?.looking||"";$("obBio").value=profile?.bio||""}
 $("saveProfile").onclick=async()=>{const age=+$("obAge").value;if(!$("obName").value.trim()||age<18||age>99){tg?.showAlert?.("Вкажи ім’я та вік 18+.");return}profile={...profile,name:$("obName").value.trim(),age,city:$("obCity").value.trim(),gender:$("obGender").value.trim(),looking:$("obLooking").value.trim(),bio:$("obBio").value.trim()};store("vybeProfile",profile);$("onboarding").classList.add("hidden");renderProfile();await syncProfile();await loadPeople();tg?.HapticFeedback?.notificationOccurred("success")};
 $("editProfile").onclick=showOnboarding;
@@ -110,7 +121,7 @@ async function next(kind){
     if(!r.ok){tg?.showAlert?.("Не вдалося надіслати VYBE. Спробуй ще раз.");return}
     if(kind==="super")await loadEntitlements();
     if(r.matched){await loadMatches();tg?.HapticFeedback?.notificationOccurred("success");tg?.showAlert?.("У вас взаємний VYBE 💜")}
-    else if(kind==="super")tg?.showAlert?.("SuperVYBE надіслано ✦")}
+    else if(kind==="super")tg?.showAlert?.("SuperVYBE надіслано ✦")
   }
   index++;renderCard();tg?.HapticFeedback?.impactOccurred("light");
 }
