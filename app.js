@@ -140,7 +140,17 @@ function renderMatches(){
     };
   });
 }
-function renderChats(){$("chatList").innerHTML=matches.length?matches.map(p=>'<button class="listItem chatOpen" data-match="'+p.match_id+'" data-name="'+String(p.name).replace(/"/g,"&quot;")+'"><div class="avatar">✉</div><div class="itemMain"><b>'+p.name+'</b><small>Відкрити приватний чат</small></div><span>›</span></button>').join(""):'<div class="empty">Чати з’являться після взаємних збігів.</div>';$("chatList").querySelectorAll(".chatOpen").forEach(b=>b.onclick=()=>openChat(b.dataset.match,b.dataset.name))}
+function renderChats(){
+  const list=$("chatList");
+  list.innerHTML=matches.length?matches.map((p,i)=>{
+    const unread=Number(p.unread_count||0);
+    const subtitle=p.last_message?escapeHtml(p.last_message):"Відкрити приватний чат";
+    return '<button type="button" class="listItem chatOpen" data-index="'+i+'"><div class="avatar">'+escapeHtml((p.name||"V").trim().charAt(0).toUpperCase())+'</div><div class="itemMain"><b>'+escapeHtml(p.name)+(p.age?", "+escapeHtml(p.age):"")+'</b><small>'+subtitle+'</small></div>'+(unread?'<span class="unreadBadge">'+unread+'</span>':'')+'<span class="chevron">›</span></button>';
+  }).join(""):'<div class="empty">Чати з’являться після взаємних збігів.</div>';
+  list.querySelectorAll(".chatOpen").forEach(b=>b.onclick=()=>{
+    const p=matches[Number(b.dataset.index)];if(p)openChat(p.match_id,p.name);
+  });
+}
 async function openChat(matchId,name){
   const r=await secureApi("messages_list",{match_id:matchId});
   if(!r.ok){tg?.showAlert?.("Не вдалося відкрити чат.");return}
