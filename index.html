@@ -1,7 +1,7 @@
-<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b0b12"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><title>VYBE 0.5.6</title><link rel="stylesheet" href="./styles.css?v=20260920-chat056"><script src="https://telegram.org/js/telegram-web-app.js"></script></head><body>
+<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b0b12"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><title>VYBE 0.5.7</title><link rel="stylesheet" href="./styles.css?v=20260920-chat057"><script src="https://telegram.org/js/telegram-web-app.js"></script></head><body>
 <div id="ageGate" class="overlay"><div class="modal"><div class="logoMark">V</div><h1>VYBE</h1><p>Знайомства, флірт, дружба та приватне спілкування для дорослих.</p><div class="ageBadge">18+</div><label class="checkRow"><input id="ageConfirm" type="checkbox"><span>Мені виповнилося 18 років, я приймаю правила спільноти.</span></label><button id="enterBtn" class="primary" disabled>Увійти</button><small>Заборонені неповнолітні, примус, шантаж, продаж сексуальних послуг і незаконний контент.</small></div></div>
 <div id="onboarding" class="overlay hidden"><div class="modal onboarding"><div class="stepDots"><i class="on"></i><i></i><i></i></div><h2>Створи свою анкету</h2><p>Анкета синхронізується з VYBE. Не додавай приватні контактні дані в опис.</p><label>Ім’я<input id="obName" class="field" maxlength="30"></label><div class="two"><label>Вік<input id="obAge" class="field" type="number" min="18" max="99"></label><label>Місто<input id="obCity" class="field" maxlength="40" placeholder="Київ"></label></div><label>Я<input id="obGender" class="field" maxlength="30" placeholder="Чоловік / Жінка / Інше"></label><label>Кого шукаю<input id="obLooking" class="field" maxlength="50" placeholder="Напр. жінок 25–40"></label><label>Про себе<textarea id="obBio" class="field" maxlength="180" placeholder="Коротко й живо — що варто знати про тебе?"></textarea></label><button id="saveProfile" class="primary">Зберегти →</button></div></div>
-<main class="app"><header class="topbar"><div><div class="eyebrow">VYBE 0.5.6 • CHAT UI</div><div id="hello" class="hello">Привіт 👋</div></div><button class="iconBtn" id="premiumBtn">✦</button></header>
+<main class="app"><header class="topbar"><div><div class="eyebrow">VYBE 0.5.7 • CHAT LIST</div><div id="hello" class="hello">Привіт 👋</div></div><button class="iconBtn" id="premiumBtn">✦</button></header>
 <section class="nowCard"><div><b id="nowLabel">⚡ VYBE NOW не задано</b><small id="nowTime">Покажи, чого хочеш саме зараз</small></div><button id="setNow">Задати</button></section>
 <section class="moodStrip"><button class="mood active" data-mood="Усе">Усе</button><button class="mood" data-mood="Поговорити">💬 Поговорити</button><button class="mood" data-mood="Флірт">🔥 Флірт</button><button class="mood" data-mood="Вірт">🌙 Вірт</button><button class="mood" data-mood="Дружба">🫶 Дружба</button><button class="mood" data-mood="Голос">🎙 Голос</button></section>
 <section id="discoverView" class="view active"><div class="sectionTitle"><span>Люди по твоєму вайбу</span><button class="textBtn" id="filterBtn">Фільтри</button></div><div id="cardStack" class="cardStack"></div><div class="actions"><button class="action" id="skipBtn">✕</button><button class="action super" id="sparkBtn">✦</button><button class="action like" id="likeBtn">♥</button></div></section>
@@ -150,7 +150,17 @@ function renderMatches(){
     };
   });
 }
-function renderChats(){$("chatList").innerHTML=matches.length?matches.map(p=>'<button class="listItem chatOpen" data-match="'+p.match_id+'" data-name="'+String(p.name).replace(/"/g,"&quot;")+'"><div class="avatar">✉</div><div class="itemMain"><b>'+p.name+'</b><small>Відкрити приватний чат</small></div><span>›</span></button>').join(""):'<div class="empty">Чати з’являться після взаємних збігів.</div>';$("chatList").querySelectorAll(".chatOpen").forEach(b=>b.onclick=()=>openChat(b.dataset.match,b.dataset.name))}
+function renderChats(){
+  const list=$("chatList");
+  list.innerHTML=matches.length?matches.map((p,i)=>{
+    const unread=Number(p.unread_count||0);
+    const subtitle=p.last_message?escapeHtml(p.last_message):"Відкрити приватний чат";
+    return '<button type="button" class="listItem chatOpen" data-index="'+i+'"><div class="avatar">'+escapeHtml((p.name||"V").trim().charAt(0).toUpperCase())+'</div><div class="itemMain"><b>'+escapeHtml(p.name)+(p.age?", "+escapeHtml(p.age):"")+'</b><small>'+subtitle+'</small></div>'+(unread?'<span class="unreadBadge">'+unread+'</span>':'')+'<span class="chevron">›</span></button>';
+  }).join(""):'<div class="empty">Чати з’являться після взаємних збігів.</div>';
+  list.querySelectorAll(".chatOpen").forEach(b=>b.onclick=()=>{
+    const p=matches[Number(b.dataset.index)];if(p)openChat(p.match_id,p.name);
+  });
+}
 async function openChat(matchId,name){
   const r=await secureApi("messages_list",{match_id:matchId});
   if(!r.ok){tg?.showAlert?.("Не вдалося відкрити чат.");return}
