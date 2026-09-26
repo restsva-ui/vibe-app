@@ -319,25 +319,17 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    if (action === "reward_use") {
-      const type = clean(body.reward_type, 30);
-      if (!["supervybe", "spotlight"].includes(type)) return json({ ok: false, error: "Invalid reward type" }, 400);
-      const rewards = await db(`referral_rewards?user_id=eq.${encodeURIComponent(user.id)}&reward_type=eq.${encodeURIComponent(type)}&select=reward_amount`) ?? [];
-      const uses = await db(`reward_uses?user_id=eq.${encodeURIComponent(user.id)}&reward_type=eq.${encodeURIComponent(type)}&select=reward_amount`) ?? [];
-      const total = rewards.reduce((n: number, x: any) => n + Number(x.reward_amount || 0), 0);
-      const used = uses.reduce((n: number, x: any) => n + Number(x.reward_amount || 0), 0);
-      if (total - used < 1) return json({ ok: false, error: "No reward balance" }, 409);
-      await db("reward_uses", { method: "POST", body: JSON.stringify({ user_id: user.id, reward_type: type, reward_amount: 1 }) });
-      if (type === "spotlight") {
-        const now = Date.now();
-        const existing = await db(`user_entitlements?user_id=eq.${encodeURIComponent(user.id)}&select=id,spotlight_until&limit=1`) ?? [];
-        const current = existing?.[0]?.spotlight_until ? new Date(existing[0].spotlight_until).getTime() : 0;
-        const until = new Date(Math.max(now, current) + 30 * 60 * 1000).toISOString();
-        if (existing?.length) await db(`user_entitlements?id=eq.${encodeURIComponent(existing[0].id)}`, { method: "PATCH", body: JSON.stringify({ spotlight_until: until }) });
-        else await db("user_entitlements", { method: "POST", body: JSON.stringify({ user_id: user.id, spotlight_until: until }) });
-        return json({ ok: true, reward_type: type, spotlight_until: until, balance: total - used - 1 });
+    if (action === "spotlight_use") {
+      try {
+        const result = await rpc("use_spotlight", { p_user_id: user.id });
+        return json({ ok: true, reward_type: "spotlight", ...(result ?? {}) });
+      } catch (e: any) {
+        const message = String(e?.message || "");
+        if (message.includes("NO_SPOTLIGHT")) return json({ ok: false, error: "No Spotlight balance" }, 409);
+        if (message.includes("USER_NOT_FOUND")) return json({ ok: false, error: "User not found" }, 404);
+        console.error("spotlight_use:rpc_failed", { user_id: user.id, error: message.slice(0, 180) });
+        return json({ ok: false, error: "Spotlight transaction failed" }, 500);
       }
-      return json({ ok: true, reward_type: type, balance: total - used - 1 });
     }
 
     if (action === "set_intent") {
