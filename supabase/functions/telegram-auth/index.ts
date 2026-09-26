@@ -354,9 +354,12 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "discover") {
+      const nowIso = new Date().toISOString();
       const profiles = await db(`profiles?user_id=neq.${encodeURIComponent(user.id)}&select=user_id,name,age,city,bio&limit=50`) ?? [];
-      const intents = await db(`intents?expires_at=gt.${encodeURIComponent(new Date().toISOString())}&select=user_id,intent,expires_at&limit=100`) ?? [];
+      const intents = await db(`intents?expires_at=gt.${encodeURIComponent(nowIso)}&select=user_id,intent,expires_at&limit=100`) ?? [];
+      const spotlightRows = await db(`user_entitlements?spotlight_until=gt.${encodeURIComponent(nowIso)}&select=user_id,spotlight_until&limit=100`) ?? [];
       const byUser = new Map(intents.map((x: any) => [String(x.user_id), x]));
+      const spotlightByUser = new Map(spotlightRows.map((x: any) => [String(x.user_id), x.spotlight_until]));
       const people = profiles.map((p: any) => ({
         user_id: p.user_id,
         name: p.name,
@@ -365,7 +368,17 @@ Deno.serve(async (req: Request) => {
         bio: p.bio,
         intent: byUser.get(String(p.user_id))?.intent ?? "Поговорити",
         expires_at: byUser.get(String(p.user_id))?.expires_at ?? null,
-      }));
+        spotlight_until: spotlightByUser.get(String(p.user_id)) ?? null,
+        spotlight_active: spotlightByUser.has(String(p.user_id)),
+      })).sort((a: any, b: any) => {
+        const aSpot = a.spotlight_active ? 1 : 0;
+        const bSpot = b.spotlight_active ? 1 : 0;
+        if (aSpot !== bSpot) return bSpot - aSpot;
+        if (aSpot && bSpot) {
+          return new Date(b.spotlight_until).getTime() - new Date(a.spotlight_until).getTime();
+        }
+        return 0;
+      });
       return json({ ok: true, people });
     }
 
