@@ -298,8 +298,9 @@ Deno.serve(async (req: Request) => {
       const usedSpotlight = sum(uses, "spotlight");
       const supervybe = Math.max(0, earnedSupervybe - usedSupervybe);
       const spotlight = Math.max(0, earnedSpotlight - usedSpotlight);
-      const plusRows = await db(`user_entitlements?user_id=eq.${encodeURIComponent(user.id)}&select=vybe_plus_until&limit=1`) ?? [];
+      const plusRows = await db(`user_entitlements?user_id=eq.${encodeURIComponent(user.id)}&select=vybe_plus_until,spotlight_until&limit=1`) ?? [];
       const vybePlusUntil = plusRows?.[0]?.vybe_plus_until ?? null;
+      const spotlightUntil = plusRows?.[0]?.spotlight_until ?? null;
       console.log("entitlements:balance", {
         telegram_id: user.telegram_id,
         user_id: user.id,
@@ -316,6 +317,7 @@ Deno.serve(async (req: Request) => {
         earned: { supervybe: earnedSupervybe, spotlight: earnedSpotlight },
         used: { supervybe: usedSupervybe, spotlight: usedSpotlight },
         vybe_plus_until: vybePlusUntil,
+        spotlight_until: spotlightUntil,
       });
     }
 
