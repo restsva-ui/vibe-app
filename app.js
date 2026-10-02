@@ -50,7 +50,7 @@ function scheduleActiveChatRefresh(delay=120){
 function setTypingLabel(show){
   const el=$("chatPresence");
   if(!el)return;
-  el.textContent=show?"друкує…":"realtime • приватний чат";
+  el.textContent=show?"друкує…":chatConnectionLabel();
   el.classList.toggle("typing",show);
 }
 function getMatchChannel(matchId){return realtimeMatchChannels.get(String(matchId))?.channel||null}
@@ -67,8 +67,14 @@ function bindTyping(matchId){
     typingStopTimer=setTimeout(()=>sendTyping(matchId,false),1200);
   });
 }
+function setRealtimeBadge(live){
+  const el=$("realtimeStatus");if(!el)return;
+  el.textContent=live?"● realtime":"● автооновлення";
+  el.classList.toggle("offline",!live);
+}
+function chatConnectionLabel(){return realtimeClient?"realtime • приватний чат":"автооновлення • приватний чат"}
 function setupUserRealtime(topic){
-  if(!realtimeClient||!topic)return;
+  if(!realtimeClient||!topic){setRealtimeBadge(false);return}
   if(realtimeUserChannel&&realtimeUserChannelTopic===topic)return;
   if(realtimeUserChannel)realtimeClient.removeChannel(realtimeUserChannel);
   realtimeUserChannelTopic=topic;
@@ -85,7 +91,7 @@ function setupUserRealtime(topic){
       if(activeChat){activeChat=null;sheet?.classList?.add("hidden");syncMatchRealtimeChannels()}
       scheduleSocialRefresh(80);
     })
-    .subscribe();
+    .subscribe(status=>setRealtimeBadge(status==="SUBSCRIBED"));
 }
 function syncMatchRealtimeChannels(){
   if(!realtimeClient)return;
@@ -344,14 +350,15 @@ function renderMatches(){
 }
 function renderChats(){
   const list=$("chatList");
-  list.innerHTML=matches.length?matches.map((p,i)=>{
+  const rows=[...matches].sort((a,b)=>new Date(b.last_message_at||0)-new Date(a.last_message_at||0));
+  list.innerHTML=rows.length?rows.map((p,i)=>{
     const unread=Number(p.unread_count||0);
     const subtitle=p.last_message?escapeHtml(p.last_message):"Відкрити приватний чат";
     const time=formatChatListTime(p.last_message_at);
     return '<button type="button" class="listItem chatOpen" data-index="'+i+'"><div class="avatar">'+escapeHtml((p.name||"V").trim().charAt(0).toUpperCase())+'</div><div class="itemMain"><b>'+escapeHtml(p.name)+(p.age?", "+escapeHtml(p.age):"")+'</b><small>'+subtitle+'</small></div><div class="chatTail">'+(time?'<small class="chatTime">'+escapeHtml(time)+'</small>':'')+(unread?'<span class="unreadBadge">'+unread+'</span>':'')+'</div><span class="chevron">›</span></button>';
   }).join(""):'<div class="empty">Чати з’являться після взаємних збігів.</div>';
   list.querySelectorAll(".chatOpen").forEach(b=>b.onclick=()=>{
-    const p=matches[Number(b.dataset.index)];if(p)openChat(p.match_id,p.name,p.id);
+    const p=rows[Number(b.dataset.index)];if(p)openChat(p.match_id,p.name,p.id);
   });
 }
 async function openChat(matchId,name,userId,options={}){
@@ -381,7 +388,7 @@ async function openChat(matchId,name,userId,options={}){
     return '<div class="msgRow '+(mine?"mine":"theirs")+'"><div class="msgAvatar">'+initial+'</div><div class="msgWrap"><div class="msgSender">'+escapeHtml(sender)+'</div><div class="msgBubble">'+escapeHtml(m.body)+'</div><div class="msgMeta">'+escapeHtml(meta)+'</div></div></div>';
   }).join("");
 
-  content.innerHTML='<div class="chatHeader"><div class="chatAvatar">'+escapeHtml((name||"V").trim().charAt(0).toUpperCase())+'</div><div class="chatTitle"><h2>'+escapeHtml(name)+'</h2><small id="chatPresence">realtime • приватний чат</small></div><button id="chatSafetyBtn" class="chatSafety" aria-label="Безпека">⋯</button></div><div id="chatMessages" class="chatMessages">'+(msgs||'<div class="chatEmpty">Почни розмову 👋</div>')+'</div><div class="chatComposer"><textarea id="chatMessage" class="field" maxlength="2000" placeholder="Напиши повідомлення…"></textarea><button id="sendMessage" class="primary">Надіслати</button></div>';
+  content.innerHTML='<div class="chatHeader"><div class="chatAvatar">'+escapeHtml((name||"V").trim().charAt(0).toUpperCase())+'</div><div class="chatTitle"><h2>'+escapeHtml(name)+'</h2><small id="chatPresence">'+chatConnectionLabel()+'</small></div><button id="chatSafetyBtn" class="chatSafety" aria-label="Безпека">⋯</button></div><div id="chatMessages" class="chatMessages">'+(msgs||'<div class="chatEmpty">Почни розмову 👋</div>')+'</div><div class="chatComposer"><textarea id="chatMessage" class="field" maxlength="2000" placeholder="Напиши повідомлення…"></textarea><button id="sendMessage" class="primary">Надіслати</button></div>';
   sheet.classList.remove("hidden");
 
   const safety=$("chatSafetyBtn");if(safety)safety.onclick=()=>openUserSafety(userId,name);
