@@ -25,3 +25,13 @@
 .blockedRow b,.blockedRow small{display:block}
 .blockedRow small{margin-top:3px;color:var(--muted)}
 .unblockBtn{width:auto;flex:0 0 auto;padding:10px 12px}
+
+
+/* VYBE 0.8.0 — realtime chat */
+.chatTail{display:flex;flex-direction:column;align-items:flex-end;gap:5px;margin-left:auto}
+.chatTime{font-size:11px;color:var(--muted);white-space:nowrap}
+.msgMeta{margin-top:4px;font-size:10px;line-height:1;color:var(--muted);text-align:right;letter-spacing:.02em}
+.msgRow.theirs .msgMeta{text-align:left}
+#chatPresence{transition:opacity .18s ease,color .18s ease}
+#chatPresence.typing{color:#b991ff;font-weight:800}
+.statusDot{font-size:11px}
