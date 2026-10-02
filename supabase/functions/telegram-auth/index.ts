@@ -130,6 +130,68 @@ async function getProfile(db: ReturnType<typeof dbClient>, userId: string) {
   return rows?.[0] ?? null;
 }
 
+async function getBlockedUserIds(db: ReturnType<typeof dbClient>, userId: string): Promise<Set<string>> {
+  const [outgoing, incoming] = await Promise.all([
+    db(`blocks?blocker_id=eq.${encodeURIComponent(userId)}&select=blocked_id&limit=1000`),
+    db(`blocks?blocked_id=eq.${encodeURIComponent(userId)}&select=blocker_id&limit=1000`),
+  ]);
+  const ids = new Set<string>();
+  for (const row of outgoing ?? []) ids.add(String(row.blocked_id));
+  for (const row of incoming ?? []) ids.add(String(row.blocker_id));
+  return ids;
+}
+
+async function isBlockedBetween(db: ReturnType<typeof dbClient>, userA: string, userB: string): Promise<boolean> {
+  const direct = await db(
+    `blocks?blocker_id=eq.${encodeURIComponent(userA)}&blocked_id=eq.${encodeURIComponent(userB)}&select=id&limit=1`,
+  );
+  if (direct?.length) return true;
+  const reverse = await db(
+    `blocks?blocker_id=eq.${encodeURIComponent(userB)}&blocked_id=eq.${encodeURIComponent(userA)}&select=id&limit=1`,
+  );
+  return !!reverse?.length;
+}
+
+async function ensureBlock(db: ReturnType<typeof dbClient>, blockerId: string, blockedId: string) {
+  const existing = await db(
+    `blocks?blocker_id=eq.${encodeURIComponent(blockerId)}&blocked_id=eq.${encodeURIComponent(blockedId)}&select=id,created_at&limit=1`,
+  );
+  if (existing?.[0]) return { created: false, block: existing[0] };
+
+  const rows = await db("blocks", {
+    method: "POST",
+    body: JSON.stringify({ blocker_id: blockerId, blocked_id: blockedId }),
+  });
+  return { created: true, block: rows?.[0] ?? null };
+}
+
+async function removePairLikes(db: ReturnType<typeof dbClient>, userA: string, userB: string) {
+  await db(
+    `likes?from_user_id=eq.${encodeURIComponent(userA)}&to_user_id=eq.${encodeURIComponent(userB)}`,
+    { method: "DELETE" },
+  );
+  await db(
+    `likes?from_user_id=eq.${encodeURIComponent(userB)}&to_user_id=eq.${encodeURIComponent(userA)}`,
+    { method: "DELETE" },
+  );
+}
+
+async function getMatchOtherUser(
+  db: ReturnType<typeof dbClient>,
+  matchId: string,
+  userId: string,
+): Promise<{ id: string; match: any } | null> {
+  const rows = await db(
+    `matches?id=eq.${encodeURIComponent(matchId)}&or=(user_a_id.eq.${encodeURIComponent(userId)},user_b_id.eq.${encodeURIComponent(userId)})&select=id,user_a_id,user_b_id&limit=1`,
+  );
+  const match = rows?.[0];
+  if (!match) return null;
+  const otherId = String(match.user_a_id) === String(userId)
+    ? String(match.user_b_id)
+    : String(match.user_a_id);
+  return { id: otherId, match };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
   if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
@@ -334,6 +396,93 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    if (action === "blocks_list") {
+      const rows = await db(
+        `blocks?blocker_id=eq.${encodeURIComponent(user.id)}&select=id,blocked_id,created_at&order=created_at.desc&limit=500`,
+      ) ?? [];
+      const ids = [...new Set(rows.map((x: any) => String(x.blocked_id)))];
+      let profiles: any[] = [];
+      if (ids.length) {
+        profiles = await db(
+          `profiles?user_id=in.(${ids.map((x) => encodeURIComponent(x)).join(",")})&select=user_id,name,age,city`,
+        ) ?? [];
+      }
+      const byId = new Map(profiles.map((p: any) => [String(p.user_id), p]));
+      return json({
+        ok: true,
+        blocked: rows.map((row: any) => ({
+          block_id: row.id,
+          user_id: String(row.blocked_id),
+          created_at: row.created_at,
+          profile: byId.get(String(row.blocked_id)) ?? null,
+        })),
+      });
+    }
+
+    if (action === "block_user") {
+      const targetId = clean(body.target_user_id, 80);
+      if (!targetId || targetId === user.id) return json({ ok: false, error: "Invalid block target" }, 400);
+      const target = await db(`users?id=eq.${encodeURIComponent(targetId)}&select=id&limit=1`);
+      if (!target?.[0]) return json({ ok: false, error: "User not found" }, 404);
+
+      const block = await ensureBlock(db, user.id, targetId);
+      await removePairLikes(db, user.id, targetId);
+      return json({ ok: true, blocked: true, created: block.created });
+    }
+
+    if (action === "unblock_user") {
+      const targetId = clean(body.target_user_id, 80);
+      if (!targetId || targetId === user.id) return json({ ok: false, error: "Invalid unblock target" }, 400);
+      await db(
+        `blocks?blocker_id=eq.${encodeURIComponent(user.id)}&blocked_id=eq.${encodeURIComponent(targetId)}`,
+        { method: "DELETE" },
+      );
+      return json({ ok: true, blocked: false });
+    }
+
+    if (action === "report_user") {
+      const targetId = clean(body.target_user_id, 80);
+      const reason = clean(body.reason, 40);
+      const details = clean(body.details, 1000) || null;
+      const shouldBlock = body.block === true;
+      const allowedReasons = new Set([
+        "fake_profile",
+        "spam",
+        "harassment",
+        "underage",
+        "sexual_services",
+        "illegal_content",
+        "other",
+      ]);
+
+      if (!targetId || targetId === user.id) return json({ ok: false, error: "Invalid report target" }, 400);
+      if (!allowedReasons.has(reason)) return json({ ok: false, error: "Invalid report reason" }, 400);
+      const target = await db(`users?id=eq.${encodeURIComponent(targetId)}&select=id&limit=1`);
+      if (!target?.[0]) return json({ ok: false, error: "User not found" }, 404);
+
+      const report = await db("reports", {
+        method: "POST",
+        body: JSON.stringify({
+          reporter_id: user.id,
+          reported_id: targetId,
+          reason,
+          details,
+          status: "open",
+        }),
+      });
+
+      if (shouldBlock) {
+        await ensureBlock(db, user.id, targetId);
+        await removePairLikes(db, user.id, targetId);
+      }
+
+      return json({
+        ok: true,
+        report_id: report?.[0]?.id ?? null,
+        blocked: shouldBlock,
+      });
+    }
+
     if (action === "set_intent") {
       const allowed = new Set(["Поговорити", "Флірт", "Вірт", "Дружба", "Голос", "Зустріч"]);
       const intent = clean(body.intent, 30);
@@ -352,9 +501,10 @@ Deno.serve(async (req: Request) => {
       const profiles = await db(`profiles?user_id=neq.${encodeURIComponent(user.id)}&select=user_id,name,age,city,bio&limit=50`) ?? [];
       const intents = await db(`intents?expires_at=gt.${encodeURIComponent(nowIso)}&select=user_id,intent,expires_at&limit=100`) ?? [];
       const spotlightRows = await db(`user_entitlements?spotlight_until=gt.${encodeURIComponent(nowIso)}&select=user_id,spotlight_until&limit=100`) ?? [];
+      const blockedIds = await getBlockedUserIds(db, user.id);
       const byUser = new Map(intents.map((x: any) => [String(x.user_id), x]));
       const spotlightByUser = new Map(spotlightRows.map((x: any) => [String(x.user_id), x.spotlight_until]));
-      const people = profiles.map((p: any) => ({
+      const people = profiles.filter((p: any) => !blockedIds.has(String(p.user_id))).map((p: any) => ({
         user_id: p.user_id,
         name: p.name,
         age: p.age,
@@ -380,6 +530,7 @@ Deno.serve(async (req: Request) => {
     if (action === "super_like") {
       const targetId = clean(body.target_user_id, 80);
       if (!targetId || targetId === user.id) return json({ ok: false, error: "Invalid like target" }, 400);
+      if (await isBlockedBetween(db, user.id, targetId)) return json({ ok: false, error: "User blocked" }, 403);
       try {
         const result = await rpc("use_supervybe_and_like", {
           p_user_id: user.id,
@@ -391,6 +542,7 @@ Deno.serve(async (req: Request) => {
         if (message.includes("NO_SUPERVYBE")) return json({ ok: false, error: "No SuperVYBE balance" }, 409);
         if (message.includes("TARGET_NOT_FOUND")) return json({ ok: false, error: "User not found" }, 404);
         if (message.includes("INVALID_TARGET")) return json({ ok: false, error: "Invalid like target" }, 400);
+        if (message.includes("USER_BLOCKED")) return json({ ok: false, error: "User blocked" }, 403);
         console.error("super_like:rpc_failed", { user_id: user.id, target_id: targetId, error: message.slice(0, 180) });
         return json({ ok: false, error: "SuperVYBE transaction failed" }, 500);
       }
@@ -402,6 +554,7 @@ Deno.serve(async (req: Request) => {
       if (!targetId || targetId === user.id) return json({ ok: false, error: "Invalid like target" }, 400);
       const target = await db(`users?id=eq.${encodeURIComponent(targetId)}&select=id&limit=1`);
       if (!target?.[0]) return json({ ok: false, error: "User not found" }, 404);
+      if (await isBlockedBetween(db, user.id, targetId)) return json({ ok: false, error: "User blocked" }, 403);
 
       const existing = await db(`likes?from_user_id=eq.${encodeURIComponent(user.id)}&to_user_id=eq.${encodeURIComponent(targetId)}&select=id&limit=1`);
       if (existing?.length) {
@@ -422,7 +575,12 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "matches") {
-      const rows = await db(`matches?or=(user_a_id.eq.${encodeURIComponent(user.id)},user_b_id.eq.${encodeURIComponent(user.id)})&select=id,user_a_id,user_b_id,created_at&order=created_at.desc&limit=100`) ?? [];
+      const allRows = await db(`matches?or=(user_a_id.eq.${encodeURIComponent(user.id)},user_b_id.eq.${encodeURIComponent(user.id)})&select=id,user_a_id,user_b_id,created_at&order=created_at.desc&limit=100`) ?? [];
+      const blockedIds = await getBlockedUserIds(db, user.id);
+      const rows = allRows.filter((m: any) => {
+        const otherId = String(m.user_a_id) === String(user.id) ? String(m.user_b_id) : String(m.user_a_id);
+        return !blockedIds.has(otherId);
+      });
       const otherIds = [...new Set(rows.map((m: any) => String(m.user_a_id) === String(user.id) ? String(m.user_b_id) : String(m.user_a_id)))];
       let profiles: any[] = [];
       if (otherIds.length) profiles = await db(`profiles?user_id=in.(${otherIds.map((x) => encodeURIComponent(x)).join(",")})&select=user_id,name,age,city,bio`) ?? [];
@@ -440,8 +598,9 @@ Deno.serve(async (req: Request) => {
 
     if (action === "messages_list") {
       const matchId = clean(body.match_id, 80);
-      const owned = await db(`matches?id=eq.${encodeURIComponent(matchId)}&or=(user_a_id.eq.${encodeURIComponent(user.id)},user_b_id.eq.${encodeURIComponent(user.id)})&select=id&limit=1`);
-      if (!owned?.length) return json({ ok: false, error: "Match not found" }, 404);
+      const owned = await getMatchOtherUser(db, matchId, user.id);
+      if (!owned) return json({ ok: false, error: "Match not found" }, 404);
+      if (await isBlockedBetween(db, user.id, owned.id)) return json({ ok: false, error: "User blocked" }, 403);
       const messages = await db(`messages?match_id=eq.${encodeURIComponent(matchId)}&select=id,match_id,sender_id,body,created_at&order=created_at.asc&limit=200`) ?? [];
       const now = new Date().toISOString();
       const readRows = await db(`match_reads?user_id=eq.${encodeURIComponent(user.id)}&match_id=eq.${encodeURIComponent(matchId)}&select=user_id&limit=1`) ?? [];
@@ -454,8 +613,9 @@ Deno.serve(async (req: Request) => {
       const matchId = clean(body.match_id, 80);
       const message = clean(body.message, 2000);
       if (!message) return json({ ok: false, error: "Message is empty" }, 400);
-      const owned = await db(`matches?id=eq.${encodeURIComponent(matchId)}&or=(user_a_id.eq.${encodeURIComponent(user.id)},user_b_id.eq.${encodeURIComponent(user.id)})&select=id&limit=1`);
-      if (!owned?.length) return json({ ok: false, error: "Match not found" }, 404);
+      const owned = await getMatchOtherUser(db, matchId, user.id);
+      if (!owned) return json({ ok: false, error: "Match not found" }, 404);
+      if (await isBlockedBetween(db, user.id, owned.id)) return json({ ok: false, error: "User blocked" }, 403);
       const created = await db("messages", { method: "POST", body: JSON.stringify({ match_id: matchId, sender_id: user.id, body: message }) });
       return json({ ok: true, message: created?.[0] ?? null });
     }
