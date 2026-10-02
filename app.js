@@ -532,7 +532,12 @@ async function openChat(matchId,name,userId,options={}){
 function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 document.querySelectorAll(".navItem").forEach(b=>b.onclick=()=>{document.querySelectorAll(".navItem").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));$(b.dataset.target).classList.add("active")});setInterval(renderNow,60000);
 const referralBtn=document.getElementById("referralBtn");if(referralBtn)referralBtn.onclick=openReferral;const blockedUsersBtn=document.getElementById("blockedUsersBtn");if(blockedUsersBtn)blockedUsersBtn.onclick=openBlockedUsers;
-const photoBtn=document.getElementById("photoBtn"),photoInput=document.getElementById("photoInput"),removePhotoBtn=document.getElementById("removePhotoBtn");
-if(photoBtn&&photoInput)photoBtn.onclick=()=>photoInput.click();
-if(photoInput)photoInput.onchange=async()=>{const file=photoInput.files?.[0];photoInput.value="";if(file)await uploadProfilePhoto(file)};
+const photoBtn=document.getElementById("photoBtn"),removePhotoBtn=document.getElementById("removePhotoBtn");
+if(photoBtn)photoBtn.onclick=()=>{
+  const input=document.createElement("input");
+  input.type="file";
+  input.accept="image/jpeg,image/png,image/webp";
+  input.onchange=async()=>{const file=input.files?.[0];if(file)await uploadProfilePhoto(file)};
+  input.click();
+};
 if(removePhotoBtn)removePhotoBtn.onclick=removeProfilePhoto;
