@@ -227,7 +227,9 @@ async function openBlockedUsers(){
   });
 }
 
-let profile=load("vybeProfile",null),now=load("vybeNow",null),matches=[],index=0,filter="Усе",remotePeople=[],entitlements={balances:{supervybe:0,spotlight:0},vybe_plus_until:null,spotlight_until:null};localStorage.removeItem("vybeMatches");
+let profile=load("vybeProfile",null),now=load("vybeNow",null),matches=[],index=0,filter="Усе",remotePeople=[],entitlements={balances:{supervybe:0,spotlight:0},vybe_plus_until:null,spotlight_until:null};
+let discoverFilters=load("vybeDiscoverFilters",{minAge:18,maxAge:99,city:"",onlineOnly:false,verifiedOnly:false});
+localStorage.removeItem("vybeMatches");
 async function loadEntitlements(){const r=await secureApi("entitlements");if(r.ok)entitlements=r;return r}
 function spotlightStatus(){const until=entitlements?.spotlight_until?new Date(entitlements.spotlight_until):null;if(!until||until<=new Date())return "не активний";const min=Math.max(1,Math.ceil((until-Date.now())/60000));return "🔦 активний ще "+min+" хв."}
 function entitlementText(){const plus=entitlements?.vybe_plus_until&&new Date(entitlements.vybe_plus_until)>new Date()?new Date(entitlements.vybe_plus_until).toLocaleDateString("uk-UA"):"—";return "SuperVYBE: "+(entitlements?.balances?.supervybe||0)+" • Spotlight: "+(entitlements?.balances?.spotlight||0)+" • "+spotlightStatus()+" • VYBE+ до: "+plus}
@@ -250,14 +252,31 @@ async function syncNow(hours=1){
   return true;
 }
 async function loadPeople(){
-  const r=await secureApi("discover");if(!r.ok)return;
-  remotePeople=(r.people||[]).map(p=>({id:p.user_id,name:p.name||"VYBE",age:p.age||18,intent:p.intent||"Поговорити",icon:intentIcon(p.intent),bio:p.bio||"Новий користувач VYBE",meta:(p.city||"VYBE")+" • реальна анкета",img:null}));
+  const r=await secureApi("discover",{
+    min_age:Number(discoverFilters.minAge)||18,
+    max_age:Number(discoverFilters.maxAge)||99,
+    city:String(discoverFilters.city||""),
+    online_only:discoverFilters.onlineOnly===true,
+    verified_only:discoverFilters.verifiedOnly===true,
+  });if(!r.ok)return;
+  remotePeople=(r.people||[]).map(p=>({
+    id:p.user_id,
+    name:p.name||"VYBE",
+    age:p.age||18,
+    intent:p.intent||"Поговорити",
+    icon:intentIcon(p.intent),
+    bio:p.bio||"Новий користувач VYBE",
+    meta:[p.city||"VYBE",p.online?"● онлайн":"нещодавно",p.verified?"✓ верифіковано":""].filter(Boolean).join(" • "),
+    img:p.photo_url||null,
+    verified:p.verified===true,
+    online:p.online===true,
+  }));
   index=0;renderCard();
 }
 async function hydrateProfile(){
   const r=await secureApi("profile_get");if(!r.ok)return;
   if(r.realtime_topic){realtimeUserTopic=r.realtime_topic;setupUserRealtime(realtimeUserTopic)}
-  if(r.profile){profile={name:r.profile.name,age:r.profile.age,city:r.profile.city||"",gender:r.profile.gender||"",looking:r.profile.looking_for||"",bio:r.profile.bio||"",user_id:r.user_id};store("vybeProfile",profile)}
+  if(r.profile){profile={name:r.profile.name,age:r.profile.age,city:r.profile.city||"",gender:r.profile.gender||"",looking:r.profile.looking_for||"",bio:r.profile.bio||"",photo_url:r.profile.photo_url||null,verified:r.profile.verified===true,user_id:r.user_id};store("vybeProfile",profile)}
 }
 async function begin(){
   const auth=await verifyTelegramAuth();window.__vybeAuth=auth;
@@ -282,7 +301,96 @@ if(localStorage.getItem("vybe18")==="yes"){$("ageGate").classList.add("hidden");
 function showOnboarding(){const o=$("onboarding");o.classList.remove("hidden");$("obName").value=profile?.name||tuser?.first_name||"";$("obAge").value=profile?.age||"";$("obCity").value=profile?.city||"";$("obGender").value=profile?.gender||"";$("obLooking").value=profile?.looking||"";$("obBio").value=profile?.bio||""}
 $("saveProfile").onclick=async()=>{const age=+$("obAge").value;if(!$("obName").value.trim()||age<18||age>99){tg?.showAlert?.("Вкажи ім’я та вік 18+.");return}profile={...profile,name:$("obName").value.trim(),age,city:$("obCity").value.trim(),gender:$("obGender").value.trim(),looking:$("obLooking").value.trim(),bio:$("obBio").value.trim()};store("vybeProfile",profile);$("onboarding").classList.add("hidden");renderProfile();await syncProfile();await loadPeople();tg?.HapticFeedback?.notificationOccurred("success")};
 $("editProfile").onclick=showOnboarding;
-function renderProfile(){if(!profile)return;$("profileName").textContent=profile.name+", "+profile.age;$("profileMeta").textContent=[profile.city,profile.gender,profile.looking&&"Шукаю: "+profile.looking].filter(Boolean).join(" • ");$("profileBio").textContent=profile.bio||"Без опису"}
+function renderProfile(){
+  if(!profile)return;
+  $("profileName").textContent=profile.name+", "+profile.age+(profile.verified?" ✓":"");
+  $("profileMeta").textContent=[profile.city,profile.gender,profile.looking&&"Шукаю: "+profile.looking].filter(Boolean).join(" • ");
+  $("profileBio").textContent=profile.bio||"Без опису";
+  const avatar=$("profileAvatar");
+  if(avatar){
+    if(profile.photo_url){
+      avatar.textContent="";
+      avatar.style.backgroundImage='url("'+String(profile.photo_url).replace(/"/g,"%22")+'")';
+      avatar.classList.add("hasPhoto");
+    }else{
+      avatar.style.backgroundImage="";
+      avatar.textContent="👤";
+      avatar.classList.remove("hasPhoto");
+    }
+  }
+  const remove=$("removePhotoBtn");if(remove)remove.classList.toggle("hidden",!profile.photo_url);
+}
+
+function readImageAsDataUrl(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onerror=()=>reject(new Error("read_failed"));
+    reader.onload=()=>resolve(String(reader.result||""));
+    reader.readAsDataURL(file);
+  });
+}
+async function prepareProfilePhoto(file){
+  if(!file||!String(file.type||"").startsWith("image/"))throw new Error("not_image");
+  if(file.size>12*1024*1024)throw new Error("too_large_source");
+  const src=await readImageAsDataUrl(file);
+  const img=new Image();
+  await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=src});
+  const side=Math.min(img.naturalWidth,img.naturalHeight);
+  const sx=Math.max(0,(img.naturalWidth-side)/2),sy=Math.max(0,(img.naturalHeight-side)/2);
+  const canvas=document.createElement("canvas");canvas.width=900;canvas.height=900;
+  const ctx=canvas.getContext("2d",{alpha:false});if(!ctx)throw new Error("canvas_failed");
+  ctx.drawImage(img,sx,sy,side,side,0,0,900,900);
+  let out=canvas.toDataURL("image/webp",.82);
+  if(!out.startsWith("data:image/webp"))out=canvas.toDataURL("image/jpeg",.82);
+  let [header,data]=out.split(",");
+  if(!data)throw new Error("encode_failed");
+  let mime=header.match(/^data:([^;]+)/)?.[1]||"image/jpeg";
+  if(data.length>2500000){
+    out=canvas.toDataURL(mime,.68);[header,data]=out.split(",");mime=header.match(/^data:([^;]+)/)?.[1]||mime;
+  }
+  if(!data||data.length>2800000)throw new Error("too_large_encoded");
+  return {mime,image_base64:data};
+}
+async function uploadProfilePhoto(file){
+  const btn=$("photoBtn");if(btn){btn.disabled=true;btn.textContent="Обробляємо фото…"}
+  try{
+    const prepared=await prepareProfilePhoto(file);
+    if(btn)btn.textContent="Завантажуємо…";
+    const r=await secureApi("photo_upload",{mime_type:prepared.mime,image_base64:prepared.image_base64});
+    if(!r.ok)throw new Error(r.error||"upload_failed");
+    profile={...profile,photo_url:r.photo_url||null};store("vybeProfile",profile);renderProfile();await loadPeople();
+    tg?.HapticFeedback?.notificationOccurred("success");tg?.showAlert?.("Фото профілю оновлено ✅");
+  }catch(e){
+    console.error("VYBE photo upload",e);
+    tg?.showAlert?.("Не вдалося завантажити фото. Обери JPG/PNG/WebP до 12 МБ.");
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=profile?.photo_url?"Змінити фото":"Додати фото"}
+  }
+}
+async function removeProfilePhoto(){
+  if(!profile?.photo_url)return;
+  const ok=await confirmAction("Видалити фото профілю?");
+  if(!ok)return;
+  const r=await secureApi("photo_remove");
+  if(!r.ok){tg?.showAlert?.("Не вдалося видалити фото.");return}
+  profile={...profile,photo_url:null};store("vybeProfile",profile);renderProfile();await loadPeople();
+}
+
+function openDiscoverFilters(){
+  const f=discoverFilters||{};
+  content.innerHTML='<h2>Фільтри 🔎</h2><div class="filterTwo"><label>Вік від<input id="filterMinAge" class="field" type="number" min="18" max="99" value="'+escapeHtml(f.minAge||18)+'"></label><label>до<input id="filterMaxAge" class="field" type="number" min="18" max="99" value="'+escapeHtml(f.maxAge||99)+'"></label></div><label>Місто<input id="filterCity" class="field" maxlength="40" placeholder="Напр. Київ" value="'+escapeHtml(f.city||"")+'"></label><label class="checkRow filterCheck"><input id="filterOnline" type="checkbox" '+(f.onlineOnly?"checked":"")+'><span>Лише онлайн зараз</span></label><label class="checkRow filterCheck"><input id="filterVerified" type="checkbox" '+(f.verifiedOnly?"checked":"")+'><span>Лише верифіковані</span></label><button id="saveFilters" class="primary">Застосувати</button><button id="resetFilters" class="choice filterReset">Скинути фільтри</button>';
+  sheet.classList.remove("hidden");
+  $("saveFilters").onclick=async()=>{
+    const minAge=Math.max(18,Math.min(99,Number($("filterMinAge").value)||18));
+    const maxAge=Math.max(minAge,Math.min(99,Number($("filterMaxAge").value)||99));
+    discoverFilters={minAge,maxAge,city:$("filterCity").value.trim(),onlineOnly:$("filterOnline").checked,verifiedOnly:$("filterVerified").checked};
+    store("vybeDiscoverFilters",discoverFilters);sheet.classList.add("hidden");await loadPeople();
+  };
+  $("resetFilters").onclick=async()=>{
+    discoverFilters={minAge:18,maxAge:99,city:"",onlineOnly:false,verifiedOnly:false};
+    store("vybeDiscoverFilters",discoverFilters);sheet.classList.add("hidden");await loadPeople();
+  };
+}
 function validNow(){return now&&now.expires>Date.now()}
 function renderNow(){if(!validNow()){now=null;localStorage.removeItem("vybeNow");$("nowLabel").textContent="⚡ VYBE NOW не задано";$("nowTime").textContent="Покажи, чого хочеш саме зараз";return}$("nowLabel").textContent=now.icon+" "+now.intent;$("nowTime").textContent="Активний ще "+Math.max(1,Math.ceil((now.expires-Date.now())/3600000))+" год."}
 const sheet=$("sheet"),content=$("sheetContent");$("closeSheet").onclick=()=>{sendTyping(activeChat?.matchId,false);activeChat=null;syncMatchRealtimeChannels();clearTimeout(typingStopTimer);sheet.classList.add("hidden")};
@@ -293,9 +401,9 @@ if(hour<8){target.setHours(8,0,0,0);smart.textContent="До ранку";}
 else if(hour<18){target.setHours(20,0,0,0);smart.textContent="До вечора";}
 else{target.setDate(target.getDate()+1);target.setHours(8,0,0,0);smart.textContent="До ранку";}
 smart.dataset.until=String(target.getTime());}content.querySelectorAll(".choice[data-intent]").forEach(b=>b.onclick=()=>{content.querySelectorAll(".choice[data-intent]").forEach(x=>x.classList.remove("selected"));b.classList.add("selected");chosen={intent:b.dataset.intent,icon:b.dataset.icon}});content.querySelectorAll(".duration").forEach(b=>b.onclick=()=>{content.querySelectorAll(".duration").forEach(x=>x.classList.remove("selected"));b.classList.add("selected");hours=b.dataset.smart?Math.max(1,(Number(b.dataset.until)-Date.now())/3600000):+b.dataset.hours});$("saveNow").onclick=async()=>{if(!chosen){tg?.showAlert?.("Спочатку обери свій вайб.");return}now={...chosen,expires:Date.now()+hours*3600000};store("vybeNow",now);renderNow();await syncNow(hours);sheet.classList.add("hidden");tg?.HapticFeedback?.notificationOccurred("success")}}}
-$("setNow").onclick=()=>openSheet("now");$("premiumBtn").onclick=()=>openSheet("premium");$("filterBtn").onclick=()=>openSheet("filter");$("safetyBtn").onclick=()=>openSheet("safety");
+$("setNow").onclick=()=>openSheet("now");$("premiumBtn").onclick=()=>openSheet("premium");$("filterBtn").onclick=openDiscoverFilters;$("safetyBtn").onclick=()=>openSheet("safety");
 function people(){return remotePeople}function filtered(){const arr=people();return filter==="Усе"?arr:arr.filter(p=>p.intent===filter)}
-function renderCard(){const arr=filtered();if(!arr.length||index>=arr.length){$("cardStack").innerHTML='<div class="empty">Анкет за цим вайбом поки немає.<br>Спробуй інший фільтр.</div>';return}const p=arr[index];const visual=p.img?'<img src="'+escapeHtml(p.img)+'" alt="'+escapeHtml(p.name)+'">':'<div class="generatedAvatar">'+escapeHtml(p.name?.[0]||"V")+'</div>';$("cardStack").innerHTML='<article class="personCard">'+visual+'<button id="cardSafetyBtn" class="cardSafety" aria-label="Безпека">⋯</button><div class="gradient"></div><div class="personMeta"><div class="nameRow"><h2>'+escapeHtml(p.name)+", "+escapeHtml(p.age)+'</h2></div><div class="intent">'+escapeHtml(p.icon)+" "+escapeHtml(p.intent)+'</div><p class="bio">'+escapeHtml(p.bio)+'</p><div class="meta">'+escapeHtml(p.meta)+"</div></div></article>";const safety=$("cardSafetyBtn");if(safety)safety.onclick=e=>{e.stopPropagation();openUserSafety(p.id,p.name)}}
+function renderCard(){const arr=filtered();if(!arr.length||index>=arr.length){$("cardStack").innerHTML='<div class="empty">Анкет за цим вайбом поки немає.<br>Спробуй інший фільтр.</div>';return}const p=arr[index];const visual=p.img?'<img src="'+escapeHtml(p.img)+'" alt="'+escapeHtml(p.name)+'">':'<div class="generatedAvatar">'+escapeHtml(p.name?.[0]||"V")+'</div>';$("cardStack").innerHTML='<article class="personCard">'+visual+'<button id="cardSafetyBtn" class="cardSafety" aria-label="Безпека">⋯</button><div class="gradient"></div><div class="personMeta"><div class="nameRow"><h2>'+escapeHtml(p.name)+", "+escapeHtml(p.age)+(p.verified?' <span class="verifiedMark">✓</span>':'')+'</h2></div><div class="intent">'+escapeHtml(p.icon)+" "+escapeHtml(p.intent)+'</div><p class="bio">'+escapeHtml(p.bio)+'</p><div class="meta">'+escapeHtml(p.meta)+"</div></div></article>";const safety=$("cardSafetyBtn");if(safety)safety.onclick=e=>{e.stopPropagation();openUserSafety(p.id,p.name)}}
 function updateUnreadBadge(total){const nav=[...document.querySelectorAll(".navItem")].find(x=>x.dataset.target==="chatView");if(!nav)return;let badge=nav.querySelector(".navUnread");if(!badge){badge=document.createElement("b");badge.className="navUnread";nav.appendChild(badge)}badge.textContent=total>99?"99+":String(total);badge.classList.toggle("hidden",!total)}
 async function loadMatches(){
   const r=await secureApi("matches");if(!r.ok)return false;
@@ -307,6 +415,9 @@ async function loadMatches(){
     age:m.profile?.age||"",
     city:m.profile?.city||"",
     bio:m.profile?.bio||"",
+    photo_url:m.profile?.photo_url||null,
+    verified:m.profile?.verified===true,
+    online:m.profile?.online===true,
     icon:"♡",
     unread_count:Number(m.unread_count||0),
     last_message:m.last_message||"",
@@ -339,7 +450,7 @@ function renderMatches(){
   const list=$("matchesList");
   $("matchCount").textContent=matches.length;
   list.innerHTML=matches.length
-    ? matches.map((p,i)=>'<button type="button" class="listItem matchOpen" data-index="'+i+'"><div class="avatar">♡</div><div class="itemMain"><b>'+escapeHtml(p.name)+(p.age?", "+escapeHtml(p.age):"")+'</b><small>Взаємний VYBE'+(p.city?" • "+escapeHtml(p.city):"")+'</small></div><span>›</span></button>').join("")
+    ? matches.map((p,i)=>'<button type="button" class="listItem matchOpen" data-index="'+i+'">'+(p.photo_url?'<img class="avatar avatarPhoto" src="'+escapeHtml(p.photo_url)+'" alt="">':'<div class="avatar">♡</div>')+'<div class="itemMain"><b>'+escapeHtml(p.name)+(p.age?", "+escapeHtml(p.age):"")+(p.verified?' ✓':'')+'</b><small>Взаємний VYBE'+(p.city?" • "+escapeHtml(p.city):"")+(p.online?" • ● онлайн":"")+'</small></div><span>›</span></button>').join("")
     : '<div class="empty">Поки немає взаємних збігів.</div>';
   list.querySelectorAll(".matchOpen").forEach(b=>{
     b.onclick=()=>{
@@ -356,7 +467,7 @@ function renderChats(){
     const unread=Number(p.unread_count||0);
     const subtitle=p.last_message?escapeHtml(p.last_message):"Відкрити приватний чат";
     const time=formatChatListTime(p.last_message_at);
-    return '<button type="button" class="listItem chatOpen" data-index="'+i+'"><div class="avatar">'+escapeHtml((p.name||"V").trim().charAt(0).toUpperCase())+'</div><div class="itemMain"><b>'+escapeHtml(p.name)+(p.age?", "+escapeHtml(p.age):"")+'</b><small>'+subtitle+'</small></div><div class="chatTail">'+(time?'<small class="chatTime">'+escapeHtml(time)+'</small>':'')+(unread?'<span class="unreadBadge">'+unread+'</span>':'')+'</div><span class="chevron">›</span></button>';
+    return '<button type="button" class="listItem chatOpen" data-index="'+i+'">'+(p.photo_url?'<img class="avatar avatarPhoto" src="'+escapeHtml(p.photo_url)+'" alt="">':'<div class="avatar">'+escapeHtml((p.name||"V").trim().charAt(0).toUpperCase())+'</div>')+'<div class="itemMain"><b>'+escapeHtml(p.name)+(p.age?", "+escapeHtml(p.age):"")+(p.online?' <span class="onlineMini">●</span>':'')+'</b><small>'+subtitle+'</small></div><div class="chatTail">'+(time?'<small class="chatTime">'+escapeHtml(time)+'</small>':'')+(unread?'<span class="unreadBadge">'+unread+'</span>':'')+'</div><span class="chevron">›</span></button>';
   }).join(""):'<div class="empty">Чати з’являться після взаємних збігів.</div>';
   list.querySelectorAll(".chatOpen").forEach(b=>b.onclick=()=>{
     const p=rows[Number(b.dataset.index)];if(p)openChat(p.match_id,p.name,p.id);
@@ -421,3 +532,7 @@ async function openChat(matchId,name,userId,options={}){
 function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 document.querySelectorAll(".navItem").forEach(b=>b.onclick=()=>{document.querySelectorAll(".navItem").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));$(b.dataset.target).classList.add("active")});setInterval(renderNow,60000);
 const referralBtn=document.getElementById("referralBtn");if(referralBtn)referralBtn.onclick=openReferral;const blockedUsersBtn=document.getElementById("blockedUsersBtn");if(blockedUsersBtn)blockedUsersBtn.onclick=openBlockedUsers;
+const photoBtn=document.getElementById("photoBtn"),photoInput=document.getElementById("photoInput"),removePhotoBtn=document.getElementById("removePhotoBtn");
+if(photoBtn&&photoInput)photoBtn.onclick=()=>photoInput.click();
+if(photoInput)photoInput.onchange=async()=>{const file=photoInput.files?.[0];photoInput.value="";if(file)await uploadProfilePhoto(file)};
+if(removePhotoBtn)removePhotoBtn.onclick=removeProfilePhoto;
