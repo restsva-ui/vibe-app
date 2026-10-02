@@ -74,38 +74,42 @@ function setupUserRealtime(topic){
   realtimeUserChannelTopic=topic;
   realtimeUserChannel=realtimeClient.channel("vybe:user:"+topic,{config:{broadcast:{self:false}}})
     .on("broadcast",{event:"match_created"},()=>scheduleSocialRefresh(80))
+    .on("broadcast",{event:"chat_changed"},payload=>{
+      const changedMatch=String(payload?.payload?.match_id||"");
+      if(activeChat?.matchId===changedMatch&&String(payload?.payload?.sender_id||"")!==String(profile?.user_id)){
+        scheduleActiveChatRefresh(50);
+      }
+      scheduleSocialRefresh(80);
+    })
     .on("broadcast",{event:"relationship_changed"},()=>{
-      if(activeChat){activeChat=null;sheet?.classList?.add("hidden")}
+      if(activeChat){activeChat=null;sheet?.classList?.add("hidden");syncMatchRealtimeChannels()}
       scheduleSocialRefresh(80);
     })
     .subscribe();
 }
 function syncMatchRealtimeChannels(){
   if(!realtimeClient)return;
-  const wanted=new Set(matches.filter(m=>m.realtime_topic).map(m=>String(m.match_id)));
+  const wantedId=activeChat?.matchId||null;
   for(const [matchId,entry] of realtimeMatchChannels){
-    if(!wanted.has(matchId)){realtimeClient.removeChannel(entry.channel);realtimeMatchChannels.delete(matchId)}
+    if(matchId!==wantedId){realtimeClient.removeChannel(entry.channel);realtimeMatchChannels.delete(matchId)}
   }
-  for(const m of matches){
-    const key=String(m.match_id);
-    if(!m.realtime_topic||realtimeMatchChannels.has(key))continue;
-    const channel=realtimeClient.channel("vybe:match:"+m.realtime_topic,{config:{broadcast:{self:false}}})
-      .on("broadcast",{event:"message_created"},payload=>{
-        const senderId=String(payload?.payload?.sender_id||"");
-        if(activeChat?.matchId===key&&senderId!==String(profile?.user_id))scheduleActiveChatRefresh(60);
-        scheduleSocialRefresh(90);
-      })
-      .on("broadcast",{event:"read_updated"},payload=>{
-        const readerId=String(payload?.payload?.reader_id||"");
-        if(activeChat?.matchId===key&&readerId!==String(profile?.user_id))scheduleActiveChatRefresh(60);
-        scheduleSocialRefresh(120);
-      })
-      .on("broadcast",{event:"typing"},payload=>{
-        if(activeChat?.matchId===key)setTypingLabel(payload?.payload?.typing===true);
-      })
-      .subscribe();
-    realtimeMatchChannels.set(key,{channel,topic:m.realtime_topic});
-  }
+  if(!wantedId||realtimeMatchChannels.has(wantedId))return;
+  const m=matches.find(x=>String(x.match_id)===wantedId);
+  if(!m?.realtime_topic)return;
+  const channel=realtimeClient.channel("vybe:match:"+m.realtime_topic,{config:{broadcast:{self:false}}})
+    .on("broadcast",{event:"message_created"},payload=>{
+      const senderId=String(payload?.payload?.sender_id||"");
+      if(activeChat?.matchId===wantedId&&senderId!==String(profile?.user_id))scheduleActiveChatRefresh(50);
+    })
+    .on("broadcast",{event:"read_updated"},payload=>{
+      const readerId=String(payload?.payload?.reader_id||"");
+      if(activeChat?.matchId===wantedId&&readerId!==String(profile?.user_id))scheduleActiveChatRefresh(50);
+    })
+    .on("broadcast",{event:"typing"},payload=>{
+      if(activeChat?.matchId===wantedId)setTypingLabel(payload?.payload?.typing===true);
+    })
+    .subscribe();
+  realtimeMatchChannels.set(wantedId,{channel,topic:m.realtime_topic});
 }
 setInterval(()=>{
   if(document.visibilityState!=="visible")return;
@@ -155,6 +159,7 @@ async function refreshSocial(){
 
 function openUserSafety(userId,name){
   if(!userId)return;
+  sendTyping(activeChat?.matchId,false);activeChat=null;syncMatchRealtimeChannels();
   const safeName=escapeHtml(name||"користувача");
   content.innerHTML='<h2>Безпека 🛡</h2><p>Дії щодо <b>'+safeName+'</b>.</p><button id="reportUserBtn" class="choice safetyChoice">⚑ Поскаржитися</button><button id="blockUserBtn" class="choice safetyChoice dangerChoice">🚫 Заблокувати</button><p class="safetyHint">Після блокування ви не бачитимете одне одного у VYBE, а чат і нові лайки стануть недоступними.</p>';
   sheet.classList.remove("hidden");
@@ -273,7 +278,7 @@ $("editProfile").onclick=showOnboarding;
 function renderProfile(){if(!profile)return;$("profileName").textContent=profile.name+", "+profile.age;$("profileMeta").textContent=[profile.city,profile.gender,profile.looking&&"Шукаю: "+profile.looking].filter(Boolean).join(" • ");$("profileBio").textContent=profile.bio||"Без опису"}
 function validNow(){return now&&now.expires>Date.now()}
 function renderNow(){if(!validNow()){now=null;localStorage.removeItem("vybeNow");$("nowLabel").textContent="⚡ VYBE NOW не задано";$("nowTime").textContent="Покажи, чого хочеш саме зараз";return}$("nowLabel").textContent=now.icon+" "+now.intent;$("nowTime").textContent="Активний ще "+Math.max(1,Math.ceil((now.expires-Date.now())/3600000))+" год."}
-const sheet=$("sheet"),content=$("sheetContent");$("closeSheet").onclick=()=>{sendTyping(activeChat?.matchId,false);activeChat=null;clearTimeout(typingStopTimer);sheet.classList.add("hidden")};
+const sheet=$("sheet"),content=$("sheetContent");$("closeSheet").onclick=()=>{sendTyping(activeChat?.matchId,false);activeChat=null;syncMatchRealtimeChannels();clearTimeout(typingStopTimer);sheet.classList.add("hidden")};
 function openSheet(type){let h="";if(type==="now")h='<h2>Твій VYBE NOW ⚡</h2><p>Що ти хочеш саме зараз?</p><div class="choiceGrid">'+[["💬","Поговорити"],["🔥","Флірт"],["🌙","Вірт"],["🫶","Дружба"],["🎙","Голос"],["☕","Зустріч"]].map(x=>'<button class="choice" data-intent="'+x[1]+'" data-icon="'+x[0]+'">'+x[0]+" "+x[1]+"</button>").join("")+'</div><p>На скільки?</p><div class="choiceGrid"><button class="choice duration selected" data-hours="1">1 година</button><button class="choice duration" data-hours="3">3 години</button><button id="smartDuration" class="choice duration" data-smart="1">До ранку</button></div><button id="saveNow" class="primary">Увімкнути VYBE NOW</button>';else if(type==="premium"){const b=entitlements?.balances||{};const plus=entitlements?.vybe_plus_until&&new Date(entitlements.vybe_plus_until)>new Date()?new Date(entitlements.vybe_plus_until).toLocaleDateString("uk-UA"):"не активний";h='<h2>Мої бонуси ✨</h2><p>'+entitlementText()+'</p><div class="priceGrid"><div class="price"><span>SuperVYBE</span><strong>'+Number(b.supervybe||0)+'</strong></div><div class="price"><span>Spotlight</span><strong>'+Number(b.spotlight||0)+'</strong></div><div class="price"><span>VYBE+</span><strong>'+plus+'</strong></div></div>'+(Number(b.spotlight||0)>0?'<button id="useSpotlight" class="primary">Активувати Spotlight на 30 хв</button>':'')+'<p><small>SuperVYBE витрачається кнопкою ✦ на реальній анкеті.</small></p>';} else if(type==="filter")h='<h2>Фільтри</h2><p>Вік, місто, дистанція, кого шукаєш, онлайн та верифікація — наступний етап.</p><button class="primary" onclick="document.getElementById(\'sheet\').classList.add(\'hidden\')">Готово</button>';else if(type==="safety")h='<h2>Безпека 🛡</h2><p>VYBE працює тільки для 18+. Блокування та скарги вже захищені серверною перевіркою: заблоковані користувачі не бачать одне одного у пошуку, збігах і чатах.</p><button id="openBlockedFromSafety" class="choice safetyChoice">🚫 Мої блокування</button><p class="safetyHint">Якщо бачиш погрози, шантаж, неповнолітнього користувача, незаконний контент або пропозиції сексуальних послуг — надішли скаргу з профілю/чату.</p>';else h='<h2>VYBE</h2>';content.innerHTML=h;sheet.classList.remove("hidden");if(type==="safety"){const b=$("openBlockedFromSafety");if(b)b.onclick=openBlockedUsers}if(type==="premium"){const u=$("useSpotlight");if(u)u.onclick=useSpotlight}if(type==="now"){let chosen=null,hours=1;
 const smart=content.querySelector("#smartDuration");
 if(smart){const d=new Date(),hour=d.getHours();let target=new Date(d);
@@ -363,6 +368,7 @@ async function openChat(matchId,name,userId,options={}){
   }
 
   activeChat={matchId:key,name,userId:String(userId)};
+  syncMatchRealtimeChannels();
   const peerReadAt=r.peer_last_read_at?new Date(r.peer_last_read_at).getTime():0;
   const messages=r.messages||[];
   const msgs=messages.map(m=>{
