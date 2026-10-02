@@ -4,3 +4,24 @@
 
 /* VYBE list readability 0.5.7 */
 .listItem{color:var(--text);width:100%;text-align:left;cursor:pointer}.listItem .itemMain b{color:var(--text);font-size:16px}.listItem .itemMain small{display:block;margin-top:3px}.chevron{color:#c9cad7;font-size:24px}.unreadBadge{min-width:24px;height:24px;padding:0 7px;border-radius:999px;display:grid;place-items:center;background:var(--accent);color:#fff;font-size:12px;font-weight:800}
+
+
+/* VYBE 0.7.0 — safety controls */
+.personCard{position:relative}
+.cardSafety,.chatSafety{
+  width:38px;height:38px;border:0;border-radius:50%;display:grid;place-items:center;
+  background:rgba(12,12,18,.72);color:#fff;font-size:24px;font-weight:800;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);cursor:pointer
+}
+.cardSafety{position:absolute;top:14px;right:14px;z-index:5}
+.chatSafety{margin-left:auto;flex:0 0 auto}
+.chatTitle{min-width:0;flex:1}
+.safetyChoice{width:100%;margin-top:10px;text-align:left}
+.dangerChoice{border-color:rgba(255,76,112,.4)!important;color:#ff7894!important}
+.safetyHint{margin:12px 2px 0;color:var(--muted);font-size:12px;line-height:1.45}
+.safetyCheck{margin:12px 0}
+.blockedRow{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.blockedRow>div{min-width:0;flex:1}
+.blockedRow b,.blockedRow small{display:block}
+.blockedRow small{margin-top:3px;color:var(--muted)}
+.unblockBtn{width:auto;flex:0 0 auto;padding:10px 12px}
