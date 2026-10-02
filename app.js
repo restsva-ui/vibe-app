@@ -6,7 +6,7 @@ const TELEGRAM_AUTH_URL=SUPABASE_URL+"/functions/v1/telegram-auth";
 const realtimeClient=window.supabase?.createClient?.(SUPABASE_URL,SUPABASE_KEY,{
   auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},
 });
-let realtimeUserTopic=null,realtimeUserChannel=null,realtimeUserChannelTopic=null;
+let realtimeUserTopic=null,realtimeUserChannel=null,realtimeUserChannelTopic=null,realtimeConnected=false;
 const realtimeMatchChannels=new Map();
 let activeChat=null,chatRefreshTimer=null,socialRefreshTimer=null,typingStopTimer=null,lastTypingSentAt=0;
 
@@ -68,11 +68,12 @@ function bindTyping(matchId){
   });
 }
 function setRealtimeBadge(live){
+  realtimeConnected=live===true;
   const el=$("realtimeStatus");if(!el)return;
-  el.textContent=live?"● realtime":"● автооновлення";
-  el.classList.toggle("offline",!live);
+  el.textContent=realtimeConnected?"● realtime":"● автооновлення";
+  el.classList.toggle("offline",!realtimeConnected);
 }
-function chatConnectionLabel(){return realtimeClient?"realtime • приватний чат":"автооновлення • приватний чат"}
+function chatConnectionLabel(){return realtimeConnected?"realtime • приватний чат":"автооновлення • приватний чат"}
 function setupUserRealtime(topic){
   if(!realtimeClient||!topic){setRealtimeBadge(false);return}
   if(realtimeUserChannel&&realtimeUserChannelTopic===topic)return;
