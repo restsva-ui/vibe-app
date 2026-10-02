@@ -35,3 +35,5 @@
 #chatPresence{transition:opacity .18s ease,color .18s ease}
 #chatPresence.typing{color:#b991ff;font-weight:800}
 .statusDot{font-size:11px}
+
+.statusDot.offline{color:var(--muted)}
