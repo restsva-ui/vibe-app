@@ -110,8 +110,20 @@ async function rpc(name: string, payload: Record<string, unknown>) {
 
 async function ensureUser(db: ReturnType<typeof dbClient>, tgUser: any) {
   const telegramId = String(tgUser.id);
-  const rows = await db(`users?telegram_id=eq.${encodeURIComponent(telegramId)}&select=id,telegram_id,realtime_topic&limit=1`);
-  if (rows?.[0]) return rows[0];
+  const rows = await db(`users?telegram_id=eq.${encodeURIComponent(telegramId)}&select=id,telegram_id,realtime_topic,last_seen&limit=1`);
+  if (rows?.[0]) {
+    const row = rows[0];
+    const seenAt = row.last_seen ? new Date(row.last_seen).getTime() : 0;
+    if (!seenAt || Date.now() - seenAt > 60000) {
+      const now = new Date().toISOString();
+      await db(`users?id=eq.${encodeURIComponent(row.id)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ last_seen: now }),
+      });
+      row.last_seen = now;
+    }
+    return row;
+  }
 
   const created = await db("users", {
     method: "POST",
@@ -119,6 +131,7 @@ async function ensureUser(db: ReturnType<typeof dbClient>, tgUser: any) {
       telegram_id: Number(telegramId),
       username: tgUser.username ?? null,
       first_name: tgUser.first_name ?? null,
+      last_seen: new Date().toISOString(),
     }),
   });
   if (!created?.[0]) throw new Error("Could not create user");
@@ -126,8 +139,92 @@ async function ensureUser(db: ReturnType<typeof dbClient>, tgUser: any) {
 }
 
 async function getProfile(db: ReturnType<typeof dbClient>, userId: string) {
-  const rows = await db(`profiles?user_id=eq.${encodeURIComponent(userId)}&select=user_id,name,age,city,gender,looking_for,bio&limit=1`);
+  const rows = await db(`profiles?user_id=eq.${encodeURIComponent(userId)}&select=user_id,name,age,city,gender,looking_for,bio,photo_url,verified&limit=1`);
   return rows?.[0] ?? null;
+}
+
+const PROFILE_BUCKET = "profile-photos";
+const PROFILE_MAX_BYTES = 2 * 1024 * 1024;
+
+function base64ToBytes(value: string): Uint8Array {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function detectedImageType(bytes: Uint8Array): "image/webp" | "image/jpeg" | "image/png" | null {
+  if (
+    bytes.length >= 12 &&
+    String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" &&
+    String.fromCharCode(...bytes.slice(8, 12)) === "WEBP"
+  ) return "image/webp";
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  if (
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 &&
+    bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a
+  ) return "image/png";
+  return null;
+}
+
+const encodeStoragePath = (path: string) =>
+  path.split("/").map((part) => encodeURIComponent(part)).join("/");
+
+async function storageRequest(path: string, options: RequestInit = {}) {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("Storage configuration missing");
+  return fetch(`${url}/storage/v1/${path}`, {
+    ...options,
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      ...(options.headers || {}),
+    },
+  });
+}
+
+async function uploadProfilePhoto(userId: string, bytes: Uint8Array, mime: string) {
+  const url = Deno.env.get("SUPABASE_URL");
+  if (!url) throw new Error("Storage configuration missing");
+  const ext = mime === "image/png" ? "png" : mime === "image/jpeg" ? "jpg" : "webp";
+  const objectPath = `${userId}/${crypto.randomUUID()}.${ext}`;
+  const response = await storageRequest(
+    `object/${PROFILE_BUCKET}/${encodeStoragePath(objectPath)}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": mime,
+        "Cache-Control": "3600",
+        "x-upsert": "false",
+      },
+      body: bytes,
+    },
+  );
+  const text = await response.text();
+  if (!response.ok) throw new Error(`Storage upload error ${response.status}: ${text.slice(0, 240)}`);
+  const publicUrl = `${url}/storage/v1/object/public/${PROFILE_BUCKET}/${encodeStoragePath(objectPath)}`;
+  return { objectPath, publicUrl };
+}
+
+async function deleteProfilePhotoByUrl(photoUrl: string | null | undefined) {
+  if (!photoUrl) return;
+  const marker = `/storage/v1/object/public/${PROFILE_BUCKET}/`;
+  const idx = photoUrl.indexOf(marker);
+  if (idx < 0) return;
+  const encoded = photoUrl.slice(idx + marker.length);
+  let objectPath = encoded;
+  try {
+    objectPath = encoded.split("/").map((part) => decodeURIComponent(part)).join("/");
+  } catch {}
+  const response = await storageRequest(
+    `object/${PROFILE_BUCKET}/${encodeStoragePath(objectPath)}`,
+    { method: "DELETE" },
+  );
+  if (!response.ok && response.status !== 404) {
+    console.warn("profile_photo:delete_failed", { status: response.status });
+  }
 }
 
 async function getBlockedUserIds(db: ReturnType<typeof dbClient>, userId: string): Promise<Set<string>> {
@@ -234,6 +331,44 @@ Deno.serve(async (req: Request) => {
         realtime_topic: user.realtime_topic ?? null,
         profile: await getProfile(db, user.id),
       });
+    }
+
+    if (action === "photo_upload") {
+      const profile = await getProfile(db, user.id);
+      if (!profile) return json({ ok: false, error: "Create profile first" }, 409);
+
+      const declaredMime = clean(body.mime_type, 40).toLowerCase();
+      const base64 = typeof body.image_base64 === "string" ? body.image_base64.trim() : "";
+      if (!base64 || base64.length > Math.ceil(PROFILE_MAX_BYTES * 4 / 3) + 32) {
+        return json({ ok: false, error: "Image is too large" }, 413);
+      }
+
+      let bytes: Uint8Array;
+      try { bytes = base64ToBytes(base64); } catch { return json({ ok: false, error: "Invalid image encoding" }, 400); }
+      if (!bytes.length || bytes.length > PROFILE_MAX_BYTES) return json({ ok: false, error: "Image is too large" }, 413);
+
+      const detected = detectedImageType(bytes);
+      if (!detected || detected !== declaredMime) return json({ ok: false, error: "Unsupported image" }, 400);
+
+      const uploaded = await uploadProfilePhoto(user.id, bytes, detected);
+      await db(`profiles?user_id=eq.${encodeURIComponent(user.id)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ photo_url: uploaded.publicUrl, updated_at: new Date().toISOString() }),
+      });
+      await deleteProfilePhotoByUrl(profile.photo_url);
+
+      return json({ ok: true, photo_url: uploaded.publicUrl });
+    }
+
+    if (action === "photo_remove") {
+      const profile = await getProfile(db, user.id);
+      if (!profile) return json({ ok: false, error: "Profile not found" }, 404);
+      await db(`profiles?user_id=eq.${encodeURIComponent(user.id)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ photo_url: null, updated_at: new Date().toISOString() }),
+      });
+      await deleteProfilePhotoByUrl(profile.photo_url);
+      return json({ ok: true, photo_url: null });
     }
 
     if (action === "save_profile") {
@@ -503,32 +638,75 @@ Deno.serve(async (req: Request) => {
 
     if (action === "discover") {
       const nowIso = new Date().toISOString();
-      const profiles = await db(`profiles?user_id=neq.${encodeURIComponent(user.id)}&select=user_id,name,age,city,bio&limit=50`) ?? [];
-      const intents = await db(`intents?expires_at=gt.${encodeURIComponent(nowIso)}&select=user_id,intent,expires_at&limit=100`) ?? [];
-      const spotlightRows = await db(`user_entitlements?spotlight_until=gt.${encodeURIComponent(nowIso)}&select=user_id,spotlight_until&limit=100`) ?? [];
+      const minAgeRaw = Number(body.min_age);
+      const maxAgeRaw = Number(body.max_age);
+      const minAge = Number.isFinite(minAgeRaw) ? Math.max(18, Math.min(99, Math.floor(minAgeRaw))) : 18;
+      const maxAge = Number.isFinite(maxAgeRaw) ? Math.max(minAge, Math.min(99, Math.floor(maxAgeRaw))) : 99;
+      const cityFilter = clean(body.city, 40).toLocaleLowerCase("uk-UA");
+      const onlineOnly = body.online_only === true;
+      const verifiedOnly = body.verified_only === true;
+      const onlineCutoff = Date.now() - 3 * 60 * 1000;
+
+      const profiles = await db(`profiles?user_id=neq.${encodeURIComponent(user.id)}&select=user_id,name,age,city,bio,photo_url,verified&limit=100`) ?? [];
+      const intents = await db(`intents?expires_at=gt.${encodeURIComponent(nowIso)}&select=user_id,intent,expires_at&limit=200`) ?? [];
+      const spotlightRows = await db(`user_entitlements?spotlight_until=gt.${encodeURIComponent(nowIso)}&select=user_id,spotlight_until&limit=200`) ?? [];
       const blockedIds = await getBlockedUserIds(db, user.id);
+      const profileIds = profiles.map((p: any) => String(p.user_id));
+      const statuses = profileIds.length
+        ? await db(`users?id=in.(${profileIds.map((x) => encodeURIComponent(x)).join(",")})&select=id,last_seen`) ?? []
+        : [];
+      const statusByUser = new Map(statuses.map((x: any) => [String(x.id), x.last_seen]));
       const byUser = new Map(intents.map((x: any) => [String(x.user_id), x]));
       const spotlightByUser = new Map(spotlightRows.map((x: any) => [String(x.user_id), x.spotlight_until]));
-      const people = profiles.filter((p: any) => !blockedIds.has(String(p.user_id))).map((p: any) => ({
-        user_id: p.user_id,
-        name: p.name,
-        age: p.age,
-        city: p.city,
-        bio: p.bio,
-        intent: byUser.get(String(p.user_id))?.intent ?? "Поговорити",
-        expires_at: byUser.get(String(p.user_id))?.expires_at ?? null,
-        spotlight_until: spotlightByUser.get(String(p.user_id)) ?? null,
-        spotlight_active: spotlightByUser.has(String(p.user_id)),
-      })).sort((a: any, b: any) => {
-        const aSpot = a.spotlight_active ? 1 : 0;
-        const bSpot = b.spotlight_active ? 1 : 0;
-        if (aSpot !== bSpot) return bSpot - aSpot;
-        if (aSpot && bSpot) {
-          return new Date(b.spotlight_until).getTime() - new Date(a.spotlight_until).getTime();
-        }
-        return 0;
+
+      const people = profiles
+        .filter((p: any) => {
+          const id = String(p.user_id);
+          if (blockedIds.has(id)) return false;
+          const age = Number(p.age || 0);
+          if (age < minAge || age > maxAge) return false;
+          if (cityFilter && !String(p.city || "").toLocaleLowerCase("uk-UA").includes(cityFilter)) return false;
+          if (verifiedOnly && p.verified !== true) return false;
+          const lastSeen = statusByUser.get(id);
+          const online = !!lastSeen && new Date(lastSeen).getTime() >= onlineCutoff;
+          if (onlineOnly && !online) return false;
+          return true;
+        })
+        .map((p: any) => {
+          const id = String(p.user_id);
+          const lastSeen = statusByUser.get(id) ?? null;
+          const online = !!lastSeen && new Date(lastSeen).getTime() >= onlineCutoff;
+          return {
+            user_id: p.user_id,
+            name: p.name,
+            age: p.age,
+            city: p.city,
+            bio: p.bio,
+            photo_url: p.photo_url ?? null,
+            verified: p.verified === true,
+            online,
+            intent: byUser.get(id)?.intent ?? "Поговорити",
+            expires_at: byUser.get(id)?.expires_at ?? null,
+            spotlight_until: spotlightByUser.get(id) ?? null,
+            spotlight_active: spotlightByUser.has(id),
+          };
+        })
+        .sort((a: any, b: any) => {
+          const aSpot = a.spotlight_active ? 1 : 0;
+          const bSpot = b.spotlight_active ? 1 : 0;
+          if (aSpot !== bSpot) return bSpot - aSpot;
+          if (a.online !== b.online) return Number(b.online) - Number(a.online);
+          if (aSpot && bSpot) {
+            return new Date(b.spotlight_until).getTime() - new Date(a.spotlight_until).getTime();
+          }
+          return 0;
+        });
+
+      return json({
+        ok: true,
+        filters: { min_age: minAge, max_age: maxAge, city: clean(body.city, 40), online_only: onlineOnly, verified_only: verifiedOnly },
+        people,
       });
-      return json({ ok: true, people });
     }
 
 
@@ -588,7 +766,11 @@ Deno.serve(async (req: Request) => {
       });
       const otherIds = [...new Set(rows.map((m: any) => String(m.user_a_id) === String(user.id) ? String(m.user_b_id) : String(m.user_a_id)))];
       let profiles: any[] = [];
-      if (otherIds.length) profiles = await db(`profiles?user_id=in.(${otherIds.map((x) => encodeURIComponent(x)).join(",")})&select=user_id,name,age,city,bio`) ?? [];
+      if (otherIds.length) profiles = await db(`profiles?user_id=in.(${otherIds.map((x) => encodeURIComponent(x)).join(",")})&select=user_id,name,age,city,bio,photo_url,verified`) ?? [];
+      const statuses = otherIds.length
+        ? await db(`users?id=in.(${otherIds.map((x) => encodeURIComponent(x)).join(",")})&select=id,last_seen`) ?? []
+        : [];
+      const statusById = new Map(statuses.map((x: any) => [String(x.id), x.last_seen]));
       const byId = new Map(profiles.map((p: any) => [String(p.user_id), p]));
       const enriched = await Promise.all(rows.map(async (m: any) => {
         const otherId = String(m.user_a_id) === String(user.id) ? String(m.user_b_id) : String(m.user_a_id);
@@ -601,7 +783,10 @@ Deno.serve(async (req: Request) => {
           realtime_topic: m.realtime_topic,
           created_at: m.created_at,
           user_id: otherId,
-          profile: byId.get(otherId) ?? null,
+          profile: {
+            ...(byId.get(otherId) ?? {}),
+            online: !!statusById.get(otherId) && new Date(statusById.get(otherId)).getTime() >= Date.now() - 3 * 60 * 1000,
+          },
           unread_count: unread.length,
           last_message: latest?.[0]?.body ?? "",
           last_message_at: latest?.[0]?.created_at ?? null,
