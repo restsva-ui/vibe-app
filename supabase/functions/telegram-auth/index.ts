@@ -110,7 +110,7 @@ async function rpc(name: string, payload: Record<string, unknown>) {
 
 async function ensureUser(db: ReturnType<typeof dbClient>, tgUser: any) {
   const telegramId = String(tgUser.id);
-  const rows = await db(`users?telegram_id=eq.${encodeURIComponent(telegramId)}&select=id,telegram_id&limit=1`);
+  const rows = await db(`users?telegram_id=eq.${encodeURIComponent(telegramId)}&select=id,telegram_id,realtime_topic&limit=1`);
   if (rows?.[0]) return rows[0];
 
   const created = await db("users", {
@@ -228,7 +228,12 @@ Deno.serve(async (req: Request) => {
     const user = await ensureUser(db, telegram.user);
 
     if (action === "profile_get") {
-      return json({ ok: true, user_id: user.id, profile: await getProfile(db, user.id) });
+      return json({
+        ok: true,
+        user_id: user.id,
+        realtime_topic: user.realtime_topic ?? null,
+        profile: await getProfile(db, user.id),
+      });
     }
 
     if (action === "save_profile") {
@@ -575,7 +580,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "matches") {
-      const allRows = await db(`matches?or=(user_a_id.eq.${encodeURIComponent(user.id)},user_b_id.eq.${encodeURIComponent(user.id)})&select=id,user_a_id,user_b_id,created_at&order=created_at.desc&limit=100`) ?? [];
+      const allRows = await db(`matches?or=(user_a_id.eq.${encodeURIComponent(user.id)},user_b_id.eq.${encodeURIComponent(user.id)})&select=id,user_a_id,user_b_id,realtime_topic,created_at&order=created_at.desc&limit=100`) ?? [];
       const blockedIds = await getBlockedUserIds(db, user.id);
       const rows = allRows.filter((m: any) => {
         const otherId = String(m.user_a_id) === String(user.id) ? String(m.user_b_id) : String(m.user_a_id);
@@ -591,7 +596,16 @@ Deno.serve(async (req: Request) => {
         const lastRead = reads?.[0]?.last_read_at ?? "1970-01-01T00:00:00.000Z";
         const unread = await db(`messages?match_id=eq.${encodeURIComponent(m.id)}&sender_id=neq.${encodeURIComponent(user.id)}&created_at=gt.${encodeURIComponent(lastRead)}&select=id`) ?? [];
         const latest = await db(`messages?match_id=eq.${encodeURIComponent(m.id)}&select=body,created_at&order=created_at.desc&limit=1`) ?? [];
-        return { match_id:m.id, created_at:m.created_at, user_id:otherId, profile:byId.get(otherId) ?? null, unread_count:unread.length, last_message:latest?.[0]?.body ?? "" };
+        return {
+          match_id: m.id,
+          realtime_topic: m.realtime_topic,
+          created_at: m.created_at,
+          user_id: otherId,
+          profile: byId.get(otherId) ?? null,
+          unread_count: unread.length,
+          last_message: latest?.[0]?.body ?? "",
+          last_message_at: latest?.[0]?.created_at ?? null,
+        };
       }));
       return json({ ok:true, matches:enriched, unread_total:enriched.reduce((n:any,m:any)=>n+Number(m.unread_count||0),0) });
     }
@@ -601,12 +615,36 @@ Deno.serve(async (req: Request) => {
       const owned = await getMatchOtherUser(db, matchId, user.id);
       if (!owned) return json({ ok: false, error: "Match not found" }, 404);
       if (await isBlockedBetween(db, user.id, owned.id)) return json({ ok: false, error: "User blocked" }, 403);
+
       const messages = await db(`messages?match_id=eq.${encodeURIComponent(matchId)}&select=id,match_id,sender_id,body,created_at&order=created_at.asc&limit=200`) ?? [];
-      const now = new Date().toISOString();
-      const readRows = await db(`match_reads?user_id=eq.${encodeURIComponent(user.id)}&match_id=eq.${encodeURIComponent(matchId)}&select=user_id&limit=1`) ?? [];
-      if (readRows.length) await db(`match_reads?user_id=eq.${encodeURIComponent(user.id)}&match_id=eq.${encodeURIComponent(matchId)}`, { method:"PATCH", body:JSON.stringify({last_read_at:now}) });
-      else await db("match_reads", { method:"POST", body:JSON.stringify({user_id:user.id,match_id:matchId,last_read_at:now}) });
-      return json({ ok: true, messages });
+      const [myReads, peerReads] = await Promise.all([
+        db(`match_reads?user_id=eq.${encodeURIComponent(user.id)}&match_id=eq.${encodeURIComponent(matchId)}&select=last_read_at&limit=1`),
+        db(`match_reads?user_id=eq.${encodeURIComponent(owned.id)}&match_id=eq.${encodeURIComponent(matchId)}&select=last_read_at&limit=1`),
+      ]);
+
+      const myLastRead = myReads?.[0]?.last_read_at ?? null;
+      const latestPeerMessage = [...messages].reverse().find((m: any) => String(m.sender_id) !== String(user.id));
+      const latestPeerAt = latestPeerMessage?.created_at ?? null;
+
+      if (latestPeerAt && (!myLastRead || new Date(latestPeerAt).getTime() > new Date(myLastRead).getTime())) {
+        if (myReads?.length) {
+          await db(
+            `match_reads?user_id=eq.${encodeURIComponent(user.id)}&match_id=eq.${encodeURIComponent(matchId)}`,
+            { method: "PATCH", body: JSON.stringify({ last_read_at: latestPeerAt }) },
+          );
+        } else {
+          await db("match_reads", {
+            method: "POST",
+            body: JSON.stringify({ user_id: user.id, match_id: matchId, last_read_at: latestPeerAt }),
+          });
+        }
+      }
+
+      return json({
+        ok: true,
+        messages,
+        peer_last_read_at: peerReads?.[0]?.last_read_at ?? null,
+      });
     }
 
     if (action === "message_send") {
