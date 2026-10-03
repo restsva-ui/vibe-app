@@ -562,6 +562,11 @@ Deno.serve(async (req: Request) => {
       const product = products?.[0];
       if (!product) return json({ ok: false, error: "Product not found" }, 404);
 
+      await db(
+        `star_orders?user_id=eq.${encodeURIComponent(user.id)}&status=eq.pending`,
+        { method: "PATCH", body: JSON.stringify({ status: "expired" }) },
+      );
+
       const orderId = crypto.randomUUID();
       const invoicePayload = `vybe_star:${orderId}`;
       const amount = Number(product.stars);
@@ -627,6 +632,28 @@ Deno.serve(async (req: Request) => {
           body: JSON.stringify({ status: "expired" }),
         });
         order.status = "expired";
+      }
+
+      return json({ ok: true, order });
+    }
+
+    if (action === "star_order_close") {
+      const orderId = clean(body.order_id, 80);
+      const requestedStatus = body.status === "failed" ? "failed" : "cancelled";
+      if (!orderId) return json({ ok: false, error: "Order is required" }, 400);
+
+      const rows = await db(
+        `star_orders?id=eq.${encodeURIComponent(orderId)}&user_id=eq.${encodeURIComponent(user.id)}&select=id,status&limit=1`,
+      ) ?? [];
+      const order = rows?.[0];
+      if (!order) return json({ ok: false, error: "Order not found" }, 404);
+
+      if (order.status === "pending") {
+        await db(
+          `star_orders?id=eq.${encodeURIComponent(orderId)}&user_id=eq.${encodeURIComponent(user.id)}&status=eq.pending`,
+          { method: "PATCH", body: JSON.stringify({ status: requestedStatus }) },
+        );
+        order.status = requestedStatus;
       }
 
       return json({ ok: true, order });
