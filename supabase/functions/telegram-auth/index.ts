@@ -617,11 +617,12 @@ Deno.serve(async (req: Request) => {
       const adminRole = await getAdminRole(db, user.id);
       if (!adminRole) return json({ ok: false, error: "Admin access required" }, 403);
 
-      const [botBalance, telegramTransactions, orders, products] = await Promise.all([
+      const [botBalance, telegramTransactions, orders, products, auditRows] = await Promise.all([
         telegramApi(botToken, "getMyStarBalance", {}),
         telegramApi(botToken, "getStarTransactions", { offset: 0, limit: 100 }),
         db("star_orders?select=id,product_key,status,total_amount,created_at,paid_at,refunded_at,telegram_payment_charge_id&order=created_at.desc&limit=1000") ?? [],
         db("star_products?select=product_key,title_uk,title_en,stars&order=sort_order.asc") ?? [],
+        db("admin_audit_log?action=eq.refund_star_order&select=id,target_order_id,metadata,created_at&order=created_at.desc&limit=100") ?? [],
       ]);
 
       const productByKey = new Map((products ?? []).map((p: any) => [String(p.product_key), p]));
@@ -717,6 +718,25 @@ Deno.serve(async (req: Request) => {
         productStats.set(key, stat);
       }
 
+      const auditByOrder = new Map((auditRows ?? []).map((x: any) => [String(x.target_order_id), x]));
+      const refundHistory = (orders ?? [])
+        .filter((o: any) => o.status === "refunded")
+        .slice(0, 50)
+        .map((o: any) => {
+          const audit = auditByOrder.get(String(o.id));
+          const p = productByKey.get(String(o.product_key));
+          return {
+            order_id: o.id,
+            product_key: o.product_key,
+            title_uk: p?.title_uk ?? o.product_key,
+            title_en: p?.title_en ?? o.product_key,
+            stars: Number(o.total_amount || 0),
+            refunded_at: o.refunded_at,
+            source: audit ? "owner" : "automatic",
+            audit_created_at: audit?.created_at ?? null,
+          };
+        });
+
       return json({
         ok: true,
         admin_role: adminRole,
@@ -729,8 +749,72 @@ Deno.serve(async (req: Request) => {
         product_breakdown: [...productStats.values()].sort((a: any, b: any) => b.net_stars - a.net_stars || b.gross_stars - a.gross_stars),
         recent_orders: successfulOrders,
         recent_attempts: attemptOrders,
+        refund_history: refundHistory,
         telegram_transactions: transactions.slice(0, 50),
         reconciliation,
+        withdrawal: {
+          owner_only: true,
+          method: "telegram_owner_fragment",
+          direct_from_bot_api: false,
+          current_balance_stars: Number(botBalance?.amount ?? 0),
+        },
+      });
+    }
+
+    if (action === "admin_finance_export") {
+      const adminRole = await getAdminRole(db, user.id);
+      if (!adminRole) return json({ ok: false, error: "Admin access required" }, 403);
+
+      const orders = await db(
+        "star_orders?select=id,product_key,status,total_amount,created_at,paid_at,refunded_at&order=created_at.desc&limit=5000",
+      ) ?? [];
+
+      const escCsv = (value: unknown) => {
+        const raw = String(value ?? "");
+        return `"${raw.replaceAll('"', '""')}"`;
+      };
+      const header = [
+        "order_id",
+        "product_key",
+        "status",
+        "stars",
+        "created_at",
+        "paid_at",
+        "refunded_at",
+        "net_stars",
+      ].join(",");
+      const rows = (orders ?? []).map((o: any) => {
+        const amount = Number(o.total_amount || 0);
+        const net = o.status === "paid" ? amount : 0;
+        return [
+          escCsv(o.id),
+          escCsv(o.product_key),
+          escCsv(o.status),
+          amount,
+          escCsv(o.created_at),
+          escCsv(o.paid_at),
+          escCsv(o.refunded_at),
+          net,
+        ].join(",");
+      });
+
+      await db("admin_audit_log", {
+        method: "POST",
+        body: JSON.stringify({
+          actor_user_id: user.id,
+          action: "export_star_orders",
+          metadata: {
+            rows: rows.length,
+            admin_role: adminRole,
+          },
+        }),
+      });
+
+      return json({
+        ok: true,
+        filename: `vybe-stars-${new Date().toISOString().slice(0, 10)}.csv`,
+        csv: [header, ...rows].join("\n"),
+        rows: rows.length,
       });
     }
 
