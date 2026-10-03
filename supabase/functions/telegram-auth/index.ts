@@ -552,7 +552,9 @@ Deno.serve(async (req: Request) => {
     if (action === "star_invoice") {
       const productKey = clean(body.product_key, 64);
       const language = body.lang === "en" ? "en" : "uk";
+      const termsAccepted = body.terms_accepted === true;
       if (!productKey) return json({ ok: false, error: "Product is required" }, 400);
+      if (!termsAccepted) return json({ ok: false, error: "Terms acceptance required" }, 409);
 
       const products = await db(
         `star_products?product_key=eq.${encodeURIComponent(productKey)}&active=eq.true&select=product_key,title_uk,title_en,description_uk,description_en,stars,grant_type,grant_amount&limit=1`,
@@ -576,6 +578,8 @@ Deno.serve(async (req: Request) => {
           grant_type: product.grant_type,
           grant_amount: Number(product.grant_amount),
           status: "pending",
+          terms_accepted_at: new Date().toISOString(),
+          terms_version: "2026-10-03",
         }),
       });
 
