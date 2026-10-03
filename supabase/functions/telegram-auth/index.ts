@@ -248,6 +248,29 @@ async function notifyModerationAdmins(db: ReturnType<typeof dbClient>, botToken:
   }
 }
 
+async function notifyReporterReviewed(
+  db: ReturnType<typeof dbClient>,
+  botToken: string,
+  reporterId: string,
+  reportId: string,
+) {
+  try {
+    const rows = await db(`users?id=eq.${encodeURIComponent(reporterId)}&select=telegram_id&limit=1`) ?? [];
+    const chatId = Number(rows?.[0]?.telegram_id);
+    if (!Number.isFinite(chatId)) return;
+    await telegramApi(botToken,"sendMessage",{
+      chat_id:chatId,
+      text:"VYBE Moderation 🛡\n\nYour report has been reviewed. Thank you for helping keep VYBE safer. / Твою скаргу розглянуто. Дякуємо, що допомагаєш робити VYBE безпечнішим.",
+      reply_markup:{
+        inline_keyboard:[[{text:"Open VYBE / Відкрити VYBE",web_app:{url:"https://restsva-ui.github.io/vibe-app/"}}]],
+      },
+    });
+    console.log("moderation:reporter_notified",{report_id:reportId,reporter_id:reporterId});
+  } catch {
+    console.warn("moderation:reporter_notify_failed",{report_id:reportId,reporter_id:reporterId});
+  }
+}
+
 async function isRestrictedUser(db: ReturnType<typeof dbClient>, userId: string): Promise<boolean> {
   const rows = await db(`users?id=eq.${encodeURIComponent(userId)}&select=account_status&limit=1`) ?? [];
   return rows?.[0]?.account_status === "restricted";
@@ -889,7 +912,7 @@ Deno.serve(async (req: Request) => {
       if (!reportId || !nextStatus) return json({ ok: false, error: "Invalid moderation update" }, 400);
 
       const rows = await db(
-        `reports?id=eq.${encodeURIComponent(reportId)}&select=id,reported_id,reason,status&limit=1`,
+        `reports?id=eq.${encodeURIComponent(reportId)}&select=id,reporter_id,reported_id,reason,status&limit=1`,
       ) ?? [];
       const report = rows?.[0];
       if (!report) return json({ ok:false,error:"Report not found" },404);
@@ -927,6 +950,16 @@ Deno.serve(async (req: Request) => {
           metadata:{previous_status:report.status,status:nextStatus,reason:report.reason,admin_role:adminRole},
         }),
       });
+
+      if (
+        (nextStatus === "resolved" || nextStatus === "dismissed") &&
+        report.status !== "resolved" &&
+        report.status !== "dismissed" &&
+        report.reporter_id
+      ) {
+        await notifyReporterReviewed(db,botToken,String(report.reporter_id),String(report.id));
+      }
+
       return json({ok:true,report_id:report.id,status:nextStatus});
     }
 
@@ -949,6 +982,7 @@ Deno.serve(async (req: Request) => {
       if (!target) return json({ok:false,error:"User not found"},404);
 
       const now = new Date().toISOString();
+      let linkedReporterId: string | null = null;
       const reasonLabels: Record<string,string> = {
         fake_profile:"fake profile / фейковий профіль",
         spam:"spam or fraud / спам або шахрайство",
@@ -985,8 +1019,9 @@ Deno.serve(async (req: Request) => {
       } else {
         let reason = clean(body.reason,120) || "moderation";
         if (reportId) {
-          const rows = await db(`reports?id=eq.${encodeURIComponent(reportId)}&select=reason&limit=1`) ?? [];
+          const rows = await db(`reports?id=eq.${encodeURIComponent(reportId)}&select=reason,reporter_id,status&limit=1`) ?? [];
           if (rows?.[0]?.reason) reason = String(rows[0].reason);
+          if (rows?.[0]?.reporter_id) linkedReporterId = String(rows[0].reporter_id);
         }
         await db(`users?id=eq.${encodeURIComponent(targetUserId)}`, {
           method:"PATCH",
@@ -1034,6 +1069,10 @@ Deno.serve(async (req: Request) => {
           metadata:{previous_status:target.account_status,status:mode === "restore" ? "active" : "restricted",admin_role:adminRole},
         }),
       });
+
+      if (mode === "restrict" && reportId && linkedReporterId) {
+        await notifyReporterReviewed(db,botToken,linkedReporterId,reportId);
+      }
 
       return json({ok:true,user_id:targetUserId,account_status:mode === "restore" ? "active" : "restricted"});
     }
@@ -1818,8 +1857,46 @@ Deno.serve(async (req: Request) => {
 
       if (!targetId || targetId === user.id) return json({ ok: false, error: "Invalid report target" }, 400);
       if (!allowedReasons.has(reason)) return json({ ok: false, error: "Invalid report reason" }, 400);
-      const target = await db(`users?id=eq.${encodeURIComponent(targetId)}&select=id&limit=1`);
+
+      const target = await db(`users?id=eq.${encodeURIComponent(targetId)}&select=id&limit=1`) ?? [];
       if (!target?.[0]) return json({ ok: false, error: "User not found" }, 404);
+
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      const [recentReports, duplicateRows] = await Promise.all([
+        db(`reports?reporter_id=eq.${encodeURIComponent(user.id)}&created_at=gte.${encodeURIComponent(tenMinutesAgo)}&select=id&limit=10`) ?? [],
+        db(`reports?reporter_id=eq.${encodeURIComponent(user.id)}&reported_id=eq.${encodeURIComponent(targetId)}&reason=eq.${encodeURIComponent(reason)}&created_at=gte.${encodeURIComponent(tenMinutesAgo)}&select=id,block_requested,status&order=created_at.desc&limit=1`) ?? [],
+      ]);
+
+      if ((recentReports?.length ?? 0) >= 5) {
+        return json({ ok: false, error: "Too many reports. Please try again later." }, 429);
+      }
+
+      const duplicate = duplicateRows?.[0];
+      if (duplicate?.id) {
+        if (shouldBlock) {
+          await ensureBlock(db, user.id, targetId);
+          await removePairLikes(db, user.id, targetId);
+          if (duplicate.block_requested !== true) {
+            await db(`reports?id=eq.${encodeURIComponent(String(duplicate.id))}`, {
+              method:"PATCH",
+              body:JSON.stringify({ block_requested:true, updated_at:new Date().toISOString() }),
+            });
+          }
+        }
+        console.log("report:duplicate_prevented",{
+          report_id:duplicate.id,
+          reporter_id:user.id,
+          reported_id:targetId,
+          reason,
+          block_requested:shouldBlock,
+        });
+        return json({
+          ok:true,
+          report_id:duplicate.id,
+          blocked:shouldBlock,
+          duplicate_prevented:true,
+        });
+      }
 
       const report = await db("reports", {
         method: "POST",
@@ -1829,6 +1906,7 @@ Deno.serve(async (req: Request) => {
           reason,
           details,
           status: "open",
+          block_requested: shouldBlock,
           updated_at: new Date().toISOString(),
         }),
       });
@@ -1854,6 +1932,7 @@ Deno.serve(async (req: Request) => {
         ok: true,
         report_id: report?.[0]?.id ?? null,
         blocked: shouldBlock,
+        duplicate_prevented:false,
       });
     }
 
