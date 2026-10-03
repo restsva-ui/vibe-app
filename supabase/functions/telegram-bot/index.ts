@@ -86,7 +86,7 @@ async function handlePreCheckout(update: any) {
   try {
     const payload = String(q.invoice_payload || "");
     const rows = await db(
-      `star_orders?invoice_payload=eq.${encodeURIComponent(payload)}&select=id,telegram_id,currency,total_amount,status,expires_at&limit=1`,
+      `star_orders?invoice_payload=eq.${encodeURIComponent(payload)}&select=id,telegram_id,currency,total_amount,status,expires_at,terms_accepted_at,terms_version&limit=1`,
     ) ?? [];
     const order = rows?.[0];
 
@@ -97,6 +97,7 @@ async function handlePreCheckout(update: any) {
       order.currency === "XTR" &&
       q.currency === "XTR" &&
       Number(order.total_amount) === Number(q.total_amount) &&
+      !!order.terms_accepted_at &&
       new Date(order.expires_at).getTime() >= Date.now();
 
     if (order?.status === "pending" && new Date(order.expires_at).getTime() < Date.now()) {
@@ -162,6 +163,30 @@ async function handleSuccessfulPayment(update: any) {
   return true;
 }
 
+async function createSupportTicket(msg: any, category: "general" | "payment", text: string) {
+  const db = dbClient();
+  const telegramId = Number(msg?.from?.id);
+  if (!Number.isFinite(telegramId)) throw new Error("Invalid Telegram user");
+
+  const users = await db(
+    `users?telegram_id=eq.${encodeURIComponent(String(telegramId))}&select=id&limit=1`,
+  ) ?? [];
+  const cleanText = String(text || "").trim().slice(0, 1500);
+  if (cleanText.length < 3) return null;
+
+  const rows = await db("support_tickets", {
+    method: "POST",
+    body: JSON.stringify({
+      user_id: users?.[0]?.id ?? null,
+      telegram_id: telegramId,
+      category,
+      message: cleanText,
+      status: "open",
+    }),
+  });
+  return rows?.[0] ?? null;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ ok: false }, 405);
 
@@ -191,12 +216,67 @@ Deno.serve(async (req: Request) => {
     const msg = update?.message;
     if (!msg?.chat?.id || typeof msg?.text !== "string") return json({ ok: true });
 
+    const textInput = msg.text.trim();
+    const english = isEnglish(msg.from);
+
+    if (/^\/terms$/i.test(textInput)) {
+      await telegram("sendMessage", {
+        chat_id: msg.chat.id,
+        text: english
+          ? "VYBE Terms of Use: https://restsva-ui.github.io/vibe-app/terms.html"
+          : "Умови користування VYBE: https://restsva-ui.github.io/vibe-app/terms.html",
+        disable_web_page_preview: true,
+      });
+      return json({ ok: true });
+    }
+
+    const paymentSupport = textInput.match(/^\/paysupport(?:\s+([\s\S]{3,1500}))?$/i);
+    if (paymentSupport) {
+      if (!paymentSupport[1]) {
+        await telegram("sendMessage", {
+          chat_id: msg.chat.id,
+          text: english
+            ? "For a VYBE payment issue, send: /paysupport <what happened>. Include the approximate time and product, but never send passwords or banking data. Telegram Support cannot resolve purchases made from this bot; VYBE handles payment support."
+            : "Для проблеми з оплатою VYBE надішли: /paysupport <що сталося>. Вкажи приблизний час і товар, але не надсилай паролі чи банківські дані. Telegram Support не вирішує покупки в цьому боті — платіжну підтримку опрацьовує VYBE.",
+        });
+        return json({ ok: true });
+      }
+      const ticket = await createSupportTicket(msg, "payment", paymentSupport[1]);
+      await telegram("sendMessage", {
+        chat_id: msg.chat.id,
+        text: ticket
+          ? (english ? "Payment support request received ✅" : "Запит щодо оплати отримано ✅")
+          : (english ? "Please describe the payment issue in more detail." : "Опиши проблему з оплатою трохи детальніше."),
+      });
+      return json({ ok: true });
+    }
+
+    const generalSupport = textInput.match(/^\/support(?:\s+([\s\S]{3,1500}))?$/i);
+    if (generalSupport) {
+      if (!generalSupport[1]) {
+        await telegram("sendMessage", {
+          chat_id: msg.chat.id,
+          text: english
+            ? "For VYBE support, send: /support <your question or problem>."
+            : "Для підтримки VYBE надішли: /support <твоє питання або проблема>.",
+        });
+        return json({ ok: true });
+      }
+      const ticket = await createSupportTicket(msg, "general", generalSupport[1]);
+      await telegram("sendMessage", {
+        chat_id: msg.chat.id,
+        text: ticket
+          ? (english ? "Support request received ✅" : "Запит у підтримку отримано ✅")
+          : (english ? "Please describe the issue in more detail." : "Опиши проблему трохи детальніше."),
+      });
+      return json({ ok: true });
+    }
+
     const m = msg.text.trim().match(/^\/start(?:\s+ref_(v[0-9a-z]+))?$/i);
     if (!m) return json({ ok: true });
 
     const code = (m[1] ?? "").toLowerCase();
     const webAppUrl = code ? `${APP_URL}?ref=${encodeURIComponent(code)}` : APP_URL;
-    const english = isEnglish(msg.from);
     const text = code
       ? english
         ? "You were invited to VYBE 💜\n\nOpen VYBE below. The referral counts after you create an 18+ profile."
