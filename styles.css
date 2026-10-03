@@ -50,3 +50,8 @@
 .filterReset{width:100%;margin-top:10px}
 .verifiedMark{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#62a9ff;color:white;font-size:13px;vertical-align:4px}
 .onlineMini{color:var(--green);font-size:11px}
+
+
+/* VYBE 0.9.1 — account safety */
+.dangerText{color:#ffb0bf;line-height:1.5}
+.dangerPrimary{background:linear-gradient(135deg,#ff4773,#d7204f)!important;box-shadow:0 12px 30px rgba(215,32,79,.24)}
