@@ -650,7 +650,17 @@ Deno.serve(async (req: Request) => {
       const profiles = await db(`profiles?user_id=neq.${encodeURIComponent(user.id)}&select=user_id,name,age,city,bio,photo_url,verified&limit=100`) ?? [];
       const intents = await db(`intents?expires_at=gt.${encodeURIComponent(nowIso)}&select=user_id,intent,expires_at&limit=200`) ?? [];
       const spotlightRows = await db(`user_entitlements?spotlight_until=gt.${encodeURIComponent(nowIso)}&select=user_id,spotlight_until&limit=200`) ?? [];
-      const blockedIds = await getBlockedUserIds(db, user.id);
+      const [blockedIds, sentLikes, currentMatches, ownIntentRows] = await Promise.all([
+        getBlockedUserIds(db, user.id),
+        db(`likes?from_user_id=eq.${encodeURIComponent(user.id)}&select=to_user_id&limit=1000`) ?? [],
+        db(`matches?or=(user_a_id.eq.${encodeURIComponent(user.id)},user_b_id.eq.${encodeURIComponent(user.id)})&select=user_a_id,user_b_id&limit=1000`) ?? [],
+        db(`intents?user_id=eq.${encodeURIComponent(user.id)}&expires_at=gt.${encodeURIComponent(nowIso)}&select=intent&limit=1`) ?? [],
+      ]);
+      const sentLikeIds = new Set((sentLikes ?? []).map((x: any) => String(x.to_user_id)));
+      const matchedIds = new Set((currentMatches ?? []).map((m: any) =>
+        String(m.user_a_id) === String(user.id) ? String(m.user_b_id) : String(m.user_a_id)
+      ));
+      const ownIntent = ownIntentRows?.[0]?.intent ?? null;
       const profileIds = profiles.map((p: any) => String(p.user_id));
       const statuses = profileIds.length
         ? await db(`users?id=in.(${profileIds.map((x) => encodeURIComponent(x)).join(",")})&select=id,last_seen`) ?? []
@@ -662,7 +672,7 @@ Deno.serve(async (req: Request) => {
       const people = profiles
         .filter((p: any) => {
           const id = String(p.user_id);
-          if (blockedIds.has(id)) return false;
+          if (blockedIds.has(id) || sentLikeIds.has(id) || matchedIds.has(id)) return false;
           const age = Number(p.age || 0);
           if (age < minAge || age > maxAge) return false;
           if (cityFilter && !String(p.city || "").toLocaleLowerCase("uk-UA").includes(cityFilter)) return false;
@@ -686,6 +696,7 @@ Deno.serve(async (req: Request) => {
             verified: p.verified === true,
             online,
             intent: byUser.get(id)?.intent ?? "Поговорити",
+            intent_match: !!ownIntent && byUser.get(id)?.intent === ownIntent,
             expires_at: byUser.get(id)?.expires_at ?? null,
             spotlight_until: spotlightByUser.get(id) ?? null,
             spotlight_active: spotlightByUser.has(id),
@@ -695,10 +706,13 @@ Deno.serve(async (req: Request) => {
           const aSpot = a.spotlight_active ? 1 : 0;
           const bSpot = b.spotlight_active ? 1 : 0;
           if (aSpot !== bSpot) return bSpot - aSpot;
-          if (a.online !== b.online) return Number(b.online) - Number(a.online);
           if (aSpot && bSpot) {
-            return new Date(b.spotlight_until).getTime() - new Date(a.spotlight_until).getTime();
+            const diff = new Date(b.spotlight_until).getTime() - new Date(a.spotlight_until).getTime();
+            if (diff) return diff;
           }
+          if (a.intent_match !== b.intent_match) return Number(b.intent_match) - Number(a.intent_match);
+          if (a.online !== b.online) return Number(b.online) - Number(a.online);
+          if (a.verified !== b.verified) return Number(b.verified) - Number(a.verified);
           return 0;
         });
 
