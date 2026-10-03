@@ -1663,22 +1663,23 @@ Deno.serve(async (req: Request) => {
 
       const [profiles, statuses] = await Promise.all([
         db(`profiles?user_id=in.(${senderIds.map((x) => encodeURIComponent(x)).join(",")})&select=user_id,name,age,city,bio,photo_url,verified`) ?? [],
-        db(`users?id=in.(${senderIds.map((x) => encodeURIComponent(x)).join(",")})&select=id,last_seen`) ?? [],
+        db(`users?id=in.(${senderIds.map((x) => encodeURIComponent(x)).join(",")})&select=id,last_seen,account_status`) ?? [],
       ]);
       const profileById = new Map(profiles.map((p: any) => [String(p.user_id), p]));
-      const statusById = new Map(statuses.map((x: any) => [String(x.id), x.last_seen]));
+      const statusById = new Map(statuses.map((x: any) => [String(x.id), x]));
+      const activeSenderIds = senderIds.filter((id) => statusById.get(id)?.account_status !== "restricted");
       const latestLikeByUser = new Map<string, any>();
       for (const like of likes ?? []) {
         const id = String(like.from_user_id);
-        if (!senderIds.includes(id) || latestLikeByUser.has(id)) continue;
+        if (!activeSenderIds.includes(id) || latestLikeByUser.has(id)) continue;
         latestLikeByUser.set(id, like);
       }
 
-      const people = senderIds.map((id) => ({
+      const people = activeSenderIds.map((id) => ({
         user_id: id,
         profile: {
           ...(profileById.get(id) ?? {}),
-          online: !!statusById.get(id) && new Date(statusById.get(id)).getTime() >= Date.now() - 3 * 60 * 1000,
+          online: !!statusById.get(id)?.last_seen && new Date(statusById.get(id).last_seen).getTime() >= Date.now() - 3 * 60 * 1000,
         },
         like_kind: latestLikeByUser.get(id)?.kind ?? "like",
         liked_at: latestLikeByUser.get(id)?.created_at ?? null,
