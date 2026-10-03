@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.21",
+      app_version:"0.9.22",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -943,12 +943,26 @@ async function next(kind){
   index++;renderCard();tg?.HapticFeedback?.impactOccurred("light");
 }
 $("skipBtn").onclick=()=>next("skip");$("likeBtn").onclick=()=>next("like");$("sparkBtn").onclick=()=>next("super");document.querySelectorAll(".mood").forEach(b=>b.onclick=()=>{document.querySelectorAll(".mood").forEach(x=>x.classList.remove("active"));b.classList.add("active");filter=b.dataset.mood;index=0;renderCard()});
+
+function avatarMarkup(photo,name,className="avatar"){
+  const initial=escapeHtml((name||"V").trim().charAt(0).toUpperCase()||"V");
+  return '<span class="'+className+' avatarShell"><span class="avatarInitial">'+initial+'</span>'+(photo?'<img data-avatar-img src="'+escapeHtml(photo)+'" alt="">':"")+'</span>';
+}
+function bindAvatarFallbacks(root=document){
+  root.querySelectorAll?.("img[data-avatar-img]").forEach(img=>{
+    if(img.dataset.fallbackBound==="1")return;
+    img.dataset.fallbackBound="1";
+    img.addEventListener("error",()=>img.remove(),{once:true});
+  });
+}
+
 function renderMatches(){
   const list=$("matchesList");
   $("matchCount").textContent=matches.length;
   list.innerHTML=matches.length
-    ? matches.map((p,i)=>'<button type="button" class="listItem matchOpen" data-index="'+i+'">'+(p.photo_url?'<img class="avatar avatarPhoto" src="'+escapeHtml(p.photo_url)+'" alt="">':'<div class="avatar">♡</div>')+'<div class="itemMain"><b>'+escapeHtml(p.name)+(p.age?", "+escapeHtml(p.age):"")+(p.verified?' ✓':'')+'</b><small>'+uiText("Взаємний VYBE")+(p.city?" • "+escapeHtml(p.city):"")+(p.online?" • "+uiText("● онлайн"):"")+'</small></div><span>›</span></button>').join("")
+    ? matches.map((p,i)=>'<button type="button" class="listItem matchOpen" data-index="'+i+'">'+avatarMarkup(p.photo_url,p.name,'avatar')+'<div class="itemMain"><b>'+escapeHtml(p.name)+(p.age?", "+escapeHtml(p.age):"")+(p.verified?' ✓':'')+'</b><small>'+uiText("Взаємний VYBE")+(p.city?" • "+escapeHtml(p.city):"")+(p.online?" • "+uiText("● онлайн"):"")+'</small></div><span>›</span></button>').join("")
     : '<div class="empty">Поки немає взаємних збігів.</div>';
+  bindAvatarFallbacks(list);
   list.querySelectorAll(".matchOpen").forEach(b=>{
     b.onclick=()=>{
       const p=matches[Number(b.dataset.index)];
@@ -964,10 +978,14 @@ function renderChats(){
     const unread=Number(p.unread_count||0);
     const subtitle=p.last_message?escapeHtml(p.last_message):uiText("Відкрити приватний чат");
     const time=formatChatListTime(p.last_message_at);
-    return '<button type="button" class="listItem chatOpen" data-index="'+i+'">'+(p.photo_url?'<img class="avatar avatarPhoto" src="'+escapeHtml(p.photo_url)+'" alt="">':'<div class="avatar">'+escapeHtml((p.name||"V").trim().charAt(0).toUpperCase())+'</div>')+'<div class="itemMain"><b>'+escapeHtml(p.name)+(p.age?", "+escapeHtml(p.age):"")+(p.online?' <span class="onlineMini">●</span>':'')+'</b><small>'+subtitle+'</small></div><div class="chatTail">'+(time?'<small class="chatTime">'+escapeHtml(time)+'</small>':'')+(unread?'<span class="unreadBadge">'+unread+'</span>':'')+'</div><span class="chevron">›</span></button>';
+    return '<div class="listItem chatRow"><button type="button" class="chatAvatarOpen" data-index="'+i+'" aria-label="'+escapeHtml(uiText("Переглянути анкету"))+'">'+avatarMarkup(p.photo_url,p.name,'avatar')+'</button><button type="button" class="chatOpen chatMainOpen" data-index="'+i+'"><div class="itemMain"><b>'+escapeHtml(p.name)+(p.age?", "+escapeHtml(p.age):"")+(p.online?' <span class="onlineMini">●</span>':'')+'</b><small>'+subtitle+'</small></div><div class="chatTail">'+(time?'<small class="chatTime">'+escapeHtml(time)+'</small>':'')+(unread?'<span class="unreadBadge">'+unread+'</span>':'')+'</div><span class="chevron">›</span></button></div>';
   }).join(""):'<div class="empty">Чати з’являться після взаємних збігів.</div>';
+  bindAvatarFallbacks(list);
   list.querySelectorAll(".chatOpen").forEach(b=>b.onclick=()=>{
     const p=rows[Number(b.dataset.index)];if(p)openChat(p.match_id,p.name,p.id);
+  });
+  list.querySelectorAll(".chatAvatarOpen").forEach(b=>b.onclick=()=>{
+    const p=rows[Number(b.dataset.index)];if(p)openPublicProfile(p.id);
   });
 }
 async function openChat(matchId,name,userId,options={}){
@@ -977,7 +995,10 @@ async function openChat(matchId,name,userId,options={}){
   const stickToBottom=!previousBox||(previousBox.scrollHeight-previousBox.scrollTop-previousBox.clientHeight<90);
   const previousDistance=previousBox?previousBox.scrollHeight-previousBox.scrollTop:0;
 
-  const r=await secureApi("messages_list",{match_id:matchId});
+  const [r,peerResult]=await Promise.all([
+    secureApi("messages_list",{match_id:matchId}),
+    secureApi("profile_public",{target_user_id:userId}),
+  ]);
   if(!r.ok){
     if(options.silent){activeChat=null;sheet.classList.add("hidden");await loadMatches();return}
     showAlert("Не вдалося відкрити чат.");return
@@ -986,23 +1007,31 @@ async function openChat(matchId,name,userId,options={}){
   activeChat={matchId:key,name,userId:String(userId)};
   if(!options.silent&&!options.noMatchRefresh)analyticsCapture("chat_opened");
   syncMatchRealtimeChannels();
+  const matchPeer=matches.find(x=>String(x.match_id)===key)||null;
+  const peerProfile=peerResult?.ok?peerResult.profile:null;
+  const peerPhoto=peerProfile?.photo_url||matchPeer?.photo_url||null;
+  const ownPhoto=profile?.photo_url||null;
+  const peerName=peerProfile?.name||name||matchPeer?.name||"VYBE";
   const peerReadAt=r.peer_last_read_at?new Date(r.peer_last_read_at).getTime():0;
   const messages=r.messages||[];
   const msgs=messages.map(m=>{
     const mine=String(m.sender_id)===String(profile?.user_id);
-    const sender=mine?uiText("Ти"):name;
-    const initial=escapeHtml((sender||"V").trim().charAt(0).toUpperCase());
+    const sender=mine?uiText("Ти"):peerName;
     const createdAt=new Date(m.created_at).getTime();
     const receipt=mine?(peerReadAt&&createdAt<=peerReadAt?"✓✓":"✓"):"";
     const meta=[formatMessageTime(m.created_at),receipt].filter(Boolean).join(" · ");
-    return '<div class="msgRow '+(mine?"mine":"theirs")+'"><div class="msgAvatar">'+initial+'</div><div class="msgWrap"><div class="msgSender">'+escapeHtml(sender)+'</div><div class="msgBubble">'+escapeHtml(m.body)+'</div><div class="msgMeta">'+escapeHtml(meta)+'</div></div></div>';
+    const avatar=avatarMarkup(mine?ownPhoto:peerPhoto,sender,'msgAvatar');
+    return '<div class="msgRow '+(mine?"mine":"theirs")+'">'+avatar+'<div class="msgWrap"><div class="msgSender">'+escapeHtml(sender)+'</div><div class="msgBubble">'+escapeHtml(m.body)+'</div><div class="msgMeta">'+escapeHtml(meta)+'</div></div></div>';
   }).join("");
 
-  content.innerHTML='<div class="chatHeader"><button id="chatPeerBtn" class="chatPeer" type="button"><div class="chatAvatar">'+escapeHtml((name||"V").trim().charAt(0).toUpperCase())+'</div><div class="chatTitle"><h2>'+escapeHtml(name)+'</h2><small>'+uiText("Переглянути анкету")+' · <span id="chatPresence">'+chatConnectionLabel()+'</span></small></div></button><button id="chatSafetyBtn" class="chatSafety" aria-label="Безпека">⋯</button></div><div id="chatMessages" class="chatMessages">'+(msgs||'<div class="chatEmpty">Почни розмову 👋</div>')+'</div><div class="chatComposer"><textarea id="chatMessage" class="field" maxlength="2000" placeholder="Напиши повідомлення…"></textarea><button id="sendMessage" class="primary">Надіслати</button></div>';
+  content.innerHTML='<div class="chatHeader"><button id="chatPeerBtn" class="chatPeer" type="button">'+avatarMarkup(peerPhoto,peerName,'chatAvatar')+'<div class="chatTitle"><h2>'+escapeHtml(peerName)+'</h2><small><span id="chatPresence">'+chatConnectionLabel()+'</span></small></div></button><button id="chatSafetyBtn" class="chatSafety" aria-label="Безпека">⋯</button></div><button id="chatProfileBtn" class="chatProfileAction" type="button">👤 '+uiText("Переглянути анкету")+' <span>›</span></button><div id="chatMessages" class="chatMessages">'+(msgs||'<div class="chatEmpty">Почни розмову 👋</div>')+'</div><div class="chatComposer"><textarea id="chatMessage" class="field" maxlength="2000" placeholder="Напиши повідомлення…"></textarea><button id="sendMessage" class="primary">Надіслати</button></div>';
   sheet.classList.remove("hidden");
+  bindAvatarFallbacks(content);
 
-  const peer=$("chatPeerBtn");if(peer)peer.onclick=()=>openPublicProfile(userId,{returnChat:{matchId,name,userId}});
-  const safety=$("chatSafetyBtn");if(safety)safety.onclick=()=>openUserSafety(userId,name);
+  const openPeerProfile=()=>openPublicProfile(userId,{returnChat:{matchId,name:peerName,userId}});
+  const peer=$("chatPeerBtn");if(peer)peer.onclick=openPeerProfile;
+  const profileBtn=$("chatProfileBtn");if(profileBtn)profileBtn.onclick=openPeerProfile;
+  const safety=$("chatSafetyBtn");if(safety)safety.onclick=()=>openUserSafety(userId,peerName);
   const field=$("chatMessage");if(field&&previousDraft)field.value=previousDraft;
   bindTyping(key);
 
