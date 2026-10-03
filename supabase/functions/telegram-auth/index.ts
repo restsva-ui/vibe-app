@@ -2255,11 +2255,53 @@ Deno.serve(async (req: Request) => {
       if (!targetId || targetId === user.id) return json({ ok: false, error: "Invalid like target" }, 400);
       if (await isRestrictedUser(db,targetId)) return json({ ok:false,error:"User unavailable" },403);
       if (await isBlockedBetween(db, user.id, targetId)) return json({ ok: false, error: "User blocked" }, 403);
+
+      const reciprocalBefore = await db(
+        `likes?from_user_id=eq.${encodeURIComponent(targetId)}&to_user_id=eq.${encodeURIComponent(user.id)}&select=id&limit=1`,
+      ) ?? [];
+      const [pairA,pairB] = [String(user.id),String(targetId)].sort();
+      const matchBefore = reciprocalBefore.length
+        ? await db(
+            `matches?user_a_id=eq.${encodeURIComponent(pairA)}&user_b_id=eq.${encodeURIComponent(pairB)}&select=id&limit=1`,
+          ) ?? []
+        : [];
+
       try {
         const result = await rpc("use_supervybe_and_like", {
           p_user_id: user.id,
           p_target_user_id: targetId,
         });
+
+        const matchId = result?.match?.id ? String(result.match.id) : null;
+        if (result?.matched === true && matchId) {
+          if (!matchBefore.length) {
+            await Promise.all([
+              sendSocialNotification(db,botToken,{
+                eventType:"match",
+                recipientUserId:String(user.id),
+                actorUserId:targetId,
+                matchId,
+                sourceKey:`match:${matchId}:${user.id}`,
+              }),
+              sendSocialNotification(db,botToken,{
+                eventType:"match",
+                recipientUserId:targetId,
+                actorUserId:String(user.id),
+                matchId,
+                sourceKey:`match:${matchId}:${targetId}`,
+              }),
+            ]);
+          }
+        } else {
+          await sendSocialNotification(db,botToken,{
+            eventType:"like",
+            recipientUserId:targetId,
+            actorUserId:String(user.id),
+            sourceKey:`super_like:${user.id}:${targetId}`,
+            variant:"super",
+          });
+        }
+
         return json({ ok: true, ...(result ?? {}) });
       } catch (e: any) {
         const message = String(e?.message || "");
@@ -2289,14 +2331,44 @@ Deno.serve(async (req: Request) => {
       }
 
       const reciprocal = await db(`likes?from_user_id=eq.${encodeURIComponent(targetId)}&to_user_id=eq.${encodeURIComponent(user.id)}&select=id&limit=1`);
-      if (!reciprocal?.length) return json({ ok: true, matched: false });
+      if (!reciprocal?.length) {
+        await sendSocialNotification(db,botToken,{
+          eventType:"like",
+          recipientUserId:targetId,
+          actorUserId:String(user.id),
+          sourceKey:`${kind}_like:${user.id}:${targetId}`,
+          variant:kind === "super" ? "super" : "like",
+        });
+        return json({ ok: true, matched: false });
+      }
 
       const [userA, userB] = [String(user.id), String(targetId)].sort();
       let matchRows = await db(`matches?user_a_id=eq.${encodeURIComponent(userA)}&user_b_id=eq.${encodeURIComponent(userB)}&select=id,user_a_id,user_b_id,created_at&limit=1`);
-      if (!matchRows?.length) {
+      const matchWasNew = !matchRows?.length;
+      if (matchWasNew) {
         matchRows = await db("matches", { method: "POST", body: JSON.stringify({ user_a_id: userA, user_b_id: userB }) });
       }
-      return json({ ok: true, matched: true, match: matchRows?.[0] ?? null });
+      const match = matchRows?.[0] ?? null;
+      if (matchWasNew && match?.id) {
+        const matchId = String(match.id);
+        await Promise.all([
+          sendSocialNotification(db,botToken,{
+            eventType:"match",
+            recipientUserId:String(user.id),
+            actorUserId:targetId,
+            matchId,
+            sourceKey:`match:${matchId}:${user.id}`,
+          }),
+          sendSocialNotification(db,botToken,{
+            eventType:"match",
+            recipientUserId:targetId,
+            actorUserId:String(user.id),
+            matchId,
+            sourceKey:`match:${matchId}:${targetId}`,
+          }),
+        ]);
+      }
+      return json({ ok: true, matched: true, match });
     }
 
     if (action === "matches") {
@@ -2388,6 +2460,14 @@ Deno.serve(async (req: Request) => {
       if (await isRestrictedUser(db,owned.id)) return json({ok:false,error:"User unavailable"},403);
       if (await isBlockedBetween(db, user.id, owned.id)) return json({ ok: false, error: "User blocked" }, 403);
       const created = await db("messages", { method: "POST", body: JSON.stringify({ match_id: matchId, sender_id: user.id, body: message }) });
+
+      await sendSocialNotification(db,botToken,{
+        eventType:"message",
+        recipientUserId:owned.id,
+        actorUserId:String(user.id),
+        matchId,
+      });
+
       return json({ ok: true, message: created?.[0] ?? null });
     }
 
