@@ -274,3 +274,12 @@
 .chatAvatar.avatarShell,.msgAvatar.avatarShell{display:grid}
 .chatAvatar.avatarShell{overflow:hidden}
 .msgAvatar.avatarShell{overflow:hidden}
+
+
+/* VYBE 0.9.24 — notification settings */
+.notificationSettings{display:grid;gap:8px}
+.notificationToggle{display:flex!important;align-items:center;justify-content:space-between;text-align:left}
+.notificationToggle span{font-weight:750}
+.notificationToggle b{font-size:12px;color:var(--muted)}
+.notificationToggle.selected{border-color:rgba(114,230,173,.35)!important;background:rgba(114,230,173,.06)!important}
+.notificationToggle.selected b{color:#72e6ad}
