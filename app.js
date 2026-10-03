@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.20",
+      app_version:"0.9.21",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -422,22 +422,37 @@ async function blockUser(userId,name){
 }
 
 function openReport(userId,name){
-  const options=REPORT_REASONS.map(([value,label])=>'<option value="'+value+'">'+escapeHtml(label)+'</option>').join("");
-  content.innerHTML='<h2>Поскаржитися ⚑</h2><p>Скарга на <b class="userNameNoI18n">'+escapeHtml(name||(currentLang==="en"?"user":"користувача"))+'</b> буде передана на модерацію.</p><label>Причина<select id="reportReason" class="field">'+options+'</select></label><label>Деталі<textarea id="reportDetails" class="field" maxlength="1000" placeholder="Коротко опиши, що сталося. Не додавай зайві особисті дані."></textarea></label><label class="checkRow safetyCheck"><input id="reportBlock" type="checkbox" checked><span>Також заблокувати цього користувача</span></label><button id="submitReport" class="primary">Надіслати скаргу</button>';
+  let selectedReason=REPORT_REASONS[0][0];
+  let blockRequested=true;
+  const reasons=REPORT_REASONS.map(([value,label],i)=>'<button type="button" class="reportReasonBtn '+(i===0?"selected":"")+'" data-reason="'+escapeHtml(value)+'"><span>'+escapeHtml(label)+'</span><b>✓</b></button>').join("");
+  content.innerHTML='<h2>Поскаржитися ⚑</h2><p>Скарга на <b class="userNameNoI18n">'+escapeHtml(name||(currentLang==="en"?"user":"користувача"))+'</b> буде передана на модерацію.</p><div class="reportReasonList">'+reasons+'</div><label>Деталі<textarea id="reportDetails" class="field" maxlength="1000" placeholder="Коротко опиши, що сталося. Не додавай зайві особисті дані."></textarea></label><button id="reportBlockToggle" type="button" class="reportBlockToggle selected" aria-pressed="true"><span><b>🚫 Також заблокувати цього користувача</b><small>Після скарги ви більше не бачитимете одне одного у VYBE.</small></span><strong>Увімкнено</strong></button><button id="submitReport" class="primary">Надіслати скаргу</button>';
   sheet.classList.remove("hidden");
+
+  content.querySelectorAll(".reportReasonBtn").forEach(btn=>btn.onclick=()=>{
+    selectedReason=btn.dataset.reason||REPORT_REASONS[0][0];
+    content.querySelectorAll(".reportReasonBtn").forEach(x=>x.classList.toggle("selected",x===btn));
+  });
+  const blockToggle=$("reportBlockToggle");
+  blockToggle.onclick=()=>{
+    blockRequested=!blockRequested;
+    blockToggle.classList.toggle("selected",blockRequested);
+    blockToggle.setAttribute("aria-pressed",String(blockRequested));
+    blockToggle.querySelector("strong").textContent=blockRequested?"Увімкнено":"Вимкнено";
+  };
+
   $("submitReport").onclick=async()=>{
     const button=$("submitReport");
     button.disabled=true;
     const r=await secureApi("report_user",{
       target_user_id:userId,
-      reason:$("reportReason").value,
+      reason:selectedReason,
       details:$("reportDetails").value.trim(),
-      block:$("reportBlock").checked,
+      block:blockRequested===true,
     });
     if(!r.ok){button.disabled=false;showAlert("Не вдалося надіслати скаргу.");return}
     sheet.classList.add("hidden");
     if(r.blocked)await refreshSocial();
-    analyticsCapture("report_submitted",{blocked:r.blocked===true});
+    analyticsCapture("report_submitted",{blocked:r.blocked===true,reason:selectedReason});
     tg?.HapticFeedback?.notificationOccurred("success");
     showAlert(r.blocked?"Скаргу надіслано, користувача заблоковано.":"Скаргу надіслано.");
   };
@@ -1383,7 +1398,7 @@ async function openAdminModerationReport(report){
   const reported=report.reported||{}, reporter=report.reporter||{};
   const restricted=reported.account_status==="restricted";
   content.innerHTML='<div class="adminHead"><div><h2>'+uiText("Модерація VYBE 🛡")+'</h2><small>'+escapeHtml(moderationReasonLabel(report.reason))+'</small></div><button id="backToModerationQueue" class="choice">←</button></div>'+
-    '<div class="moderationCase '+((report.reason==="underage"||report.reason==="illegal_content")?"urgent":"")+'"><div class="myTicketHead"><b>'+uiText("Користувач зі скарги")+'</b><span class="supportStatus '+escapeHtml(report.status)+'">'+escapeHtml(moderationStatusLabel(report.status))+'</span></div><div class="moderationPerson"><b>'+escapeHtml(reported.name||"VYBE")+(reported.age?", "+escapeHtml(reported.age):"")+'</b>'+(reported.username?'<small>@'+escapeHtml(reported.username)+'</small>':'')+'<small>'+escapeHtml(reported.city||"")+'</small><span class="accountState '+(restricted?"restricted":"active")+'">'+uiText(restricted?"Акаунт обмежено":"Активний акаунт")+'</span></div><hr><b>'+uiText("Причина")+': '+escapeHtml(moderationReasonLabel(report.reason))+'</b>'+(report.details?'<p>'+escapeHtml(report.details)+'</p>':'')+'<small>'+escapeHtml(adminDate(report.created_at))+'</small></div>'+
+    '<div class="moderationCase '+((report.reason==="underage"||report.reason==="illegal_content")?"urgent":"")+'"><div class="myTicketHead"><b>'+uiText("Користувач зі скарги")+'</b><span class="supportStatus '+escapeHtml(report.status)+'">'+escapeHtml(moderationStatusLabel(report.status))+'</span></div><div class="moderationPerson"><b>'+escapeHtml(reported.name||"VYBE")+(reported.age?", "+escapeHtml(reported.age):"")+'</b>'+(reported.username?'<small>@'+escapeHtml(reported.username)+'</small>':'')+'<small>'+escapeHtml(reported.city||"")+'</small><span class="accountState '+(restricted?"restricted":"active")+'">'+uiText(restricted?"Акаунт обмежено":"Активний акаунт")+'</span></div><hr><b>'+uiText("Причина")+': '+escapeHtml(moderationReasonLabel(report.reason))+'</b>'+(report.details?'<p>'+escapeHtml(report.details)+'</p>':'')+(report.block_requested?'<div class="reporterBlockFlag">🚫 Скаржник також обрав блокування</div>':'')+'<small>'+escapeHtml(adminDate(report.created_at))+'</small></div>'+
     '<div class="moderationReporter"><b>'+uiText("Скаржник")+'</b><span>'+escapeHtml(reporter.name||"VYBE")+(reporter.username?" • @"+escapeHtml(reporter.username):"")+'</span></div>'+
     '<label>'+uiText("Внутрішня нотатка")+'<textarea id="moderationAdminNote" class="field supportMessage" maxlength="1000">'+escapeHtml(report.admin_note||"")+'</textarea></label>'+
     '<div class="supportAdminActions">'+(report.status!=="reviewed"?'<button id="moderationReviewedBtn" class="choice">'+uiText("Взяти в роботу")+'</button>':'')+'<button id="moderationResolvedBtn" class="primary">'+uiText("Позначити вирішеною")+'</button><button id="moderationDismissBtn" class="choice">'+uiText("Відхилити скаргу")+'</button>'+(adminRole==="owner"?'<button id="moderationRestrictionBtn" class="choice moderationDanger">'+uiText(restricted?"Відновити акаунт":"Обмежити акаунт")+'</button>':'')+'</div>';
