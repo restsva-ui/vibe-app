@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.22",
+      app_version:"0.9.23",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -220,6 +220,32 @@ let realtimeUserTopic=null,realtimeUserChannel=null,realtimeUserChannelTopic=nul
 const realtimeMatchChannels=new Map();
 let activeChat=null,chatRefreshTimer=null,socialRefreshTimer=null,typingStopTimer=null,lastTypingSentAt=0;
 
+function teardownSocialRealtime(){
+  clearTimeout(chatRefreshTimer);
+  clearTimeout(socialRefreshTimer);
+  clearTimeout(typingStopTimer);
+  activeChat=null;
+  if(realtimeUserChannel&&realtimeClient){
+    realtimeClient.removeChannel(realtimeUserChannel);
+    realtimeUserChannel=null;
+    realtimeUserChannelTopic=null;
+  }
+  for(const [,entry] of realtimeMatchChannels){
+    realtimeClient?.removeChannel?.(entry.channel);
+  }
+  realtimeMatchChannels.clear();
+  setRealtimeBadge(false);
+}
+function enterRestrictedMode(reason=null,{showNotice=true}={}){
+  accountStatus="restricted";
+  restrictionReason=reason||restrictionReason||null;
+  remotePeople=[];matches=[];discoverMatchedFallback=false;
+  teardownSocialRealtime();
+  try{renderCard();renderMatches();renderChats()}catch{}
+  if(showNotice&&document.visibilityState==="visible"){
+    setTimeout(()=>openRestrictionNotice(),0);
+  }
+}
 async function secureApi(action,payload={}){
   const initData=tg?.initData;
   if(!initData)return {ok:false,status:401,error:"Відкрий VYBE через Telegram-бота"};
@@ -229,7 +255,10 @@ async function secureApi(action,payload={}){
     if(!r.ok||!body?.ok){
       const error=body?.error||text||"Server request failed";
       console.error("VYBE secure API",action,r.status,error);
-      return {ok:false,status:r.status,error};
+      if(body?.error==="ACCOUNT_RESTRICTED"||body?.account_status==="restricted"){
+        enterRestrictedMode(body?.restriction_reason||null);
+      }
+      return {ok:false,status:r.status,error,...(body||{})};
     }
     return {...body,status:r.status};
   }catch(e){console.error("VYBE secure API",action,e);return {ok:false,status:0,error:e?.message||"Network error"}}
@@ -250,11 +279,12 @@ function formatChatListTime(iso){
   return d.toLocaleDateString(uiLocale(),{day:"2-digit",month:"2-digit"});
 }
 function scheduleSocialRefresh(delay=180){
+  if(accountStatus!=="active")return;
   clearTimeout(socialRefreshTimer);
-  socialRefreshTimer=setTimeout(async()=>{await Promise.all([loadPeople(),loadMatches()]);},delay);
+  socialRefreshTimer=setTimeout(async()=>{if(accountStatus==="active")await Promise.all([loadPeople(),loadMatches()]);},delay);
 }
 function scheduleActiveChatRefresh(delay=120){
-  if(!activeChat)return;
+  if(accountStatus!=="active"||!activeChat)return;
   clearTimeout(chatRefreshTimer);
   chatRefreshTimer=setTimeout(()=>{
     if(!activeChat)return;
@@ -269,6 +299,7 @@ function setTypingLabel(show){
 }
 function getMatchChannel(matchId){return realtimeMatchChannels.get(String(matchId))?.channel||null}
 function sendTyping(matchId,typing){
+  if(accountStatus!=="active")return;
   const channel=getMatchChannel(matchId);if(!channel)return;
   channel.send({type:"broadcast",event:"typing",payload:{typing:typing===true}}).catch?.(()=>{});
 }
@@ -289,6 +320,7 @@ function setRealtimeBadge(live){
 }
 function chatConnectionLabel(){return realtimeConnected?"realtime • приватний чат":"автооновлення • приватний чат"}
 function setupUserRealtime(topic){
+  if(accountStatus!=="active"){teardownSocialRealtime();return}
   if(!realtimeClient||!topic){setRealtimeBadge(false);return}
   if(realtimeUserChannel&&realtimeUserChannelTopic===topic)return;
   if(realtimeUserChannel)realtimeClient.removeChannel(realtimeUserChannel);
@@ -309,6 +341,7 @@ function setupUserRealtime(topic){
     .subscribe(status=>setRealtimeBadge(status==="SUBSCRIBED"));
 }
 function syncMatchRealtimeChannels(){
+  if(accountStatus!=="active"){teardownSocialRealtime();return}
   if(!realtimeClient)return;
   const wantedId=activeChat?.matchId||null;
   for(const [matchId,entry] of realtimeMatchChannels){
@@ -333,7 +366,7 @@ function syncMatchRealtimeChannels(){
   realtimeMatchChannels.set(wantedId,{channel,topic:m.realtime_topic});
 }
 setInterval(()=>{
-  if(document.visibilityState!=="visible")return;
+  if(document.visibilityState!=="visible"||accountStatus!=="active")return;
   loadMatches();
   if(activeChat)scheduleActiveChatRefresh(0);
 },15000);
@@ -495,12 +528,25 @@ function renderSupportBadges(){
   setMenuBadge("adminSupportBtn",adminSupportUnread);
 }
 async function loadSupportCounts(){
+  const previousStatus=accountStatus;
   const r=await secureApi("support_counts");
   if(r.ok){
     supportUnread=Number(r.user_unread||0);
     adminSupportUnread=Number(r.admin_unread||0);
     moderationUnread=Number(r.moderation_unread||0);
     if(r.admin_role&&!adminRole)adminRole=r.admin_role;
+    const nextStatus=r.account_status||accountStatus||"active";
+    restrictionReason=r.restriction_reason||null;
+    if(nextStatus==="restricted"){
+      enterRestrictedMode(restrictionReason,{showNotice:previousStatus!=="restricted"});
+    }else if(previousStatus==="restricted"&&nextStatus==="active"){
+      accountStatus="active";
+      restrictionReason=null;
+      location.reload();
+      return r;
+    }else{
+      accountStatus=nextStatus;
+    }
     renderSupportBadges();
     const adminBtn=$("adminFinanceBtn");if(adminBtn)adminBtn.classList.toggle("hidden",!adminRole);
     const adminSupport=$("adminSupportBtn");if(adminSupport)adminSupport.classList.toggle("hidden",!adminRole);
