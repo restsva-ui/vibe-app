@@ -271,6 +271,131 @@ async function notifyReporterReviewed(
   }
 }
 
+async function getNotificationPreferences(db: ReturnType<typeof dbClient>, userId: string) {
+  const rows = await db(
+    `notification_preferences?user_id=eq.${encodeURIComponent(userId)}&select=user_id,likes_enabled,matches_enabled,messages_enabled,updated_at&limit=1`,
+  ) ?? [];
+  if (rows?.[0]) return rows[0];
+
+  const created = await db("notification_preferences", {
+    method: "POST",
+    body: JSON.stringify({
+      user_id: userId,
+      likes_enabled: true,
+      matches_enabled: true,
+      messages_enabled: true,
+      updated_at: new Date().toISOString(),
+    }),
+  }) ?? [];
+
+  return created?.[0] ?? {
+    user_id: userId,
+    likes_enabled: true,
+    matches_enabled: true,
+    messages_enabled: true,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+async function sendSocialNotification(
+  db: ReturnType<typeof dbClient>,
+  botToken: string,
+  input: {
+    eventType: "like" | "match" | "message";
+    recipientUserId: string;
+    actorUserId?: string | null;
+    matchId?: string | null;
+    sourceKey?: string | null;
+    variant?: "like" | "super";
+  },
+) {
+  try {
+    if (input.actorUserId && await isBlockedBetween(db, input.actorUserId, input.recipientUserId)) return false;
+
+    const prefs = await getNotificationPreferences(db, input.recipientUserId);
+    if (input.eventType === "like" && prefs.likes_enabled !== true) return false;
+    if (input.eventType === "match" && prefs.matches_enabled !== true) return false;
+    if (input.eventType === "message" && prefs.messages_enabled !== true) return false;
+
+    const recipientRows = await db(
+      `users?id=eq.${encodeURIComponent(input.recipientUserId)}&select=id,telegram_id,last_seen,account_status&limit=1`,
+    ) ?? [];
+    const recipient = recipientRows?.[0];
+    if (!recipient || recipient.account_status === "restricted") return false;
+
+    if (input.sourceKey) {
+      const duplicate = await db(
+        `notification_deliveries?source_key=eq.${encodeURIComponent(input.sourceKey)}&select=id&limit=1`,
+      ) ?? [];
+      if (duplicate?.length) return false;
+    }
+
+    if (input.eventType === "message" && input.matchId) {
+      const lastSeenMs = recipient.last_seen ? new Date(recipient.last_seen).getTime() : 0;
+      if (lastSeenMs && Date.now() - lastSeenMs < 90000) return false;
+
+      const cooldownFrom = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+      const recent = await db(
+        `notification_deliveries?recipient_user_id=eq.${encodeURIComponent(input.recipientUserId)}&event_type=eq.message&match_id=eq.${encodeURIComponent(input.matchId)}&created_at=gte.${encodeURIComponent(cooldownFrom)}&select=id&limit=1`,
+      ) ?? [];
+      if (recent?.length) return false;
+    }
+
+    let text = "";
+    let buttonText = "Open VYBE / Відкрити VYBE";
+    let url = "https://restsva-ui.github.io/vibe-app/";
+
+    if (input.eventType === "like") {
+      text = input.variant === "super"
+        ? "VYBE ✦\n\nSomeone sent you a SuperVYBE. / Хтось надіслав тобі SuperVYBE."
+        : "VYBE 💜\n\nSomeone liked your profile. / Хтось вподобав твою анкету.";
+    } else if (input.eventType === "match") {
+      text = "VYBE 💜\n\nYou have a mutual VYBE! / У вас взаємний VYBE!";
+      buttonText = "Open chat / Відкрити чат";
+      if (input.matchId) url = `https://restsva-ui.github.io/vibe-app/?chat=${encodeURIComponent(input.matchId)}`;
+    } else {
+      text = "VYBE 💬\n\nYou have a new message. / У тебе нове повідомлення.";
+      buttonText = "Open chat / Відкрити чат";
+      if (input.matchId) url = `https://restsva-ui.github.io/vibe-app/?chat=${encodeURIComponent(input.matchId)}`;
+    }
+
+    const sent = await telegramApi(botToken, "sendMessage", {
+      chat_id: Number(recipient.telegram_id),
+      text,
+      reply_markup: {
+        inline_keyboard: [[{ text: buttonText, web_app: { url } }]],
+      },
+    });
+
+    await db("notification_deliveries", {
+      method: "POST",
+      body: JSON.stringify({
+        recipient_user_id: input.recipientUserId,
+        actor_user_id: input.actorUserId ?? null,
+        event_type: input.eventType,
+        match_id: input.matchId ?? null,
+        source_key: input.sourceKey ?? null,
+        telegram_message_id: Number(sent?.message_id || 0) || null,
+      }),
+    });
+
+    console.log("social_notification:sent", {
+      event_type: input.eventType,
+      recipient_user_id: input.recipientUserId,
+      actor_user_id: input.actorUserId ?? null,
+      match_id: input.matchId ?? null,
+    });
+    return true;
+  } catch (e) {
+    console.warn("social_notification:failed", {
+      event_type: input.eventType,
+      recipient_user_id: input.recipientUserId,
+      match_id: input.matchId ?? null,
+    });
+    return false;
+  }
+}
+
 async function isRestrictedUser(db: ReturnType<typeof dbClient>, userId: string): Promise<boolean> {
   const rows = await db(`users?id=eq.${encodeURIComponent(userId)}&select=account_status&limit=1`) ?? [];
   return rows?.[0]?.account_status === "restricted";
@@ -515,6 +640,8 @@ Deno.serve(async (req: Request) => {
       "account_delete",
       "blocks_list",
       "unblock_user",
+      "notification_settings_get",
+      "notification_settings_update",
     ]);
     if (user.account_status === "restricted" && !restrictedAllowed.has(String(action))) {
       return json({
@@ -524,6 +651,40 @@ Deno.serve(async (req: Request) => {
         restriction_reason: user.restriction_reason ?? null,
         restricted_at: user.restricted_at ?? null,
       }, 403);
+    }
+
+    if (action === "notification_settings_get") {
+      const prefs = await getNotificationPreferences(db, user.id);
+      return json({
+        ok: true,
+        preferences: {
+          likes: prefs.likes_enabled === true,
+          matches: prefs.matches_enabled === true,
+          messages: prefs.messages_enabled === true,
+        },
+      });
+    }
+
+    if (action === "notification_settings_update") {
+      const current = await getNotificationPreferences(db, user.id);
+      const preferences = {
+        likes_enabled: typeof body.likes === "boolean" ? body.likes : current.likes_enabled === true,
+        matches_enabled: typeof body.matches === "boolean" ? body.matches : current.matches_enabled === true,
+        messages_enabled: typeof body.messages === "boolean" ? body.messages : current.messages_enabled === true,
+        updated_at: new Date().toISOString(),
+      };
+      await db(
+        `notification_preferences?user_id=eq.${encodeURIComponent(user.id)}`,
+        { method: "PATCH", body: JSON.stringify(preferences) },
+      );
+      return json({
+        ok: true,
+        preferences: {
+          likes: preferences.likes_enabled,
+          matches: preferences.matches_enabled,
+          messages: preferences.messages_enabled,
+        },
+      });
     }
 
     if (action === "profile_get") {
