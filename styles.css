@@ -78,3 +78,10 @@
 .premiumFeatureBtn{width:100%;margin-top:10px}
 .likeBackBtn{width:auto;white-space:nowrap}
 @media (max-width:390px){.starProduct{grid-template-columns:1fr}.starProduct .buyStarBtn,.likeBackBtn{width:100%}}
+
+
+/* VYBE 0.9.6 — purchase consent */
+.purchaseTerms{align-items:flex-start;padding:10px 2px;margin:10px 0 12px}
+.purchaseTerms span{color:var(--muted);font-size:12px;line-height:1.45}
+.inlineLink{border:0;background:none;color:#d8b7ff;padding:0;text-decoration:underline;text-underline-offset:2px}
+.buyStarBtn:disabled{opacity:.45;cursor:not-allowed}
