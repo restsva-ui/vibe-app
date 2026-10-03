@@ -78,7 +78,7 @@ const I18N_PAIRS=[
   ["Не вдалося видалити акаунт. Спробуй ще раз.","Could not delete the account. Try again."],["Акаунт VYBE та пов’язані дані видалено.","Your VYBE account and related data were deleted."],
   ["Видалити акаунт","Delete account"],["Ця дія незворотна. Будуть видалені анкета, фото, VYBE NOW, лайки, збіги, повідомлення, блокування, скарги, реферальні дані та бонуси, пов’язані з цим акаунтом.","This cannot be undone. Your profile, photo, VYBE NOW, likes, matches, messages, blocks, reports, referral data and rewards linked to this account will be deleted."],
   ["Для підтвердження введи ","To confirm, enter "],["Скасувати","Cancel"],
-  ["Налаштування ⚙","Settings ⚙"],["🔐 Приватність","🔐 Privacy"],["🛡 Правила спільноти","🛡 Community rules"],["🗑 Видалити акаунт","🗑 Delete account"],
+  ["Налаштування ⚙","Settings ⚙"],["🔐 Приватність","🔐 Privacy"],["🛡 Правила спільноти","🛡 Community rules"],["📄 Умови користування","📄 Terms of Use"],["Повна політика приватності","Full Privacy Policy"],["Повні правила спільноти","Full Community Rules"],["Умови","Terms"],["Правила","Rules"],["Приватність","Privacy"],["🗑 Видалити акаунт","🗑 Delete account"],
   ["Мова","Language"],["Українська","Українська"],["English","English"],
   ["VYBE+ на 3 дні","VYBE+ for 3 days"]
 ];
@@ -694,14 +694,23 @@ async function openChat(matchId,name,userId,options={}){
 function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 document.querySelectorAll(".navItem").forEach(b=>b.onclick=()=>{document.querySelectorAll(".navItem").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));$(b.dataset.target).classList.add("active")});setInterval(renderNow,60000);
 
+function openLegalPage(page){
+  const safe=["privacy.html","terms.html","community.html"].includes(page)?page:"privacy.html";
+  const url=new URL("./"+safe,location.href).href;
+  if(tg?.openLink)tg.openLink(url);
+  else window.open(url,"_blank","noopener,noreferrer");
+}
+
 function openPrivacyInfo(){
-  content.innerHTML='<h2>Приватність 🔐</h2><p>VYBE використовує Telegram-авторизацію та зберігає лише дані, потрібні для роботи сервісу: Telegram ID, анкету, фото, VYBE NOW, лайки, збіги, приватні повідомлення, блокування, скарги та бонуси.</p><p>Фото зберігаються у Supabase Storage. Тексти приватних повідомлень не передаються в Realtime Broadcast — через realtime передаються лише технічні сигнали про зміни.</p><p>Ти можеш видалити акаунт у Налаштуваннях. Після підтвердження профіль і пов’язані дані видаляються з активної бази.</p>';
+  content.innerHTML='<h2>Приватність 🔐</h2><p>VYBE використовує Telegram-авторизацію та зберігає лише дані, потрібні для роботи сервісу: Telegram ID, анкету, фото, VYBE NOW, лайки, збіги, приватні повідомлення, блокування, скарги та бонуси.</p><p>Фото зберігаються у Supabase Storage. Тексти приватних повідомлень не передаються в Realtime Broadcast — через realtime передаються лише технічні сигнали про зміни.</p><p>Ти можеш видалити акаунт у Налаштуваннях. Після підтвердження профіль і пов’язані дані видаляються з активної бази.</p><button id="fullPrivacyBtn" class="choice safetyChoice">'+uiText("Повна політика приватності")+'</button>';
   sheet.classList.remove("hidden");
+  $("fullPrivacyBtn").onclick=()=>openLegalPage("privacy.html");
 }
 
 function openCommunityRules(){
-  content.innerHTML='<h2>Правила спільноти 🛡</h2><p>VYBE — лише для повнолітніх 18+.</p><p>Заборонені: примус, шантаж, переслідування, шахрайство, видавання себе за іншу людину, участь неповнолітніх, продаж сексуальних послуг та незаконний контент.</p><p>Для небезпечного або підозрілого профілю використовуй «Поскаржитися» або «Заблокувати».</p>';
+  content.innerHTML='<h2>Правила спільноти 🛡</h2><p>VYBE — лише для повнолітніх 18+.</p><p>Заборонені: примус, шантаж, переслідування, шахрайство, видавання себе за іншу людину, участь неповнолітніх, продаж сексуальних послуг та незаконний контент.</p><p>Для небезпечного або підозрілого профілю використовуй «Поскаржитися» або «Заблокувати».</p><button id="fullRulesBtn" class="choice safetyChoice">'+uiText("Повні правила спільноти")+'</button>';
   sheet.classList.remove("hidden");
+  $("fullRulesBtn").onclick=()=>openLegalPage("community.html");
 }
 
 function openSupportInfo(){
@@ -756,16 +765,21 @@ function openDeleteAccount(){
 }
 
 function openSettings(){
-  content.innerHTML='<h2>'+uiText("Налаштування ⚙")+'</h2><p class="settingsLabel">'+uiText("Мова")+'</p><div class="languageGrid"><button id="langUkBtn" class="choice '+(currentLang==="uk"?"selected":"")+'">🇺🇦 Українська</button><button id="langEnBtn" class="choice '+(currentLang==="en"?"selected":"")+'">🇬🇧 English</button></div><button id="privacyInfoBtn" class="choice safetyChoice">'+uiText("🔐 Приватність")+'</button><button id="communityRulesBtn" class="choice safetyChoice">'+uiText("🛡 Правила спільноти")+'</button><button id="settingsBlockedBtn" class="choice safetyChoice">'+uiText("🚫 Заблоковані користувачі")+'</button><button id="deleteAccountBtn" class="choice safetyChoice dangerChoice">'+uiText("🗑 Видалити акаунт")+'</button>';
+  content.innerHTML='<h2>'+uiText("Налаштування ⚙")+'</h2><p class="settingsLabel">'+uiText("Мова")+'</p><div class="languageGrid"><button id="langUkBtn" class="choice '+(currentLang==="uk"?"selected":"")+'">🇺🇦 Українська</button><button id="langEnBtn" class="choice '+(currentLang==="en"?"selected":"")+'">🇬🇧 English</button></div><button id="privacyInfoBtn" class="choice safetyChoice">'+uiText("🔐 Приватність")+'</button><button id="communityRulesBtn" class="choice safetyChoice">'+uiText("🛡 Правила спільноти")+'</button><button id="termsBtn" class="choice safetyChoice">'+uiText("📄 Умови користування")+'</button><button id="settingsBlockedBtn" class="choice safetyChoice">'+uiText("🚫 Заблоковані користувачі")+'</button><button id="deleteAccountBtn" class="choice safetyChoice dangerChoice">'+uiText("🗑 Видалити акаунт")+'</button>';
   sheet.classList.remove("hidden");
   $("langUkBtn").onclick=()=>setLanguage("uk");
   $("langEnBtn").onclick=()=>setLanguage("en");
   $("privacyInfoBtn").onclick=openPrivacyInfo;
   $("communityRulesBtn").onclick=openCommunityRules;
+  $("termsBtn").onclick=()=>openLegalPage("terms.html");
   $("settingsBlockedBtn").onclick=openBlockedUsers;
   $("deleteAccountBtn").onclick=openDeleteAccount;
 }
 
+const ageTermsBtn=document.getElementById("ageTermsBtn"),agePrivacyBtn=document.getElementById("agePrivacyBtn"),ageRulesBtn=document.getElementById("ageRulesBtn");
+if(ageTermsBtn)ageTermsBtn.onclick=()=>openLegalPage("terms.html");
+if(agePrivacyBtn)agePrivacyBtn.onclick=()=>openLegalPage("privacy.html");
+if(ageRulesBtn)ageRulesBtn.onclick=()=>openLegalPage("community.html");
 const referralBtn=document.getElementById("referralBtn");if(referralBtn)referralBtn.onclick=openReferral;const blockedUsersBtn=document.getElementById("blockedUsersBtn");if(blockedUsersBtn)blockedUsersBtn.onclick=openBlockedUsers;const supportBtn=document.getElementById("supportBtn");if(supportBtn)supportBtn.onclick=openSupportInfo;
 const settingsBtn=document.getElementById("settingsBtn");if(settingsBtn)settingsBtn.onclick=openSettings;
 const photoBtn=document.getElementById("photoBtn"),removePhotoBtn=document.getElementById("removePhotoBtn");
