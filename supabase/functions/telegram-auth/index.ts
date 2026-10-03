@@ -632,6 +632,47 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    if (action === "star_test_refund") {
+      const rows = await db(
+        `star_orders?user_id=eq.${encodeURIComponent(user.id)}&product_key=eq.test_1_star&status=eq.paid&select=id,telegram_payment_charge_id,total_amount,paid_at&order=paid_at.desc&limit=1`,
+      ) ?? [];
+      const order = rows?.[0];
+      if (!order?.telegram_payment_charge_id) {
+        return json({ ok: true, refunded: false, reason: "nothing_to_refund" });
+      }
+
+      await telegramApi(botToken, "refundStarPayment", {
+        user_id: Number(user.telegram_id),
+        telegram_payment_charge_id: String(order.telegram_payment_charge_id),
+      });
+
+      await db(
+        `paid_rewards?source_order_id=eq.${encodeURIComponent(String(order.id))}`,
+        { method: "DELETE" },
+      );
+
+      await db(
+        `star_orders?id=eq.${encodeURIComponent(String(order.id))}&user_id=eq.${encodeURIComponent(user.id)}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            status: "refunded",
+            refunded_at: new Date().toISOString(),
+          }),
+        },
+      );
+
+      await db(
+        "star_products?product_key=eq.test_1_star",
+        {
+          method: "PATCH",
+          body: JSON.stringify({ active: false, updated_at: new Date().toISOString() }),
+        },
+      );
+
+      return json({ ok: true, refunded: true, stars: Number(order.total_amount || 1), order_id: order.id });
+    }
+
     if (action === "star_order_status") {
       const orderId = clean(body.order_id, 80);
       if (!orderId) return json({ ok: false, error: "Order is required" }, 400);
