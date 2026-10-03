@@ -102,7 +102,7 @@ const I18N_PAIRS=[
   ["Для підтвердження введи ","To confirm, enter "],["Скасувати","Cancel"],
   ["Налаштування ⚙","Settings ⚙"],["🔐 Приватність","🔐 Privacy"],["🛡 Правила спільноти","🛡 Community rules"],["📄 Умови користування","📄 Terms of Use"],["Повна політика приватності","Full Privacy Policy"],["Повні правила спільноти","Full Community Rules"],["Умови","Terms"],["Правила","Rules"],["Приватність","Privacy"],["🗑 Видалити акаунт","🗑 Delete account"],
   ["Мова","Language"],["Аналітика продукту","Product analytics"],["Допомагає покращувати VYBE. Без текстів чатів, bio, імен чи міста.","Helps improve VYBE. No chat text, bio, names or city."],["Увімкнено","On"],["Вимкнено","Off"],["Українська","Українська"],["English","English"],
-  ["VYBE+ на 3 дні","VYBE+ for 3 days"],["Магазин Stars ⭐","Stars Store ⭐"],["Купити за ","Buy for "],["Оплата відкриється у Telegram.","Payment will open in Telegram."],["Не вдалося створити рахунок.","Could not create the invoice."],["Платежі доступні лише всередині Telegram.","Payments are available only inside Telegram."],["Оплата успішна ⭐ Покупку зараховано.","Payment successful ⭐ Your purchase was added."],["Платіж обробляється. Баланс оновиться автоматично.","Payment is processing. Your balance will update automatically."],["Оплату скасовано.","Payment cancelled."],["Оплата не пройшла.","Payment failed."],["Перевіряємо покупку…","Checking your purchase…"],["Хто лайкнув мене","Who liked me"],["VYBE+ відкриває список людей, які вже лайкнули тебе.","VYBE+ unlocks the list of people who already liked you."],["Поки немає нових лайків.","No new likes yet."],["Лайкнути у відповідь","Like back"],["Потрібен активний VYBE+.","Active VYBE+ is required."],["Завантажуємо магазин…","Loading store…"],["Покупка зарахована","Purchase added"],["Зірок","Stars"],["Я приймаю Умови користування для покупки цифрових товарів.","I accept the Terms of Use for digital purchases."],["Перед оплатою прийми Умови користування.","Accept the Terms of Use before paying."],["Очікуємо Telegram…","Waiting for Telegram…"],["Повернутися у VYBE","Return to VYBE"],["Тест успішний ✅ 1 Star повернуто.","Test successful ✅ 1 Star was refunded."],["Покупка успішна ⭐","Purchase successful ⭐"],["Фінанси VYBE ⭐","VYBE Finance ⭐"],["Баланс бота","Bot balance"],["24 години","24 hours"],["7 днів","7 days"],["30 днів","30 days"],["Весь час","All time"],["Валові","Gross"],["Повернення","Refunds"],["Чисті","Net"],["Оплачені","Paid"],["Звірка Telegram ↔ VYBE","Telegram ↔ VYBE reconciliation"],["Останні покупки","Recent purchases"],["Останні транзакції Telegram","Recent Telegram transactions"],["Оновити","Refresh"],["Повернути Stars","Refund Stars"],["Повернути ","Refund "],[" Stars користувачу?"," Stars to the user?"],["Повернення виконано ✅","Refund completed ✅"],["Не вдалося повернути Stars.","Could not refund Stars."],["Джерело істини для поточного балансу — Telegram.","Telegram is the source of truth for the current balance."],["Збігів","Matched"],["з","of"],["Немає транзакцій.","No transactions."],["Немає покупок.","No purchases."],["Продажі за продуктами","Sales by product"],["Статуси замовлень","Order statuses"],["Технічні спроби","Technical attempts"],["Історія повернень","Refund history"],["Автоматично","Automatic"],["Власник","Owner"],["Експорт продажів","Sales export"],["Завантажити CSV","Download CSV"],["Скопіювати CSV","Copy CSV"],["CSV скопійовано ✅","CSV copied ✅"],["Не вдалося експортувати дані.","Could not export data."],["Виведення Stars","Stars withdrawal"],["Виведення виконується власником через Telegram / Fragment. VYBE не зберігає 2FA і не запускає виведення від імені бота.","Withdrawal is performed by the owner through Telegram / Fragment. VYBE does not store 2FA and does not initiate withdrawals on behalf of the bot."],["Як вивести","How to withdraw"],["Спроб","Attempts"],["Успішних","Successful"],["Відкритих","Pending"],["Помилок","Failed"],["Прострочених","Expired"],["Скасованих","Cancelled"],["Останні замовлення","Recent orders"],["Оплата користувача","User payment"],["Повернення користувачу","Refund to user"],["Вхідна транзакція","Incoming transaction"],["Вихідна транзакція","Outgoing transaction"],["Підтримка VYBE ⚑","VYBE Support ⚑"],["Нове звернення","New request"],["Загальне питання","General question"],["Проблема з оплатою","Payment issue"],["Опиши проблему","Describe the issue"],["Надіслати у підтримку","Send to support"],["Мої звернення","My requests"],["Звернення надіслано ✅","Request sent ✅"],["Не вдалося надіслати звернення.","Could not send the request."],["Зачекай трохи перед наступним зверненням.","Please wait before sending another request."],["Відкрите","Open"],["В роботі","In review"],["Вирішено","Resolved"],["Відповідь підтримки","Support reply"],["Це звернення вже вирішено.","This request is already resolved."],["Центр підтримки","Support Center"],["Відкриті","Open"],["В роботі","Reviewed"],["Вирішені","Resolved"],["Платіжні","Payment"],["Загальні","General"],["Остання покупка","Latest purchase"],["Відкрити звернення","Open request"],["Взяти в роботу","Mark reviewed"],["Відповісти й закрити","Reply & resolve"],["Закрити без відповіді","Resolve without reply"],["Повернути у відкриті","Reopen"],["Внутрішня нотатка","Internal note"],["Відповідь користувачу","Reply to user"],["Статус оновлено ✅","Status updated ✅"],["Не вдалося оновити звернення.","Could not update the request."],["Черга порожня.","Queue is empty."],["⚑ Підтримка VYBE","⚑ VYBE Support"],["«Взяти в роботу» змінює лише статус і не надсилає текст користувачу.","“Mark reviewed” only changes the status and does not send your reply to the user."],["Відповідь не буде втрачена.","Your draft reply will be preserved."],["owner","owner"],["admin","admin"]
+  ["VYBE+ на 3 дні","VYBE+ for 3 days"],["Магазин Stars ⭐","Stars Store ⭐"],["Купити за ","Buy for "],["Оплата відкриється у Telegram.","Payment will open in Telegram."],["Не вдалося створити рахунок.","Could not create the invoice."],["Платежі доступні лише всередині Telegram.","Payments are available only inside Telegram."],["Оплата успішна ⭐ Покупку зараховано.","Payment successful ⭐ Your purchase was added."],["Платіж обробляється. Баланс оновиться автоматично.","Payment is processing. Your balance will update automatically."],["Оплату скасовано.","Payment cancelled."],["Оплата не пройшла.","Payment failed."],["Перевіряємо покупку…","Checking your purchase…"],["Хто лайкнув мене","Who liked me"],["VYBE+ відкриває список людей, які вже лайкнули тебе.","VYBE+ unlocks the list of people who already liked you."],["Поки немає нових лайків.","No new likes yet."],["Лайкнути у відповідь","Like back"],["Потрібен активний VYBE+.","Active VYBE+ is required."],["Завантажуємо магазин…","Loading store…"],["Покупка зарахована","Purchase added"],["Зірок","Stars"],["Я приймаю Умови користування для покупки цифрових товарів.","I accept the Terms of Use for digital purchases."],["Перед оплатою прийми Умови користування.","Accept the Terms of Use before paying."],["Очікуємо Telegram…","Waiting for Telegram…"],["Повернутися у VYBE","Return to VYBE"],["Тест успішний ✅ 1 Star повернуто.","Test successful ✅ 1 Star was refunded."],["Покупка успішна ⭐","Purchase successful ⭐"],["Фінанси VYBE ⭐","VYBE Finance ⭐"],["Баланс бота","Bot balance"],["24 години","24 hours"],["7 днів","7 days"],["30 днів","30 days"],["Весь час","All time"],["Валові","Gross"],["Повернення","Refunds"],["Чисті","Net"],["Оплачені","Paid"],["Звірка Telegram ↔ VYBE","Telegram ↔ VYBE reconciliation"],["Останні покупки","Recent purchases"],["Останні транзакції Telegram","Recent Telegram transactions"],["Оновити","Refresh"],["Повернути Stars","Refund Stars"],["Повернути ","Refund "],[" Stars користувачу?"," Stars to the user?"],["Повернення виконано ✅","Refund completed ✅"],["Не вдалося повернути Stars.","Could not refund Stars."],["Джерело істини для поточного балансу — Telegram.","Telegram is the source of truth for the current balance."],["Збігів","Matched"],["з","of"],["Немає транзакцій.","No transactions."],["Немає покупок.","No purchases."],["Продажі за продуктами","Sales by product"],["Статуси замовлень","Order statuses"],["Технічні спроби","Technical attempts"],["Історія повернень","Refund history"],["Автоматично","Automatic"],["Власник","Owner"],["Експорт продажів","Sales export"],["Завантажити CSV","Download CSV"],["Скопіювати CSV","Copy CSV"],["CSV скопійовано ✅","CSV copied ✅"],["Не вдалося експортувати дані.","Could not export data."],["Виведення Stars","Stars withdrawal"],["Виведення виконується власником через Telegram / Fragment. VYBE не зберігає 2FA і не запускає виведення від імені бота.","Withdrawal is performed by the owner through Telegram / Fragment. VYBE does not store 2FA and does not initiate withdrawals on behalf of the bot."],["Як вивести","How to withdraw"],["Спроб","Attempts"],["Успішних","Successful"],["Відкритих","Pending"],["Помилок","Failed"],["Прострочених","Expired"],["Скасованих","Cancelled"],["Останні замовлення","Recent orders"],["Оплата користувача","User payment"],["Повернення користувачу","Refund to user"],["Вхідна транзакція","Incoming transaction"],["Вихідна транзакція","Outgoing transaction"],["Модерація VYBE 🛡","VYBE Moderation 🛡"],["Нова скарга","New report"],["Скаржник","Reporter"],["Користувач зі скарги","Reported user"],["Фейковий профіль","Fake profile"],["Спам","Spam"],["Переслідування або домагання","Harassment"],["Підозра на неповнолітнього","Suspected minor"],["Сексуальні послуги","Sexual services"],["Незаконний або небезпечний контент","Illegal or dangerous content"],["Інша причина","Other reason"],["Відхилено","Dismissed"],["Відхилити скаргу","Dismiss report"],["Позначити вирішеною","Mark resolved"],["Обмежити акаунт","Restrict account"],["Відновити акаунт","Restore account"],["Акаунт обмежено","Account restricted"],["Активний акаунт","Active account"],["Причина обмеження","Restriction reason"],["Обмежити цього користувача у VYBE? Він зникне з пошуку, збігів і не зможе писати повідомлення.","Restrict this user in VYBE? They will disappear from discovery and matches and will not be able to send messages."],["Відновити доступ цього користувача до VYBE?","Restore this user's access to VYBE?"],["Модераційний статус оновлено ✅","Moderation status updated ✅"],["Не вдалося оновити модерацію.","Could not update moderation."],["Доступ обмежено ✅","Access restricted ✅"],["Доступ відновлено ✅","Access restored ✅"],["Твій акаунт тимчасово обмежено","Your account is temporarily restricted"],["Соціальні функції VYBE недоступні, поки обмеження активне. Ти можеш звернутися у підтримку або видалити акаунт.","VYBE social features are unavailable while the restriction is active. You can contact support or delete your account."],["Звернутися у підтримку","Contact support"],["Підтримка VYBE ⚑","VYBE Support ⚑"],["Нове звернення","New request"],["Загальне питання","General question"],["Проблема з оплатою","Payment issue"],["Опиши проблему","Describe the issue"],["Надіслати у підтримку","Send to support"],["Мої звернення","My requests"],["Звернення надіслано ✅","Request sent ✅"],["Не вдалося надіслати звернення.","Could not send the request."],["Зачекай трохи перед наступним зверненням.","Please wait before sending another request."],["Відкрите","Open"],["В роботі","In review"],["Вирішено","Resolved"],["Відповідь підтримки","Support reply"],["Це звернення вже вирішено.","This request is already resolved."],["Центр підтримки","Support Center"],["Відкриті","Open"],["В роботі","Reviewed"],["Вирішені","Resolved"],["Платіжні","Payment"],["Загальні","General"],["Остання покупка","Latest purchase"],["Відкрити звернення","Open request"],["Взяти в роботу","Mark reviewed"],["Відповісти й закрити","Reply & resolve"],["Закрити без відповіді","Resolve without reply"],["Повернути у відкриті","Reopen"],["Внутрішня нотатка","Internal note"],["Відповідь користувачу","Reply to user"],["Статус оновлено ✅","Status updated ✅"],["Не вдалося оновити звернення.","Could not update the request."],["Черга порожня.","Queue is empty."],["⚑ Підтримка VYBE","⚑ VYBE Support"],["«Взяти в роботу» змінює лише статус і не надсилає текст користувачу.","“Mark reviewed” only changes the status and does not send your reply to the user."],["Відповідь не буде втрачена.","Your draft reply will be preserved."],["owner","owner"],["admin","admin"]
 ];
 
 let currentLang=load("vybeLanguage",null)||(String(tuser?.language_code||"").toLowerCase().startsWith("en")?"en":"uk");
@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.17",
+      app_version:"0.9.18",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -444,7 +444,7 @@ async function openBlockedUsers(){
   });
 }
 
-let profile=load("vybeProfile",null),now=load("vybeNow",null),matches=[],index=0,filter="Усе",remotePeople=[],entitlements={balances:{supervybe:0,spotlight:0},vybe_plus_until:null,spotlight_until:null},starCatalog=[],adminRole=null,supportUnread=0,adminSupportUnread=0;
+let profile=load("vybeProfile",null),now=load("vybeNow",null),matches=[],index=0,filter="Усе",remotePeople=[],entitlements={balances:{supervybe:0,spotlight:0},vybe_plus_until:null,spotlight_until:null},starCatalog=[],adminRole=null,supportUnread=0,adminSupportUnread=0,moderationUnread=0,accountStatus="active",restrictionReason=null;
 let discoverFilters=load("vybeDiscoverFilters",{minAge:18,maxAge:99,city:"",onlineOnly:false,verifiedOnly:false});
 localStorage.removeItem("vybeMatches");
 async function loadEntitlements(){const r=await secureApi("entitlements");if(r.ok)entitlements=r;return r}
@@ -464,10 +464,13 @@ async function loadSupportCounts(){
   if(r.ok){
     supportUnread=Number(r.user_unread||0);
     adminSupportUnread=Number(r.admin_unread||0);
+    moderationUnread=Number(r.moderation_unread||0);
     if(r.admin_role&&!adminRole)adminRole=r.admin_role;
     renderSupportBadges();
     const adminBtn=$("adminFinanceBtn");if(adminBtn)adminBtn.classList.toggle("hidden",!adminRole);
     const adminSupport=$("adminSupportBtn");if(adminSupport)adminSupport.classList.toggle("hidden",!adminRole);
+    const adminModeration=$("adminModerationBtn");if(adminModeration)adminModeration.classList.toggle("hidden",!adminRole);
+    setMenuBadge("adminModerationBtn",moderationUnread);
   }
   return r;
 }
@@ -651,6 +654,8 @@ async function hydrateProfile(){
   const r=await secureApi("profile_get");if(!r.ok)return;
   analyticsDistinctId=r.user_id||null;
   adminRole=r.admin_role||null;
+  accountStatus=r.account_status||"active";
+  restrictionReason=r.restriction_reason||null;
   if(r.realtime_topic){realtimeUserTopic=r.realtime_topic;setupUserRealtime(realtimeUserTopic)}
   if(r.profile){profile={name:r.profile.name,age:r.profile.age,city:r.profile.city||"",gender:r.profile.gender||"",looking:r.profile.looking_for||"",bio:r.profile.bio||"",photo_url:r.profile.photo_url||null,verified:r.profile.verified===true,user_id:r.user_id};store("vybeProfile",profile)}
 }
@@ -661,12 +666,26 @@ async function begin(){
   await hydrateProfile();
   await recoverTestRefund();
   analyticsCapture("app_open");
-  if(!profile)showOnboarding();else{renderProfile();await syncProfile();await loadPeople()}
-  await loadEntitlements();await loadMatches();await loadSupportCounts();renderNow();renderCard();renderMatches();renderChats();
   const launchParams=new URL(location.href).searchParams;
   const launchTicket=launchParams.get("ticket");
+  const launchReport=launchParams.get("report");
+
+  if(accountStatus==="restricted"){
+    if(profile)renderProfile();
+    remotePeople=[];matches=[];await loadSupportCounts();renderNow();renderCard();renderMatches();renderChats();
+    if(launchParams.get("support")==="ticket")await openSupportInfo();
+    else openRestrictionNotice();
+    history.replaceState({},document.title,location.pathname);
+    return;
+  }
+
+  if(!profile)showOnboarding();else{renderProfile();await syncProfile();await loadPeople()}
+  await loadEntitlements();await loadMatches();await loadSupportCounts();renderNow();renderCard();renderMatches();renderChats();
   if(adminRole&&launchParams.get("admin")==="support"){
     await openAdminSupport(launchTicket);
+    history.replaceState({},document.title,location.pathname);
+  }else if(adminRole&&launchParams.get("admin")==="moderation"){
+    await openAdminModeration(launchReport);
     history.replaceState({},document.title,location.pathname);
   }else if(launchParams.get("support")==="ticket"){
     await openSupportInfo();
@@ -716,7 +735,9 @@ function renderProfile(){
   const remove=$("removePhotoBtn");if(remove)remove.classList.toggle("hidden",!profile.photo_url);
   const adminBtn=$("adminFinanceBtn");if(adminBtn)adminBtn.classList.toggle("hidden",!adminRole);
   const adminSupport=$("adminSupportBtn");if(adminSupport)adminSupport.classList.toggle("hidden",!adminRole);
+  const adminModeration=$("adminModerationBtn");if(adminModeration)adminModeration.classList.toggle("hidden",!adminRole);
   renderSupportBadges();
+  setMenuBadge("adminModerationBtn",moderationUnread);
 }
 
 function readImageAsDataUrl(file){
@@ -970,6 +991,28 @@ function openCommunityRules(){
   content.innerHTML='<h2>Правила спільноти 🛡</h2><p>VYBE — лише для повнолітніх 18+.</p><p>Заборонені: примус, шантаж, переслідування, шахрайство, видавання себе за іншу людину, участь неповнолітніх, продаж сексуальних послуг та незаконний контент.</p><p>Для небезпечного або підозрілого профілю використовуй «Поскаржитися» або «Заблокувати».</p><button id="fullRulesBtn" class="choice safetyChoice">'+uiText("Повні правила спільноти")+'</button>';
   sheet.classList.remove("hidden");
   $("fullRulesBtn").onclick=()=>openLegalPage("community.html");
+}
+
+function openRestrictionNotice(){
+  content.innerHTML='<div class="restrictionNotice"><div class="restrictionIcon">🛡</div><h2>'+uiText("Твій акаунт тимчасово обмежено")+'</h2><p>'+uiText("Соціальні функції VYBE недоступні, поки обмеження активне. Ти можеш звернутися у підтримку або видалити акаунт.")+'</p>'+(restrictionReason?'<div class="restrictionReason"><b>'+uiText("Причина обмеження")+'</b><span>'+escapeHtml(moderationReasonLabel(restrictionReason))+'</span></div>':'')+'<button id="restrictedSupportBtn" class="primary">'+uiText("Звернутися у підтримку")+'</button><button id="restrictedDeleteBtn" class="choice">'+uiText("🗑 Видалити акаунт")+'</button></div>';
+  sheet.classList.remove("hidden");tg?.BackButton?.show?.();
+  $("restrictedSupportBtn").onclick=openSupportInfo;
+  $("restrictedDeleteBtn").onclick=openDeleteAccount;
+}
+function moderationReasonLabel(reason){
+  const labels={
+    fake_profile:uiText("Фейковий профіль"),
+    spam:uiText("Спам"),
+    harassment:uiText("Переслідування або домагання"),
+    underage:uiText("Підозра на неповнолітнього"),
+    sexual_services:uiText("Сексуальні послуги"),
+    illegal_content:uiText("Незаконний або небезпечний контент"),
+    other:uiText("Інша причина"),
+  };
+  return labels[reason]||String(reason||"");
+}
+function moderationStatusLabel(status){
+  return status==="open"?uiText("Відкрите"):status==="reviewed"?uiText("В роботі"):status==="resolved"?uiText("Вирішено"):status==="dismissed"?uiText("Відхилено"):String(status||"");
 }
 
 function supportStatusLabel(status){
@@ -1260,6 +1303,80 @@ async function openAdminSupport(ticketId=null,draft=null){
   requestAnimationFrame(()=>{const card=sheet.querySelector(".sheetCard");if(card)card.scrollTop=0});
 }
 
+async function updateAdminModeration(reportId,status,adminNote=""){
+  const r=await secureApi("admin_moderation_update",{report_id:reportId,status,admin_note:adminNote});
+  if(!r.ok){showAlert("Не вдалося оновити модерацію.");return false}
+  await loadSupportCounts();
+  tg?.HapticFeedback?.notificationOccurred("success");
+  showAlert("Модераційний статус оновлено ✅");
+  return true;
+}
+async function restrictModerationUser(report,mode){
+  if(adminRole!=="owner")return false;
+  const restore=mode==="restore";
+  const message=restore?uiText("Відновити доступ цього користувача до VYBE?"):uiText("Обмежити цього користувача у VYBE? Він зникне з пошуку, збігів і не зможе писати повідомлення.");
+  if(!await confirmAction(message))return false;
+  const r=await secureApi("admin_moderation_restrict",{
+    report_id:report.id,
+    target_user_id:report.reported?.id||report.reported_id,
+    mode:restore?"restore":"restrict",
+    confirmation:restore?"RESTORE":"RESTRICT",
+    reason:report.reason,
+  });
+  if(!r.ok){showAlert("Не вдалося оновити модерацію.");return false}
+  await loadSupportCounts();
+  tg?.HapticFeedback?.notificationOccurred("success");
+  showAlert(restore?"Доступ відновлено ✅":"Доступ обмежено ✅");
+  return true;
+}
+async function loadAdminModerationData(){
+  if(!adminRole)return {ok:false,error:"Admin access required"};
+  return secureApi("admin_moderation_list");
+}
+async function openAdminModerationReport(report){
+  await secureApi("admin_moderation_mark_seen",{report_id:report.id});
+  await loadSupportCounts();
+  const reported=report.reported||{}, reporter=report.reporter||{};
+  const restricted=reported.account_status==="restricted";
+  content.innerHTML='<div class="adminHead"><div><h2>'+uiText("Модерація VYBE 🛡")+'</h2><small>'+escapeHtml(moderationReasonLabel(report.reason))+'</small></div><button id="backToModerationQueue" class="choice">←</button></div>'+
+    '<div class="moderationCase '+((report.reason==="underage"||report.reason==="illegal_content")?"urgent":"")+'"><div class="myTicketHead"><b>'+uiText("Користувач зі скарги")+'</b><span class="supportStatus '+escapeHtml(report.status)+'">'+escapeHtml(moderationStatusLabel(report.status))+'</span></div><div class="moderationPerson"><b>'+escapeHtml(reported.name||"VYBE")+(reported.age?", "+escapeHtml(reported.age):"")+'</b>'+(reported.username?'<small>@'+escapeHtml(reported.username)+'</small>':'')+'<small>'+escapeHtml(reported.city||"")+'</small><span class="accountState '+(restricted?"restricted":"active")+'">'+uiText(restricted?"Акаунт обмежено":"Активний акаунт")+'</span></div><hr><b>'+uiText("Причина")+': '+escapeHtml(moderationReasonLabel(report.reason))+'</b>'+(report.details?'<p>'+escapeHtml(report.details)+'</p>':'')+'<small>'+escapeHtml(adminDate(report.created_at))+'</small></div>'+
+    '<div class="moderationReporter"><b>'+uiText("Скаржник")+'</b><span>'+escapeHtml(reporter.name||"VYBE")+(reporter.username?" • @"+escapeHtml(reporter.username):"")+'</span></div>'+
+    '<label>'+uiText("Внутрішня нотатка")+'<textarea id="moderationAdminNote" class="field supportMessage" maxlength="1000">'+escapeHtml(report.admin_note||"")+'</textarea></label>'+
+    '<div class="supportAdminActions">'+(report.status!=="reviewed"?'<button id="moderationReviewedBtn" class="choice">'+uiText("Взяти в роботу")+'</button>':'')+'<button id="moderationResolvedBtn" class="primary">'+uiText("Позначити вирішеною")+'</button><button id="moderationDismissBtn" class="choice">'+uiText("Відхилити скаргу")+'</button>'+(adminRole==="owner"?'<button id="moderationRestrictionBtn" class="choice moderationDanger">'+uiText(restricted?"Відновити акаунт":"Обмежити акаунт")+'</button>':'')+'</div>';
+  $("backToModerationQueue").onclick=()=>openAdminModeration();
+  const note=()=>$("moderationAdminNote")?.value?.trim()||"";
+  const reviewed=$("moderationReviewedBtn");if(reviewed)reviewed.onclick=async()=>{if(await updateAdminModeration(report.id,"reviewed",note()))await openAdminModeration(report.id)};
+  $("moderationResolvedBtn").onclick=async()=>{if(await updateAdminModeration(report.id,"resolved",note()))await openAdminModeration()};
+  $("moderationDismissBtn").onclick=async()=>{if(await updateAdminModeration(report.id,"dismissed",note()))await openAdminModeration()};
+  const restriction=$("moderationRestrictionBtn");if(restriction)restriction.onclick=async()=>{if(await restrictModerationUser(report,restricted?"restore":"restrict"))await openAdminModeration(report.id)};
+}
+async function openAdminModeration(reportId=null){
+  if(!adminRole){showAlert("Admin access required");return}
+  content.innerHTML='<h2>'+uiText("Модерація VYBE 🛡")+'</h2><div class="empty">'+uiText("Завантаження…")+'</div>';
+  sheet.classList.remove("hidden");tg?.BackButton?.show?.();
+  const r=await loadAdminModerationData();
+  if(!r.ok){content.innerHTML='<h2>'+uiText("Модерація VYBE 🛡")+'</h2><div class="empty">'+escapeHtml(r.error||"Error")+'</div>';return}
+  const c=r.counts||{};
+  const reports=(r.reports||[]).sort((a,b)=>{
+    const urgent=x=>x.reason==="underage"||x.reason==="illegal_content"?0:1;
+    const rank={open:0,reviewed:1,resolved:2,dismissed:3};
+    return urgent(a)-urgent(b)||(rank[a.status]??9)-(rank[b.status]??9)||new Date(b.created_at)-new Date(a.created_at);
+  });
+  if(reportId){
+    const target=reports.find(x=>String(x.id)===String(reportId));
+    if(target){await openAdminModerationReport(target);return}
+  }
+  const rows=reports.length?reports.map((rpt,i)=>{
+    const urgent=rpt.reason==="underage"||rpt.reason==="illegal_content";
+    const unseen=!rpt.admin_seen_at&&(rpt.status==="open"||rpt.status==="reviewed");
+    return '<button class="supportQueueItem moderationQueueItem '+(urgent?"urgent ":"")+(unseen?"unread":"")+'" data-index="'+i+'"><div class="myTicketHead"><b>'+escapeHtml(rpt.reported?.name||"VYBE")+(unseen?' <span class="ticketUnread">●</span>':'')+'</b><span class="supportStatus '+escapeHtml(rpt.status)+'">'+escapeHtml(moderationStatusLabel(rpt.status))+'</span></div><p>'+escapeHtml(moderationReasonLabel(rpt.reason))+'</p><small>'+escapeHtml(adminDate(rpt.created_at))+(urgent?" • 🚨":"")+'</small></button>';
+  }).join(""):'<div class="empty">'+uiText("Черга порожня.")+'</div>';
+  content.innerHTML='<div class="adminHead"><div><h2>'+uiText("Модерація VYBE 🛡")+'</h2><small>'+escapeHtml(String(r.admin_role||adminRole))+'</small></div><button id="moderationRefreshBtn" class="choice">'+uiText("Оновити")+'</button></div><div class="supportStats moderationStats"><div><b>'+Number(c.open||0)+'</b><span>'+uiText("Відкриті")+'</span></div><div><b>'+Number(c.reviewed||0)+'</b><span>'+uiText("В роботі")+'</span></div><div><b>'+Number(c.resolved||0)+'</b><span>'+uiText("Вирішені")+'</span></div><div><b>'+Number(c.dismissed||0)+'</b><span>'+uiText("Відхилено")+'</span></div><div><b>'+Number((c.underage||0)+(c.illegal_content||0))+'</b><span>🚨</span></div></div><div class="supportQueue">'+rows+'</div>';
+  $("moderationRefreshBtn").onclick=()=>openAdminModeration();
+  content.querySelectorAll(".moderationQueueItem").forEach(btn=>btn.onclick=()=>{const x=reports[Number(btn.dataset.index)];if(x)openAdminModerationReport(x)});
+  requestAnimationFrame(()=>{const card=sheet.querySelector(".sheetCard");if(card)card.scrollTop=0});
+}
+
 function openSettings(){
   content.innerHTML='<h2>'+uiText("Налаштування ⚙")+'</h2><p class="settingsLabel">'+uiText("Мова")+'</p><div class="languageGrid"><button id="langUkBtn" class="choice '+(currentLang==="uk"?"selected":"")+'">🇺🇦 Українська</button><button id="langEnBtn" class="choice '+(currentLang==="en"?"selected":"")+'">🇬🇧 English</button></div><p class="settingsLabel">'+uiText("Аналітика продукту")+'</p><button id="analyticsToggleBtn" class="choice safetyChoice">'+uiText("Аналітика продукту")+': <b>'+uiText(analyticsEnabled?"Увімкнено":"Вимкнено")+'</b></button><p class="safetyHint">'+uiText("Допомагає покращувати VYBE. Без текстів чатів, bio, імен чи міста.")+'</p><button id="privacyInfoBtn" class="choice safetyChoice">'+uiText("🔐 Приватність")+'</button><button id="communityRulesBtn" class="choice safetyChoice">'+uiText("🛡 Правила спільноти")+'</button><button id="termsBtn" class="choice safetyChoice">'+uiText("📄 Умови користування")+'</button><button id="settingsBlockedBtn" class="choice safetyChoice">'+uiText("🚫 Заблоковані користувачі")+'</button><button id="deleteAccountBtn" class="choice safetyChoice dangerChoice">'+uiText("🗑 Видалити акаунт")+'</button>';
   sheet.classList.remove("hidden");
@@ -1286,6 +1403,7 @@ const referralBtn=document.getElementById("referralBtn");if(referralBtn)referral
 const settingsBtn=document.getElementById("settingsBtn");if(settingsBtn)settingsBtn.onclick=openSettings;
 const adminFinanceBtn=document.getElementById("adminFinanceBtn");if(adminFinanceBtn)adminFinanceBtn.onclick=openAdminFinance;
 const adminSupportBtn=document.getElementById("adminSupportBtn");if(adminSupportBtn)adminSupportBtn.onclick=openAdminSupport;
+const adminModerationBtn=document.getElementById("adminModerationBtn");if(adminModerationBtn)adminModerationBtn.onclick=()=>openAdminModeration();
 const photoBtn=document.getElementById("photoBtn"),removePhotoBtn=document.getElementById("removePhotoBtn");
 if(photoBtn)photoBtn.onclick=()=>{
   const input=document.createElement("input");
