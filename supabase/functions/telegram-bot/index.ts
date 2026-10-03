@@ -227,7 +227,34 @@ async function createSupportTicket(msg: any, category: "general" | "payment", te
       status: "open",
     }),
   });
-  return rows?.[0] ?? null;
+  const ticket = rows?.[0] ?? null;
+  if (ticket?.id) {
+    try {
+      const admins = await db("admin_users?select=user_id&limit=20") ?? [];
+      const ids = [...new Set(admins.map((x: any) => String(x.user_id || "")).filter(Boolean))];
+      const adminUsers = ids.length
+        ? await db(`users?id=in.(${ids.map((x) => encodeURIComponent(x)).join(",")})&select=telegram_id`) ?? []
+        : [];
+      for (const admin of adminUsers) {
+        const chatId = Number(admin.telegram_id);
+        if (!Number.isFinite(chatId)) continue;
+        try {
+          await telegram("sendMessage", {
+            chat_id: chatId,
+            text: `VYBE Support ⚑\nNew request / Нове звернення: ${category === "payment" ? "payment / оплата" : "general / загальне"}\nID: ${ticket.id}`,
+            reply_markup: {
+              inline_keyboard: [[{ text: "Open VYBE / Відкрити VYBE", web_app: { url: APP_URL } }]],
+            },
+          });
+        } catch {
+          console.warn("support:admin_notify_failed", { ticket_id: ticket.id });
+        }
+      }
+    } catch {
+      console.warn("support:admin_notify_setup_failed", { ticket_id: ticket.id });
+    }
+  }
+  return ticket;
 }
 
 Deno.serve(async (req: Request) => {
