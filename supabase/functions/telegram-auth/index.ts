@@ -179,6 +179,33 @@ async function getAdminRole(db: ReturnType<typeof dbClient>, userId: string): Pr
   return role === "owner" || role === "admin" ? role : null;
 }
 
+async function notifySupportAdmins(db: ReturnType<typeof dbClient>, botToken: string, ticketId: string, category: string) {
+  try {
+    const admins = await db("admin_users?select=user_id&limit=20") ?? [];
+    const ids = [...new Set(admins.map((x: any) => String(x.user_id || "")).filter(Boolean))];
+    if (!ids.length) return;
+    const users = await db(`users?id=in.(${ids.map((x) => encodeURIComponent(x)).join(",")})&select=telegram_id`) ?? [];
+    const label = category === "payment" ? "payment / оплата" : "general / загальне";
+    for (const admin of users) {
+      const chatId = Number(admin.telegram_id);
+      if (!Number.isFinite(chatId)) continue;
+      try {
+        await telegramApi(botToken, "sendMessage", {
+          chat_id: chatId,
+          text: `VYBE Support ⚑\nNew request / Нове звернення: ${label}\nID: ${ticketId}`,
+          reply_markup: {
+            inline_keyboard: [[{ text: "Open VYBE / Відкрити VYBE", web_app: { url: "https://restsva-ui.github.io/vibe-app/" } }]],
+          },
+        });
+      } catch (e) {
+        console.warn("support:admin_notify_failed", { ticket_id: ticketId });
+      }
+    }
+  } catch (e) {
+    console.warn("support:admin_notify_setup_failed", { ticket_id: ticketId });
+  }
+}
+
 function summarizeStarOrders(orders: any[]) {
   const now = Date.now();
   const calc = (days: number | null) => {
@@ -637,6 +664,7 @@ Deno.serve(async (req: Request) => {
         }),
       });
       const ticket = rows?.[0];
+      if (ticket?.id) await notifySupportAdmins(db, botToken, String(ticket.id), category);
       console.log("support:create", { user_id: user.id, category, ticket_id: ticket?.id ?? null });
       return json({ ok: true, ticket_id: ticket?.id ?? null, status: ticket?.status ?? "open" });
     }
