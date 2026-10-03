@@ -80,7 +80,7 @@ const I18N_PAIRS=[
   ["Для підтвердження введи ","To confirm, enter "],["Скасувати","Cancel"],
   ["Налаштування ⚙","Settings ⚙"],["🔐 Приватність","🔐 Privacy"],["🛡 Правила спільноти","🛡 Community rules"],["📄 Умови користування","📄 Terms of Use"],["Повна політика приватності","Full Privacy Policy"],["Повні правила спільноти","Full Community Rules"],["Умови","Terms"],["Правила","Rules"],["Приватність","Privacy"],["🗑 Видалити акаунт","🗑 Delete account"],
   ["Мова","Language"],["Аналітика продукту","Product analytics"],["Допомагає покращувати VYBE. Без текстів чатів, bio, імен чи міста.","Helps improve VYBE. No chat text, bio, names or city."],["Увімкнено","On"],["Вимкнено","Off"],["Українська","Українська"],["English","English"],
-  ["VYBE+ на 3 дні","VYBE+ for 3 days"],["Магазин Stars ⭐","Stars Store ⭐"],["Купити за ","Buy for "],["Оплата відкриється у Telegram.","Payment will open in Telegram."],["Не вдалося створити рахунок.","Could not create the invoice."],["Платежі доступні лише всередині Telegram.","Payments are available only inside Telegram."],["Оплата успішна ⭐ Покупку зараховано.","Payment successful ⭐ Your purchase was added."],["Платіж обробляється. Баланс оновиться автоматично.","Payment is processing. Your balance will update automatically."],["Оплату скасовано.","Payment cancelled."],["Оплата не пройшла.","Payment failed."],["Перевіряємо покупку…","Checking your purchase…"],["Хто лайкнув мене","Who liked me"],["VYBE+ відкриває список людей, які вже лайкнули тебе.","VYBE+ unlocks the list of people who already liked you."],["Поки немає нових лайків.","No new likes yet."],["Лайкнути у відповідь","Like back"],["Потрібен активний VYBE+.","Active VYBE+ is required."],["Завантажуємо магазин…","Loading store…"],["Покупка зарахована","Purchase added"],["Зірок","Stars"]
+  ["VYBE+ на 3 дні","VYBE+ for 3 days"],["Магазин Stars ⭐","Stars Store ⭐"],["Купити за ","Buy for "],["Оплата відкриється у Telegram.","Payment will open in Telegram."],["Не вдалося створити рахунок.","Could not create the invoice."],["Платежі доступні лише всередині Telegram.","Payments are available only inside Telegram."],["Оплата успішна ⭐ Покупку зараховано.","Payment successful ⭐ Your purchase was added."],["Платіж обробляється. Баланс оновиться автоматично.","Payment is processing. Your balance will update automatically."],["Оплату скасовано.","Payment cancelled."],["Оплата не пройшла.","Payment failed."],["Перевіряємо покупку…","Checking your purchase…"],["Хто лайкнув мене","Who liked me"],["VYBE+ відкриває список людей, які вже лайкнули тебе.","VYBE+ unlocks the list of people who already liked you."],["Поки немає нових лайків.","No new likes yet."],["Лайкнути у відповідь","Like back"],["Потрібен активний VYBE+.","Active VYBE+ is required."],["Завантажуємо магазин…","Loading store…"],["Покупка зарахована","Purchase added"],["Зірок","Stars"],["Я приймаю Умови користування для покупки цифрових товарів.","I accept the Terms of Use for digital purchases."],["Перед оплатою прийми Умови користування.","Accept the Terms of Use before paying."]
 ];
 
 let currentLang=load("vybeLanguage",null)||(String(tuser?.language_code||"").toLowerCase().startsWith("en")?"en":"uk");
@@ -177,7 +177,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.5",
+      app_version:"0.9.6",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -445,8 +445,10 @@ async function waitForStarOrder(orderId){
 }
 async function buyStarProduct(productKey,button){
   if(!tg?.openInvoice){showAlert("Платежі доступні лише всередині Telegram.");return}
+  const terms=$("acceptPurchaseTerms");
+  if(!terms?.checked){showAlert("Перед оплатою прийми Умови користування.");return}
   if(button){button.disabled=true;button.textContent=uiText("Перевіряємо покупку…")}
-  const r=await secureApi("star_invoice",{product_key:productKey,lang:currentLang});
+  const r=await secureApi("star_invoice",{product_key:productKey,lang:currentLang,terms_accepted:true});
   if(!r.ok||!r.invoice_url){
     if(button)button.disabled=false;
     showAlert("Не вдалося створити рахунок.");
@@ -501,10 +503,14 @@ async function renderPremiumShop(){
   const b=entitlements?.balances||{};
   const plus=plusActive()?new Date(entitlements.vybe_plus_until).toLocaleDateString(uiLocale()):uiText("не активний");
   const products=starCatalog.map(p=>'<div class="starProduct"><div><b>'+escapeHtml(starProductTitle(p))+'</b><small>'+escapeHtml(starProductDescription(p))+'</small></div><button class="choice buyStarBtn" data-product="'+escapeHtml(p.product_key)+'">'+uiText("Купити за ")+'⭐ '+Number(p.stars||0)+'</button></div>').join("");
-  content.innerHTML='<h2>'+uiText("Мої бонуси ✨")+'</h2><p>'+entitlementText()+'</p><div class="priceGrid"><div class="price"><span>SuperVYBE</span><strong>'+Number(b.supervybe||0)+'</strong></div><div class="price"><span>Spotlight</span><strong>'+Number(b.spotlight||0)+'</strong></div><div class="price"><span>VYBE+</span><strong>'+escapeHtml(plus)+'</strong></div></div>'+(Number(b.spotlight||0)>0?'<button id="useSpotlight" class="primary">'+uiText("Активувати Spotlight на 30 хв")+'</button>':'')+(plusActive()?'<button id="whoLikedBtn" class="choice premiumFeatureBtn">♥ '+uiText("Хто лайкнув мене")+'</button>':'')+'<h3 class="shopTitle">'+uiText("Магазин Stars ⭐")+'</h3><p class="safetyHint">'+uiText("Оплата відкриється у Telegram.")+'</p><div class="starShop">'+(products||'<div class="empty">'+uiText("Завантажуємо магазин…")+'</div>')+'</div>';
+  content.innerHTML='<h2>'+uiText("Мої бонуси ✨")+'</h2><p>'+entitlementText()+'</p><div class="priceGrid"><div class="price"><span>SuperVYBE</span><strong>'+Number(b.supervybe||0)+'</strong></div><div class="price"><span>Spotlight</span><strong>'+Number(b.spotlight||0)+'</strong></div><div class="price"><span>VYBE+</span><strong>'+escapeHtml(plus)+'</strong></div></div>'+(Number(b.spotlight||0)>0?'<button id="useSpotlight" class="primary">'+uiText("Активувати Spotlight на 30 хв")+'</button>':'')+(plusActive()?'<button id="whoLikedBtn" class="choice premiumFeatureBtn">♥ '+uiText("Хто лайкнув мене")+'</button>':'')+'<h3 class="shopTitle">'+uiText("Магазин Stars ⭐")+'</h3><p class="safetyHint">'+uiText("Оплата відкриється у Telegram.")+'</p><label class="checkRow purchaseTerms"><input id="acceptPurchaseTerms" type="checkbox"><span>'+uiText("Я приймаю Умови користування для покупки цифрових товарів.")+' <button id="shopTermsBtn" type="button" class="inlineLink">'+uiText("Умови")+'</button></span></label><div class="starShop">'+(products||'<div class="empty">'+uiText("Завантажуємо магазин…")+'</div>')+'</div>';
   const u=$("useSpotlight");if(u)u.onclick=useSpotlight;
   const liked=$("whoLikedBtn");if(liked)liked.onclick=openWhoLikedMe;
-  content.querySelectorAll(".buyStarBtn").forEach(btn=>btn.onclick=()=>buyStarProduct(btn.dataset.product,btn));
+  const shopTerms=$("shopTermsBtn");if(shopTerms)shopTerms.onclick=()=>openLegalPage("terms.html");
+  const terms=$("acceptPurchaseTerms");
+  const buyButtons=[...content.querySelectorAll(".buyStarBtn")];
+  buyButtons.forEach(btn=>{btn.disabled=true;btn.onclick=()=>buyStarProduct(btn.dataset.product,btn)});
+  if(terms)terms.onchange=()=>buyButtons.forEach(btn=>btn.disabled=!terms.checked);
 }
 
 
