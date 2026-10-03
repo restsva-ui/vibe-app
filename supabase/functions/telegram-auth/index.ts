@@ -124,6 +124,20 @@ async function telegramApi(botToken: string, method: string, payload: Record<str
   return data.result;
 }
 
+
+async function ensurePaymentWebhook(botToken: string) {
+  const baseUrl = Deno.env.get("SUPABASE_URL");
+  if (!baseUrl) throw new Error("SUPABASE_URL missing");
+  const secret = Deno.env.get("TELEGRAM_WEBHOOK_SECRET") ?? "";
+  const payload: Record<string, unknown> = {
+    url: `${baseUrl}/functions/v1/telegram-bot`,
+    allowed_updates: ["message", "pre_checkout_query"],
+    drop_pending_updates: false,
+  };
+  if (secret) payload.secret_token = secret;
+  await telegramApi(botToken, "setWebhook", payload);
+}
+
 async function ensureUser(db: ReturnType<typeof dbClient>, tgUser: any) {
   const telegramId = String(tgUser.id);
   const rows = await db(`users?telegram_id=eq.${encodeURIComponent(telegramId)}&select=id,telegram_id,realtime_topic,last_seen&limit=1`);
@@ -592,6 +606,7 @@ Deno.serve(async (req: Request) => {
       const description = language === "en" ? product.description_en : product.description_uk;
 
       try {
+        await ensurePaymentWebhook(botToken);
         const invoiceUrl = await telegramApi(botToken, "createInvoiceLink", {
           title: String(title).slice(0, 32),
           description: String(description).slice(0, 255),
