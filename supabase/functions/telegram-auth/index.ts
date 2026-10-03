@@ -536,6 +536,23 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    if (action === "account_delete") {
+      const confirmation = clean(body.confirmation, 40);
+      if (confirmation !== "ВИДАЛИТИ") {
+        return json({ ok: false, error: "Confirmation required" }, 400);
+      }
+
+      const profile = await getProfile(db, user.id);
+      try {
+        await deleteProfilePhotoByUrl(profile?.photo_url);
+      } catch (e) {
+        console.warn("account_delete:photo_cleanup_failed", { user_id: user.id });
+      }
+
+      await db(`users?id=eq.${encodeURIComponent(user.id)}`, { method: "DELETE" });
+      return json({ ok: true, deleted: true });
+    }
+
     if (action === "blocks_list") {
       const rows = await db(
         `blocks?blocker_id=eq.${encodeURIComponent(user.id)}&select=id,blocked_id,created_at&order=created_at.desc&limit=500`,
