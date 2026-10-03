@@ -122,3 +122,8 @@
 .adminOrder small,.adminTx small{margin-top:3px;color:var(--muted);font-size:11px}
 .adminRefundBtn{width:auto;flex:0 0 auto;padding:9px 10px;color:#ff9aae;border-color:rgba(255,71,115,.35)}
 @media (max-width:390px){.adminMetrics{grid-template-columns:1fr}.adminOrder{align-items:flex-start;flex-direction:column}.adminRefundBtn{width:100%}}
+
+
+/* VYBE 0.9.11 — finance transaction direction */
+.adminTx.incoming b{color:#72e6ad}
+.adminTx.outgoing b{color:#ff8fa8}
