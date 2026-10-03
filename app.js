@@ -222,13 +222,17 @@ let activeChat=null,chatRefreshTimer=null,socialRefreshTimer=null,typingStopTime
 
 async function secureApi(action,payload={}){
   const initData=tg?.initData;
-  if(!initData)return {ok:false,error:"Відкрий VYBE через Telegram-бота"};
+  if(!initData)return {ok:false,status:401,error:"Відкрий VYBE через Telegram-бота"};
   try{
     const r=await fetch(TELEGRAM_AUTH_URL,{method:"POST",headers:{"Content-Type":"application/json",apikey:SUPABASE_KEY},body:JSON.stringify({action,initData,...payload})});
     const text=await r.text();let body=null;try{body=text?JSON.parse(text):null}catch{}
-    if(!r.ok||!body?.ok)throw new Error(body?.error||text||"Server request failed");
-    return body;
-  }catch(e){console.error("VYBE secure API",action,e);return {ok:false,error:e?.message||"Network error"}}
+    if(!r.ok||!body?.ok){
+      const error=body?.error||text||"Server request failed";
+      console.error("VYBE secure API",action,r.status,error);
+      return {ok:false,status:r.status,error};
+    }
+    return {...body,status:r.status};
+  }catch(e){console.error("VYBE secure API",action,e);return {ok:false,status:0,error:e?.message||"Network error"}}
 }
 async function verifyTelegramAuth(){return secureApi("me")}
 
