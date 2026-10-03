@@ -613,6 +613,176 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    if (action === "support_create") {
+      const category = body.category === "payment" ? "payment" : "general";
+      const message = clean(body.message, 1500);
+      if (message.length < 3) return json({ ok: false, error: "Message is too short" }, 400);
+
+      const latest = await db(
+        `support_tickets?user_id=eq.${encodeURIComponent(user.id)}&select=created_at&order=created_at.desc&limit=1`,
+      ) ?? [];
+      if (latest?.[0]?.created_at && Date.now() - new Date(latest[0].created_at).getTime() < 120000) {
+        return json({ ok: false, error: "Please wait before sending another request" }, 429);
+      }
+
+      const rows = await db("support_tickets", {
+        method: "POST",
+        body: JSON.stringify({
+          user_id: user.id,
+          telegram_id: Number(user.telegram_id),
+          category,
+          message,
+          status: "open",
+          updated_at: new Date().toISOString(),
+        }),
+      });
+      const ticket = rows?.[0];
+      console.log("support:create", { user_id: user.id, category, ticket_id: ticket?.id ?? null });
+      return json({ ok: true, ticket_id: ticket?.id ?? null, status: ticket?.status ?? "open" });
+    }
+
+    if (action === "support_my") {
+      const rows = await db(
+        `support_tickets?user_id=eq.${encodeURIComponent(user.id)}&select=id,category,message,status,created_at,reviewed_at,reply_text,resolved_at,updated_at&order=created_at.desc&limit=20`,
+      ) ?? [];
+      return json({ ok: true, tickets: rows });
+    }
+
+    if (action === "admin_support_list") {
+      const adminRole = await getAdminRole(db, user.id);
+      if (!adminRole) return json({ ok: false, error: "Admin access required" }, 403);
+
+      const [tickets, orders] = await Promise.all([
+        db("support_tickets?select=id,user_id,telegram_id,category,message,status,created_at,reviewed_at,updated_at,admin_note,reply_text,resolved_at,resolved_by&order=created_at.desc&limit=300") ?? [],
+        db("star_orders?select=id,user_id,telegram_id,product_key,status,total_amount,created_at,paid_at,refunded_at&order=created_at.desc&limit=1000") ?? [],
+      ]);
+
+      const userIds = [...new Set((tickets ?? []).map((t: any) => String(t.user_id || "")).filter(Boolean))];
+      const users = userIds.length
+        ? await db(`users?id=in.(${userIds.map((x) => encodeURIComponent(x)).join(",")})&select=id,username,first_name`) ?? []
+        : [];
+      const profiles = userIds.length
+        ? await db(`profiles?user_id=in.(${userIds.map((x) => encodeURIComponent(x)).join(",")})&select=user_id,name`) ?? []
+        : [];
+
+      const userById = new Map((users ?? []).map((x: any) => [String(x.id), x]));
+      const profileById = new Map((profiles ?? []).map((x: any) => [String(x.user_id), x]));
+      const latestOrderByTelegram = new Map<string, any>();
+      for (const o of orders ?? []) {
+        const key = String(o.telegram_id);
+        if (!latestOrderByTelegram.has(key)) latestOrderByTelegram.set(key, o);
+      }
+
+      const decorated = (tickets ?? []).map((t: any) => {
+        const u = userById.get(String(t.user_id)) ?? null;
+        const p = profileById.get(String(t.user_id)) ?? null;
+        const order = latestOrderByTelegram.get(String(t.telegram_id)) ?? null;
+        return {
+          ...t,
+          user: {
+            name: p?.name || u?.first_name || "VYBE user",
+            username: u?.username || null,
+          },
+          latest_order: order ? {
+            id: order.id,
+            product_key: order.product_key,
+            status: order.status,
+            stars: Number(order.total_amount || 0),
+            created_at: order.created_at,
+            paid_at: order.paid_at,
+            refunded_at: order.refunded_at,
+          } : null,
+        };
+      });
+
+      const counts = (tickets ?? []).reduce((acc: any, t: any) => {
+        acc.total += 1;
+        acc[t.status] = (acc[t.status] || 0) + 1;
+        acc[t.category] = (acc[t.category] || 0) + 1;
+        return acc;
+      }, { total: 0, open: 0, reviewed: 0, resolved: 0, general: 0, payment: 0 });
+
+      return json({ ok: true, admin_role: adminRole, counts, tickets: decorated });
+    }
+
+    if (action === "admin_support_update") {
+      const adminRole = await getAdminRole(db, user.id);
+      if (!adminRole) return json({ ok: false, error: "Admin access required" }, 403);
+
+      const ticketId = clean(body.ticket_id, 80);
+      const nextStatus = ["open","reviewed","resolved"].includes(String(body.status)) ? String(body.status) : "";
+      const adminNote = clean(body.admin_note, 1000);
+      const replyText = clean(body.reply_text, 1500);
+      if (!ticketId || !nextStatus) return json({ ok: false, error: "Invalid support update" }, 400);
+
+      const rows = await db(
+        `support_tickets?id=eq.${encodeURIComponent(ticketId)}&select=id,user_id,telegram_id,category,message,status,created_at&limit=1`,
+      ) ?? [];
+      const ticket = rows?.[0];
+      if (!ticket) return json({ ok: false, error: "Ticket not found" }, 404);
+
+      if (replyText) {
+        const prefix = telegram.user.language_code?.toLowerCase().startsWith("en")
+          ? "VYBE Support"
+          : "Підтримка VYBE";
+        await telegramApi(botToken, "sendMessage", {
+          chat_id: Number(ticket.telegram_id),
+          text: `${prefix}:\n\n${replyText}`,
+        });
+      }
+
+      const now = new Date().toISOString();
+      const payload: Record<string, unknown> = {
+        status: nextStatus,
+        updated_at: now,
+        admin_note: adminNote || null,
+        reply_text: replyText || null,
+      };
+      if (nextStatus === "reviewed") {
+        payload.reviewed_at = now;
+        payload.resolved_at = null;
+        payload.resolved_by = null;
+      } else if (nextStatus === "resolved") {
+        payload.reviewed_at = now;
+        payload.resolved_at = now;
+        payload.resolved_by = user.id;
+      } else {
+        payload.reviewed_at = null;
+        payload.resolved_at = null;
+        payload.resolved_by = null;
+      }
+
+      await db(`support_tickets?id=eq.${encodeURIComponent(ticketId)}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+
+      await db("admin_audit_log", {
+        method: "POST",
+        body: JSON.stringify({
+          actor_user_id: user.id,
+          action: "support_ticket_update",
+          target_ticket_id: ticket.id,
+          metadata: {
+            previous_status: ticket.status,
+            status: nextStatus,
+            category: ticket.category,
+            replied: !!replyText,
+            admin_role: adminRole,
+          },
+        }),
+      });
+
+      console.log("admin:support_ticket_update", {
+        actor_user_id: user.id,
+        ticket_id: ticket.id,
+        status: nextStatus,
+        replied: !!replyText,
+      });
+
+      return json({ ok: true, ticket_id: ticket.id, status: nextStatus, replied: !!replyText });
+    }
+
     if (action === "admin_finance_summary") {
       const adminRole = await getAdminRole(db, user.id);
       if (!adminRole) return json({ ok: false, error: "Admin access required" }, 403);
