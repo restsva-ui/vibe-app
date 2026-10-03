@@ -61,3 +61,8 @@
 .settingsLabel{margin:8px 2px 7px;color:var(--muted);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
 .languageGrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
 .languageGrid .choice{text-align:center}
+
+
+/* VYBE 0.9.3 — legal links */
+.ageLegalLinks{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:10px 0}
+.ageLegalLinks button{border:0;background:none;color:#d8b7ff;padding:5px 6px;text-decoration:underline;text-underline-offset:3px}
