@@ -34,7 +34,7 @@ const I18N_PAIRS=[
   ["Фейкова анкета / видає себе за іншу людину","Fake profile / impersonation"],["Спам або шахрайство","Spam or scam"],
   ["Образи, переслідування або шантаж","Abuse, harassment or blackmail"],["Можливо, користувачу немає 18 років","User may be under 18"],
   ["Продаж або купівля сексуальних послуг","Buying or selling sexual services"],["Незаконний або небезпечний контент","Illegal or dangerous content"],["Інша причина","Other reason"],
-  ["Безпека 🛡","Safety 🛡"],["Дії щодо ","Actions for "],["Заблокувати ","Block "],["? Ви більше не бачитимете одне одного у VYBE.","? You will no longer see each other in VYBE."],["⚑ Поскаржитися","⚑ Report"],["🚫 Заблокувати","🚫 Block"],
+  ["Безпека","Safety"],["Безпека 🛡","Safety 🛡"],["Дії щодо ","Actions for "],["Заблокувати ","Block "],["? Ви більше не бачитимете одне одного у VYBE.","? You will no longer see each other in VYBE."],["⚑ Поскаржитися","⚑ Report"],["🚫 Заблокувати","🚫 Block"],
   ["Після блокування ви не бачитимете одне одного у VYBE, а чат і нові лайки стануть недоступними.","After blocking, you will no longer see each other in VYBE, and chat and new likes will be disabled."],
   ["Не вдалося заблокувати користувача.","Could not block this user."],["Користувача заблоковано.","User blocked."],
   ["Поскаржитися ⚑","Report ⚑"],["Скарга на ","A report about "],[" буде передана на модерацію."," will be sent for moderation."],
@@ -47,6 +47,7 @@ const I18N_PAIRS=[
   ["Spotlight не списано. Перевір баланс і спробуй ще раз.","Spotlight was not used. Check your balance and try again."],
   ["Spotlight активовано на 30 хвилин ✨","Spotlight activated for 30 minutes ✨"],
   ["Привіт, ","Hi, "],["Новий користувач VYBE","New VYBE user"],["● онлайн","● online"],["нещодавно","recently"],["✓ верифіковано","✓ verified"],
+  ["Відкрий VYBE через Telegram-бота","Open VYBE from the Telegram bot"],
   ["Не вдалося підтвердити Telegram-авторизацію. Відкрий VYBE заново через бота.","Could not verify Telegram authorization. Reopen VYBE from the bot."],
   ["Входимо…","Entering…"],["Увійти","Enter"],["Вкажи ім’я та вік 18+.","Enter your name and age (18+)."],["Шукаю: ","Looking for: "],["Без опису","No bio"],
   ["Фото профілю оновлено ✅","Profile photo updated ✅"],["Не вдалося завантажити фото. Обери JPG/PNG/WebP до 12 МБ.","Could not upload the photo. Choose a JPG/PNG/WebP file up to 12 MB."],
@@ -104,7 +105,7 @@ function uiText(value){
 function uiLocale(){return currentLang==="en"?"en-US":"uk-UA"}
 function skipI18nElement(el){
   if(!el?.closest)return false;
-  return !!el.closest(".msgBubble,.bio,#profileBio,#profileMeta,#profileName,.chatTitle h2,.blockedRow b,.chatOpen .itemMain small");
+  return !!el.closest(".msgBubble,.bio,.meta,#profileBio,#profileMeta,#profileName,#hello,.nameRow h2,.chatTitle h2,.blockedRow b,.chatOpen .itemMain small,.matchOpen .itemMain small,.msgSender,.avatar,.generatedAvatar,.chatAvatar,.msgAvatar,.userNameNoI18n");
 }
 function localizeDom(root=document){
   document.documentElement.lang=currentLang==="en"?"en":"uk";
@@ -329,7 +330,7 @@ function openUserSafety(userId,name){
   if(!userId)return;
   sendTyping(activeChat?.matchId,false);activeChat=null;syncMatchRealtimeChannels();
   const safeName=escapeHtml(name||(currentLang==="en"?"user":"користувача"));
-  content.innerHTML='<h2>Безпека 🛡</h2><p>Дії щодо <b>'+safeName+'</b>.</p><button id="reportUserBtn" class="choice safetyChoice">⚑ Поскаржитися</button><button id="blockUserBtn" class="choice safetyChoice dangerChoice">🚫 Заблокувати</button><p class="safetyHint">Після блокування ви не бачитимете одне одного у VYBE, а чат і нові лайки стануть недоступними.</p>';
+  content.innerHTML='<h2>Безпека 🛡</h2><p>Дії щодо <b class="userNameNoI18n">'+safeName+'</b>.</p><button id="reportUserBtn" class="choice safetyChoice">⚑ Поскаржитися</button><button id="blockUserBtn" class="choice safetyChoice dangerChoice">🚫 Заблокувати</button><p class="safetyHint">Після блокування ви не бачитимете одне одного у VYBE, а чат і нові лайки стануть недоступними.</p>';
   sheet.classList.remove("hidden");
   $("reportUserBtn").onclick=()=>openReport(userId,name);
   $("blockUserBtn").onclick=()=>blockUser(userId,name);
@@ -348,7 +349,7 @@ async function blockUser(userId,name){
 
 function openReport(userId,name){
   const options=REPORT_REASONS.map(([value,label])=>'<option value="'+value+'">'+escapeHtml(label)+'</option>').join("");
-  content.innerHTML='<h2>Поскаржитися ⚑</h2><p>Скарга на <b>'+escapeHtml(name||(currentLang==="en"?"user":"користувача"))+'</b> буде передана на модерацію.</p><label>Причина<select id="reportReason" class="field">'+options+'</select></label><label>Деталі<textarea id="reportDetails" class="field" maxlength="1000" placeholder="Коротко опиши, що сталося. Не додавай зайві особисті дані."></textarea></label><label class="checkRow safetyCheck"><input id="reportBlock" type="checkbox" checked><span>Також заблокувати цього користувача</span></label><button id="submitReport" class="primary">Надіслати скаргу</button>';
+  content.innerHTML='<h2>Поскаржитися ⚑</h2><p>Скарга на <b class="userNameNoI18n">'+escapeHtml(name||(currentLang==="en"?"user":"користувача"))+'</b> буде передана на модерацію.</p><label>Причина<select id="reportReason" class="field">'+options+'</select></label><label>Деталі<textarea id="reportDetails" class="field" maxlength="1000" placeholder="Коротко опиши, що сталося. Не додавай зайві особисті дані."></textarea></label><label class="checkRow safetyCheck"><input id="reportBlock" type="checkbox" checked><span>Також заблокувати цього користувача</span></label><button id="submitReport" class="primary">Надіслати скаргу</button>';
   sheet.classList.remove("hidden");
   $("submitReport").onclick=async()=>{
     const button=$("submitReport");
@@ -611,7 +612,7 @@ function renderMatches(){
   const list=$("matchesList");
   $("matchCount").textContent=matches.length;
   list.innerHTML=matches.length
-    ? matches.map((p,i)=>'<button type="button" class="listItem matchOpen" data-index="'+i+'">'+(p.photo_url?'<img class="avatar avatarPhoto" src="'+escapeHtml(p.photo_url)+'" alt="">':'<div class="avatar">♡</div>')+'<div class="itemMain"><b>'+escapeHtml(p.name)+(p.age?", "+escapeHtml(p.age):"")+(p.verified?' ✓':'')+'</b><small>Взаємний VYBE'+(p.city?" • "+escapeHtml(p.city):"")+(p.online?" • ● онлайн":"")+'</small></div><span>›</span></button>').join("")
+    ? matches.map((p,i)=>'<button type="button" class="listItem matchOpen" data-index="'+i+'">'+(p.photo_url?'<img class="avatar avatarPhoto" src="'+escapeHtml(p.photo_url)+'" alt="">':'<div class="avatar">♡</div>')+'<div class="itemMain"><b>'+escapeHtml(p.name)+(p.age?", "+escapeHtml(p.age):"")+(p.verified?' ✓':'')+'</b><small>'+uiText("Взаємний VYBE")+(p.city?" • "+escapeHtml(p.city):"")+(p.online?" • "+uiText("● онлайн"):"")+'</small></div><span>›</span></button>').join("")
     : '<div class="empty">Поки немає взаємних збігів.</div>';
   list.querySelectorAll(".matchOpen").forEach(b=>{
     b.onclick=()=>{
