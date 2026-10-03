@@ -163,3 +163,29 @@
 .adminRefundHistory small{margin-top:3px;color:var(--muted);font-size:11px}
 .adminRefundHistory strong{color:#ff8fa8;white-space:nowrap}
 @media (max-width:430px){.adminWithdraw,.adminExport{align-items:flex-start;flex-direction:column}.adminWithdraw .choice,.adminExport>div:last-child,.adminExport .choice{width:100%}.adminExport>div:last-child{display:grid;grid-template-columns:1fr 1fr}}
+
+
+/* VYBE 0.9.14 — support center */
+.supportMessage{min-height:110px;resize:vertical}
+.myTicket,.supportTicketDetail,.supportOrder{margin:8px 0;padding:13px;border:1px solid var(--line);border-radius:15px;background:#101019}
+.myTicketHead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.myTicket p,.supportTicketDetail p{white-space:pre-wrap;overflow-wrap:anywhere}
+.myTicket small,.supportTicketDetail small,.supportOrder span{display:block;color:var(--muted);font-size:11px}
+.supportStatus{padding:4px 8px;border-radius:999px;font-size:10px;font-weight:800;white-space:nowrap}
+.supportStatus.open{background:rgba(255,216,102,.13);color:#ffd866}
+.supportStatus.reviewed{background:rgba(116,173,255,.13);color:#91bfff}
+.supportStatus.resolved{background:rgba(114,230,173,.13);color:#72e6ad}
+.supportReply{margin-top:10px;padding:10px;border-left:3px solid #8b5cf6;background:rgba(139,92,246,.08);border-radius:8px}
+.supportReply p{margin:5px 0 0}
+.supportStats{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin:14px 0}
+.supportStats>div{padding:10px 5px;border:1px solid var(--line);border-radius:13px;text-align:center;background:#101019}
+.supportStats b,.supportStats span{display:block}
+.supportStats b{font-size:20px}
+.supportStats span{font-size:9px;color:var(--muted);margin-top:2px}
+.supportQueue{display:grid;gap:8px}
+.supportQueueItem{width:100%;text-align:left;padding:13px;border:1px solid var(--line);border-radius:15px;background:#101019;color:var(--text)}
+.supportQueueItem p{margin:8px 0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;color:#d8d8e2}
+.supportQueueItem small{color:var(--muted)}
+.supportOrder{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.supportAdminActions{display:grid;gap:8px;margin-top:12px}
+@media (max-width:430px){.supportStats{grid-template-columns:repeat(3,1fr)}.supportOrder{align-items:flex-start;flex-direction:column}}
