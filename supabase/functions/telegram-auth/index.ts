@@ -140,7 +140,7 @@ async function ensurePaymentWebhook(botToken: string) {
 
 async function ensureUser(db: ReturnType<typeof dbClient>, tgUser: any) {
   const telegramId = String(tgUser.id);
-  const rows = await db(`users?telegram_id=eq.${encodeURIComponent(telegramId)}&select=id,telegram_id,realtime_topic,last_seen&limit=1`);
+  const rows = await db(`users?telegram_id=eq.${encodeURIComponent(telegramId)}&select=id,telegram_id,realtime_topic,last_seen,account_status,restricted_at,restriction_reason,restricted_by&limit=1`);
   if (rows?.[0]) {
     const row = rows[0];
     const seenAt = row.last_seen ? new Date(row.last_seen).getTime() : 0;
@@ -207,6 +207,50 @@ async function notifySupportAdmins(db: ReturnType<typeof dbClient>, botToken: st
   } catch (e) {
     console.warn("support:admin_notify_setup_failed", { ticket_id: ticketId });
   }
+}
+
+async function notifyModerationAdmins(db: ReturnType<typeof dbClient>, botToken: string, reportId: string, reason: string) {
+  try {
+    const admins = await db("admin_users?select=user_id&limit=20") ?? [];
+    const ids = [...new Set(admins.map((x: any) => String(x.user_id || "")).filter(Boolean))];
+    if (!ids.length) return;
+    const users = await db(`users?id=in.(${ids.map((x) => encodeURIComponent(x)).join(",")})&select=telegram_id`) ?? [];
+    const urgent = reason === "underage" || reason === "illegal_content";
+    const labels: Record<string,string> = {
+      fake_profile: "fake profile / фейк",
+      spam: "spam / спам",
+      harassment: "harassment / переслідування",
+      underage: "underage / неповнолітній",
+      sexual_services: "sexual services / сексуальні послуги",
+      illegal_content: "illegal content / незаконний контент",
+      other: "other / інше",
+    };
+    for (const admin of users) {
+      const chatId = Number(admin.telegram_id);
+      if (!Number.isFinite(chatId)) continue;
+      try {
+        await telegramApi(botToken, "sendMessage", {
+          chat_id: chatId,
+          text: `${urgent ? "🚨 " : ""}VYBE Moderation\nNew report / Нова скарга: ${labels[reason] || reason}\nID: ${reportId}`,
+          reply_markup: {
+            inline_keyboard: [[{
+              text: "Open moderation / Відкрити модерацію",
+              web_app: { url: `https://restsva-ui.github.io/vibe-app/?admin=moderation&report=${encodeURIComponent(reportId)}` },
+            }]],
+          },
+        });
+      } catch {
+        console.warn("moderation:admin_notify_failed", { report_id: reportId });
+      }
+    }
+  } catch {
+    console.warn("moderation:admin_notify_setup_failed", { report_id: reportId });
+  }
+}
+
+async function isRestrictedUser(db: ReturnType<typeof dbClient>, userId: string): Promise<boolean> {
+  const rows = await db(`users?id=eq.${encodeURIComponent(userId)}&select=account_status&limit=1`) ?? [];
+  return rows?.[0]?.account_status === "restricted";
 }
 
 function summarizeStarOrders(orders: any[]) {
@@ -439,6 +483,26 @@ Deno.serve(async (req: Request) => {
     const db = dbClient();
     const user = await ensureUser(db, telegram.user);
 
+    const restrictedAllowed = new Set([
+      "profile_get",
+      "support_counts",
+      "support_create",
+      "support_my",
+      "support_mark_seen",
+      "account_delete",
+      "blocks_list",
+      "unblock_user",
+    ]);
+    if (user.account_status === "restricted" && !restrictedAllowed.has(String(action))) {
+      return json({
+        ok: false,
+        error: "ACCOUNT_RESTRICTED",
+        account_status: "restricted",
+        restriction_reason: user.restriction_reason ?? null,
+        restricted_at: user.restricted_at ?? null,
+      }, 403);
+    }
+
     if (action === "profile_get") {
       const adminRole = await getAdminRole(db, user.id);
       return json({
@@ -446,6 +510,9 @@ Deno.serve(async (req: Request) => {
         user_id: user.id,
         realtime_topic: user.realtime_topic ?? null,
         admin_role: adminRole,
+        account_status: user.account_status ?? "active",
+        restriction_reason: user.restriction_reason ?? null,
+        restricted_at: user.restricted_at ?? null,
         profile: await getProfile(db, user.id),
       });
     }
@@ -682,16 +749,27 @@ Deno.serve(async (req: Request) => {
 
       const adminRole = await getAdminRole(db, user.id);
       let adminUnread = 0;
+      let moderationUnread = 0;
       if (adminRole) {
-        const adminRows = await db(
-          "support_tickets?select=id,status,admin_seen_at,created_at&order=created_at.desc&limit=300",
-        ) ?? [];
+        const [adminRows, reportRows] = await Promise.all([
+          db("support_tickets?select=id,status,admin_seen_at,created_at&order=created_at.desc&limit=300") ?? [],
+          db("reports?select=id,status,admin_seen_at,created_at&order=created_at.desc&limit=500") ?? [],
+        ]);
         adminUnread = (adminRows ?? []).filter((t: any) =>
           (t.status === "open" || t.status === "reviewed") && !t.admin_seen_at
         ).length;
+        moderationUnread = (reportRows ?? []).filter((r: any) =>
+          (r.status === "open" || r.status === "reviewed") && !r.admin_seen_at
+        ).length;
       }
 
-      return json({ ok: true, user_unread: userUnread, admin_unread: adminUnread, admin_role: adminRole });
+      return json({
+        ok: true,
+        user_unread: userUnread,
+        admin_unread: adminUnread,
+        moderation_unread: moderationUnread,
+        admin_role: adminRole,
+      });
     }
 
     if (action === "support_mark_seen") {
@@ -733,6 +811,192 @@ Deno.serve(async (req: Request) => {
         { method: "PATCH", body: JSON.stringify({ admin_seen_at: new Date().toISOString() }) },
       ) ?? [];
       return json({ ok: true, marked: rows.length });
+    }
+
+    if (action === "admin_moderation_mark_seen") {
+      const adminRole = await getAdminRole(db, user.id);
+      if (!adminRole) return json({ ok: false, error: "Admin access required" }, 403);
+      const reportId = clean(body.report_id, 80);
+      if (!reportId) return json({ ok: false, error: "Report is required" }, 400);
+      const rows = await db(
+        `reports?id=eq.${encodeURIComponent(reportId)}`,
+        { method: "PATCH", body: JSON.stringify({ admin_seen_at: new Date().toISOString(), updated_at: new Date().toISOString() }) },
+      ) ?? [];
+      return json({ ok: true, marked: rows.length });
+    }
+
+    if (action === "admin_moderation_list") {
+      const adminRole = await getAdminRole(db, user.id);
+      if (!adminRole) return json({ ok: false, error: "Admin access required" }, 403);
+
+      const reports = await db(
+        "reports?select=id,reporter_id,reported_id,reason,details,status,created_at,reviewed_at,resolved_at,updated_at,admin_note,resolved_by,admin_seen_at&order=created_at.desc&limit=500",
+      ) ?? [];
+      const userIds = [...new Set((reports ?? []).flatMap((r: any) => [String(r.reporter_id || ""), String(r.reported_id || "")]).filter(Boolean))];
+      const [users, profiles] = await Promise.all([
+        userIds.length
+          ? db(`users?id=in.(${userIds.map((x) => encodeURIComponent(x)).join(",")})&select=id,telegram_id,username,first_name,account_status,restricted_at,restriction_reason`) ?? []
+          : [],
+        userIds.length
+          ? db(`profiles?user_id=in.(${userIds.map((x) => encodeURIComponent(x)).join(",")})&select=user_id,name,age,city,photo_url,verified`) ?? []
+          : [],
+      ]);
+      const userById = new Map((users ?? []).map((x: any) => [String(x.id), x]));
+      const profileById = new Map((profiles ?? []).map((x: any) => [String(x.user_id), x]));
+      const decorate = (id: string) => {
+        const u = userById.get(id) ?? {};
+        const p = profileById.get(id) ?? {};
+        return {
+          id,
+          name: p.name || u.first_name || "VYBE user",
+          age: p.age ?? null,
+          city: p.city ?? null,
+          username: u.username ?? null,
+          photo_url: p.photo_url ?? null,
+          verified: p.verified === true,
+          account_status: u.account_status || "active",
+          restricted_at: u.restricted_at ?? null,
+          restriction_reason: u.restriction_reason ?? null,
+        };
+      };
+      const decorated = (reports ?? []).map((r: any) => ({
+        ...r,
+        reporter: decorate(String(r.reporter_id)),
+        reported: decorate(String(r.reported_id)),
+      }));
+      const counts = decorated.reduce((acc: any, r: any) => {
+        acc.total += 1;
+        acc[r.status] = (acc[r.status] || 0) + 1;
+        acc[r.reason] = (acc[r.reason] || 0) + 1;
+        return acc;
+      }, {
+        total:0,open:0,reviewed:0,resolved:0,dismissed:0,
+        fake_profile:0,spam:0,harassment:0,underage:0,sexual_services:0,illegal_content:0,other:0,
+      });
+      return json({ ok: true, admin_role: adminRole, counts, reports: decorated });
+    }
+
+    if (action === "admin_moderation_update") {
+      const adminRole = await getAdminRole(db, user.id);
+      if (!adminRole) return json({ ok: false, error: "Admin access required" }, 403);
+      const reportId = clean(body.report_id, 80);
+      const nextStatus = ["open","reviewed","resolved","dismissed"].includes(String(body.status)) ? String(body.status) : "";
+      const adminNote = clean(body.admin_note, 1000);
+      if (!reportId || !nextStatus) return json({ ok: false, error: "Invalid moderation update" }, 400);
+
+      const rows = await db(
+        `reports?id=eq.${encodeURIComponent(reportId)}&select=id,reported_id,reason,status&limit=1`,
+      ) ?? [];
+      const report = rows?.[0];
+      if (!report) return json({ ok:false,error:"Report not found" },404);
+      const now = new Date().toISOString();
+      const payload: Record<string,unknown> = {
+        status: nextStatus,
+        updated_at: now,
+        admin_seen_at: now,
+        admin_note: adminNote || null,
+      };
+      if (nextStatus === "reviewed") {
+        payload.reviewed_at = now;
+        payload.resolved_at = null;
+        payload.resolved_by = null;
+      } else if (nextStatus === "resolved" || nextStatus === "dismissed") {
+        payload.reviewed_at = now;
+        payload.resolved_at = now;
+        payload.resolved_by = user.id;
+      } else {
+        payload.reviewed_at = null;
+        payload.resolved_at = null;
+        payload.resolved_by = null;
+      }
+      await db(`reports?id=eq.${encodeURIComponent(reportId)}`, {
+        method:"PATCH",
+        body:JSON.stringify(payload),
+      });
+      await db("admin_audit_log", {
+        method:"POST",
+        body:JSON.stringify({
+          actor_user_id:user.id,
+          action:"moderation_report_update",
+          target_report_id:report.id,
+          target_user_id:report.reported_id,
+          metadata:{previous_status:report.status,status:nextStatus,reason:report.reason,admin_role:adminRole},
+        }),
+      });
+      return json({ok:true,report_id:report.id,status:nextStatus});
+    }
+
+    if (action === "admin_moderation_restrict") {
+      const adminRole = await getAdminRole(db, user.id);
+      if (adminRole !== "owner") return json({ ok:false,error:"Owner access required" },403);
+      const reportId = clean(body.report_id,80);
+      const targetUserId = clean(body.target_user_id,80);
+      const mode = body.mode === "restore" ? "restore" : "restrict";
+      const confirmation = clean(body.confirmation,40);
+      if (!targetUserId || confirmation !== (mode === "restore" ? "RESTORE" : "RESTRICT")) {
+        return json({ok:false,error:"Confirmation required"},400);
+      }
+      if (targetUserId === String(user.id)) return json({ok:false,error:"Cannot restrict owner account"},400);
+
+      const targetRows = await db(
+        `users?id=eq.${encodeURIComponent(targetUserId)}&select=id,account_status&limit=1`,
+      ) ?? [];
+      const target = targetRows?.[0];
+      if (!target) return json({ok:false,error:"User not found"},404);
+
+      const now = new Date().toISOString();
+      if (mode === "restore") {
+        await db(`users?id=eq.${encodeURIComponent(targetUserId)}`, {
+          method:"PATCH",
+          body:JSON.stringify({
+            account_status:"active",
+            restricted_at:null,
+            restriction_reason:null,
+            restricted_by:null,
+          }),
+        });
+      } else {
+        let reason = clean(body.reason,120) || "moderation";
+        if (reportId) {
+          const rows = await db(`reports?id=eq.${encodeURIComponent(reportId)}&select=reason&limit=1`) ?? [];
+          if (rows?.[0]?.reason) reason = String(rows[0].reason);
+        }
+        await db(`users?id=eq.${encodeURIComponent(targetUserId)}`, {
+          method:"PATCH",
+          body:JSON.stringify({
+            account_status:"restricted",
+            restricted_at:now,
+            restriction_reason:reason,
+            restricted_by:user.id,
+          }),
+        });
+        if (reportId) {
+          await db(`reports?id=eq.${encodeURIComponent(reportId)}`, {
+            method:"PATCH",
+            body:JSON.stringify({
+              status:"resolved",
+              reviewed_at:now,
+              resolved_at:now,
+              resolved_by:user.id,
+              admin_seen_at:now,
+              updated_at:now,
+            }),
+          });
+        }
+      }
+
+      await db("admin_audit_log", {
+        method:"POST",
+        body:JSON.stringify({
+          actor_user_id:user.id,
+          action:mode === "restore" ? "moderation_user_restore" : "moderation_user_restrict",
+          target_report_id:reportId || null,
+          target_user_id:targetUserId,
+          metadata:{previous_status:target.account_status,status:mode === "restore" ? "active" : "restricted",admin_role:adminRole},
+        }),
+      });
+
+      return json({ok:true,user_id:targetUserId,account_status:mode === "restore" ? "active" : "restricted"});
     }
 
     if (action === "admin_support_list") {
@@ -1525,8 +1789,13 @@ Deno.serve(async (req: Request) => {
           reason,
           details,
           status: "open",
+          updated_at: new Date().toISOString(),
         }),
       });
+
+      if (report?.[0]?.id) {
+        await notifyModerationAdmins(db, botToken, String(report[0].id), reason);
+      }
 
       if (shouldBlock) {
         await ensureBlock(db, user.id, targetId);
@@ -1580,9 +1849,10 @@ Deno.serve(async (req: Request) => {
       const ownIntent = ownIntentRows?.[0]?.intent ?? null;
       const profileIds = profiles.map((p: any) => String(p.user_id));
       const statuses = profileIds.length
-        ? await db(`users?id=in.(${profileIds.map((x) => encodeURIComponent(x)).join(",")})&select=id,last_seen`) ?? []
+        ? await db(`users?id=in.(${profileIds.map((x) => encodeURIComponent(x)).join(",")})&select=id,last_seen,account_status`) ?? []
         : [];
-      const statusByUser = new Map(statuses.map((x: any) => [String(x.id), x.last_seen]));
+      const statusByUser = new Map(statuses.map((x: any) => [String(x.id), x]));
+      const lastSeenByUser = new Map(statuses.map((x: any) => [String(x.id), x.last_seen]));
       const byUser = new Map(intents.map((x: any) => [String(x.user_id), x]));
       const spotlightByUser = new Map(spotlightRows.map((x: any) => [String(x.user_id), x.spotlight_until]));
 
@@ -1594,14 +1864,16 @@ Deno.serve(async (req: Request) => {
           if (age < minAge || age > maxAge) return false;
           if (cityFilter && !String(p.city || "").toLocaleLowerCase("uk-UA").includes(cityFilter)) return false;
           if (verifiedOnly && p.verified !== true) return false;
-          const lastSeen = statusByUser.get(id);
+          const userStatus = statusByUser.get(id);
+          if (!userStatus || userStatus.account_status === "restricted") return false;
+          const lastSeen = lastSeenByUser.get(id);
           const online = !!lastSeen && new Date(lastSeen).getTime() >= onlineCutoff;
           if (onlineOnly && !online) return false;
           return true;
         })
         .map((p: any) => {
           const id = String(p.user_id);
-          const lastSeen = statusByUser.get(id) ?? null;
+          const lastSeen = lastSeenByUser.get(id) ?? null;
           const online = !!lastSeen && new Date(lastSeen).getTime() >= onlineCutoff;
           return {
             user_id: p.user_id,
@@ -1644,6 +1916,7 @@ Deno.serve(async (req: Request) => {
     if (action === "super_like") {
       const targetId = clean(body.target_user_id, 80);
       if (!targetId || targetId === user.id) return json({ ok: false, error: "Invalid like target" }, 400);
+      if (await isRestrictedUser(db,targetId)) return json({ ok:false,error:"User unavailable" },403);
       if (await isBlockedBetween(db, user.id, targetId)) return json({ ok: false, error: "User blocked" }, 403);
       try {
         const result = await rpc("use_supervybe_and_like", {
@@ -1666,8 +1939,9 @@ Deno.serve(async (req: Request) => {
       const targetId = clean(body.target_user_id, 80);
       const kind = body.kind === "super" ? "super" : "like";
       if (!targetId || targetId === user.id) return json({ ok: false, error: "Invalid like target" }, 400);
-      const target = await db(`users?id=eq.${encodeURIComponent(targetId)}&select=id&limit=1`);
+      const target = await db(`users?id=eq.${encodeURIComponent(targetId)}&select=id,account_status&limit=1`);
       if (!target?.[0]) return json({ ok: false, error: "User not found" }, 404);
+      if (target[0].account_status === "restricted") return json({ ok:false,error:"User unavailable" },403);
       if (await isBlockedBetween(db, user.id, targetId)) return json({ ok: false, error: "User blocked" }, 403);
 
       const existing = await db(`likes?from_user_id=eq.${encodeURIComponent(user.id)}&to_user_id=eq.${encodeURIComponent(targetId)}&select=id&limit=1`);
@@ -1699,11 +1973,15 @@ Deno.serve(async (req: Request) => {
       let profiles: any[] = [];
       if (otherIds.length) profiles = await db(`profiles?user_id=in.(${otherIds.map((x) => encodeURIComponent(x)).join(",")})&select=user_id,name,age,city,bio,photo_url,verified`) ?? [];
       const statuses = otherIds.length
-        ? await db(`users?id=in.(${otherIds.map((x) => encodeURIComponent(x)).join(",")})&select=id,last_seen`) ?? []
+        ? await db(`users?id=in.(${otherIds.map((x) => encodeURIComponent(x)).join(",")})&select=id,last_seen,account_status`) ?? []
         : [];
-      const statusById = new Map(statuses.map((x: any) => [String(x.id), x.last_seen]));
+      const statusById = new Map(statuses.map((x: any) => [String(x.id), x]));
       const byId = new Map(profiles.map((p: any) => [String(p.user_id), p]));
-      const enriched = await Promise.all(rows.map(async (m: any) => {
+      const activeRows = rows.filter((m: any) => {
+        const otherId = String(m.user_a_id) === String(user.id) ? String(m.user_b_id) : String(m.user_a_id);
+        return statusById.get(otherId)?.account_status !== "restricted";
+      });
+      const enriched = await Promise.all(activeRows.map(async (m: any) => {
         const otherId = String(m.user_a_id) === String(user.id) ? String(m.user_b_id) : String(m.user_a_id);
         const reads = await db(`match_reads?user_id=eq.${encodeURIComponent(user.id)}&match_id=eq.${encodeURIComponent(m.id)}&select=last_read_at&limit=1`) ?? [];
         const lastRead = reads?.[0]?.last_read_at ?? "1970-01-01T00:00:00.000Z";
@@ -1716,7 +1994,7 @@ Deno.serve(async (req: Request) => {
           user_id: otherId,
           profile: {
             ...(byId.get(otherId) ?? {}),
-            online: !!statusById.get(otherId) && new Date(statusById.get(otherId)).getTime() >= Date.now() - 3 * 60 * 1000,
+            online: !!statusById.get(otherId)?.last_seen && new Date(statusById.get(otherId).last_seen).getTime() >= Date.now() - 3 * 60 * 1000,
           },
           unread_count: unread.length,
           last_message: latest?.[0]?.body ?? "",
@@ -1730,6 +2008,7 @@ Deno.serve(async (req: Request) => {
       const matchId = clean(body.match_id, 80);
       const owned = await getMatchOtherUser(db, matchId, user.id);
       if (!owned) return json({ ok: false, error: "Match not found" }, 404);
+      if (await isRestrictedUser(db,owned.id)) return json({ok:false,error:"User unavailable"},403);
       if (await isBlockedBetween(db, user.id, owned.id)) return json({ ok: false, error: "User blocked" }, 403);
 
       const messages = await db(`messages?match_id=eq.${encodeURIComponent(matchId)}&select=id,match_id,sender_id,body,created_at&order=created_at.asc&limit=200`) ?? [];
@@ -1769,6 +2048,7 @@ Deno.serve(async (req: Request) => {
       if (!message) return json({ ok: false, error: "Message is empty" }, 400);
       const owned = await getMatchOtherUser(db, matchId, user.id);
       if (!owned) return json({ ok: false, error: "Match not found" }, 404);
+      if (await isRestrictedUser(db,owned.id)) return json({ok:false,error:"User unavailable"},403);
       if (await isBlockedBetween(db, user.id, owned.id)) return json({ ok: false, error: "User blocked" }, 403);
       const created = await db("messages", { method: "POST", body: JSON.stringify({ match_id: matchId, sender_id: user.id, body: message }) });
       return json({ ok: true, message: created?.[0] ?? null });
