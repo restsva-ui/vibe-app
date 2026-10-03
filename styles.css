@@ -258,3 +258,19 @@
 .reportBlockToggle.selected{border-color:rgba(255,80,110,.45);background:rgba(255,80,110,.07)}
 .reportBlockToggle.selected strong{color:#ff9eb2}
 .reporterBlockFlag{margin:10px 0;padding:8px 10px;border-radius:10px;background:rgba(255,80,110,.08);color:#ff9eb2;font-size:12px}
+
+
+/* VYBE 0.9.22 — chat peer media */
+.avatarShell{position:relative;overflow:hidden}
+.avatarShell .avatarInitial{position:absolute;inset:0;display:grid;place-items:center}
+.avatarShell img[data-avatar-img]{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.chatRow{padding:0!important;gap:0!important;overflow:hidden}
+.chatAvatarOpen{display:grid;place-items:center;align-self:stretch;padding:12px 0 12px 12px;border:0;background:none;color:inherit;cursor:pointer}
+.chatMainOpen{display:flex;align-items:center;gap:12px;flex:1;min-width:0;padding:12px;border:0;background:none;color:inherit;text-align:left;cursor:pointer}
+.chatMainOpen .itemMain{min-width:0}
+.chatMainOpen .itemMain b,.chatMainOpen .itemMain small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chatProfileAction{display:flex;align-items:center;justify-content:space-between;width:100%;margin:-4px 0 10px;padding:10px 12px;border:1px solid var(--line);border-radius:13px;background:#101019;color:#ddd;font-weight:750}
+.chatProfileAction span{color:var(--muted);font-size:20px}
+.chatAvatar.avatarShell,.msgAvatar.avatarShell{display:grid}
+.chatAvatar.avatarShell{overflow:hidden}
+.msgAvatar.avatarShell{overflow:hidden}
