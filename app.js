@@ -102,7 +102,7 @@ const I18N_PAIRS=[
   ["Для підтвердження введи ","To confirm, enter "],["Скасувати","Cancel"],
   ["Налаштування ⚙","Settings ⚙"],["🔐 Приватність","🔐 Privacy"],["🛡 Правила спільноти","🛡 Community rules"],["📄 Умови користування","📄 Terms of Use"],["Повна політика приватності","Full Privacy Policy"],["Повні правила спільноти","Full Community Rules"],["Умови","Terms"],["Правила","Rules"],["Приватність","Privacy"],["🗑 Видалити акаунт","🗑 Delete account"],
   ["Мова","Language"],["Аналітика продукту","Product analytics"],["Допомагає покращувати VYBE. Без текстів чатів, bio, імен чи міста.","Helps improve VYBE. No chat text, bio, names or city."],["Увімкнено","On"],["Вимкнено","Off"],["Українська","Українська"],["English","English"],
-  ["VYBE+ на 3 дні","VYBE+ for 3 days"],["Магазин Stars ⭐","Stars Store ⭐"],["Купити за ","Buy for "],["Оплата відкриється у Telegram.","Payment will open in Telegram."],["Не вдалося створити рахунок.","Could not create the invoice."],["Платежі доступні лише всередині Telegram.","Payments are available only inside Telegram."],["Оплата успішна ⭐ Покупку зараховано.","Payment successful ⭐ Your purchase was added."],["Платіж обробляється. Баланс оновиться автоматично.","Payment is processing. Your balance will update automatically."],["Оплату скасовано.","Payment cancelled."],["Оплата не пройшла.","Payment failed."],["Перевіряємо покупку…","Checking your purchase…"],["Хто лайкнув мене","Who liked me"],["VYBE+ відкриває список людей, які вже лайкнули тебе.","VYBE+ unlocks the list of people who already liked you."],["Поки немає нових лайків.","No new likes yet."],["Лайкнути у відповідь","Like back"],["Потрібен активний VYBE+.","Active VYBE+ is required."],["Завантажуємо магазин…","Loading store…"],["Покупка зарахована","Purchase added"],["Зірок","Stars"],["Я приймаю Умови користування для покупки цифрових товарів.","I accept the Terms of Use for digital purchases."],["Перед оплатою прийми Умови користування.","Accept the Terms of Use before paying."],["Очікуємо Telegram…","Waiting for Telegram…"],["Повернутися у VYBE","Return to VYBE"],["Тест успішний ✅ 1 Star повернуто.","Test successful ✅ 1 Star was refunded."],["Покупка успішна ⭐","Purchase successful ⭐"],["Фінанси VYBE ⭐","VYBE Finance ⭐"],["Баланс бота","Bot balance"],["24 години","24 hours"],["7 днів","7 days"],["30 днів","30 days"],["Весь час","All time"],["Валові","Gross"],["Повернення","Refunds"],["Чисті","Net"],["Оплачені","Paid"],["Звірка Telegram ↔ VYBE","Telegram ↔ VYBE reconciliation"],["Останні покупки","Recent purchases"],["Останні транзакції Telegram","Recent Telegram transactions"],["Оновити","Refresh"],["Повернути Stars","Refund Stars"],["Повернути ","Refund "],[" Stars користувачу?"," Stars to the user?"],["Повернення виконано ✅","Refund completed ✅"],["Не вдалося повернути Stars.","Could not refund Stars."],["Джерело істини для поточного балансу — Telegram.","Telegram is the source of truth for the current balance."],["Збігів","Matched"],["з","of"],["Немає транзакцій.","No transactions."],["Немає покупок.","No purchases."],["Продажі за продуктами","Sales by product"],["Статуси замовлень","Order statuses"],["Технічні спроби","Technical attempts"],["Спроб","Attempts"],["Успішних","Successful"],["Відкритих","Pending"],["Помилок","Failed"],["Прострочених","Expired"],["Скасованих","Cancelled"],["Останні замовлення","Recent orders"],["Оплата користувача","User payment"],["Повернення користувачу","Refund to user"],["Вхідна транзакція","Incoming transaction"],["Вихідна транзакція","Outgoing transaction"],["owner","owner"],["admin","admin"]
+  ["VYBE+ на 3 дні","VYBE+ for 3 days"],["Магазин Stars ⭐","Stars Store ⭐"],["Купити за ","Buy for "],["Оплата відкриється у Telegram.","Payment will open in Telegram."],["Не вдалося створити рахунок.","Could not create the invoice."],["Платежі доступні лише всередині Telegram.","Payments are available only inside Telegram."],["Оплата успішна ⭐ Покупку зараховано.","Payment successful ⭐ Your purchase was added."],["Платіж обробляється. Баланс оновиться автоматично.","Payment is processing. Your balance will update automatically."],["Оплату скасовано.","Payment cancelled."],["Оплата не пройшла.","Payment failed."],["Перевіряємо покупку…","Checking your purchase…"],["Хто лайкнув мене","Who liked me"],["VYBE+ відкриває список людей, які вже лайкнули тебе.","VYBE+ unlocks the list of people who already liked you."],["Поки немає нових лайків.","No new likes yet."],["Лайкнути у відповідь","Like back"],["Потрібен активний VYBE+.","Active VYBE+ is required."],["Завантажуємо магазин…","Loading store…"],["Покупка зарахована","Purchase added"],["Зірок","Stars"],["Я приймаю Умови користування для покупки цифрових товарів.","I accept the Terms of Use for digital purchases."],["Перед оплатою прийми Умови користування.","Accept the Terms of Use before paying."],["Очікуємо Telegram…","Waiting for Telegram…"],["Повернутися у VYBE","Return to VYBE"],["Тест успішний ✅ 1 Star повернуто.","Test successful ✅ 1 Star was refunded."],["Покупка успішна ⭐","Purchase successful ⭐"],["Фінанси VYBE ⭐","VYBE Finance ⭐"],["Баланс бота","Bot balance"],["24 години","24 hours"],["7 днів","7 days"],["30 днів","30 days"],["Весь час","All time"],["Валові","Gross"],["Повернення","Refunds"],["Чисті","Net"],["Оплачені","Paid"],["Звірка Telegram ↔ VYBE","Telegram ↔ VYBE reconciliation"],["Останні покупки","Recent purchases"],["Останні транзакції Telegram","Recent Telegram transactions"],["Оновити","Refresh"],["Повернути Stars","Refund Stars"],["Повернути ","Refund "],[" Stars користувачу?"," Stars to the user?"],["Повернення виконано ✅","Refund completed ✅"],["Не вдалося повернути Stars.","Could not refund Stars."],["Джерело істини для поточного балансу — Telegram.","Telegram is the source of truth for the current balance."],["Збігів","Matched"],["з","of"],["Немає транзакцій.","No transactions."],["Немає покупок.","No purchases."],["Продажі за продуктами","Sales by product"],["Статуси замовлень","Order statuses"],["Технічні спроби","Technical attempts"],["Історія повернень","Refund history"],["Автоматично","Automatic"],["Власник","Owner"],["Експорт продажів","Sales export"],["Завантажити CSV","Download CSV"],["Скопіювати CSV","Copy CSV"],["CSV скопійовано ✅","CSV copied ✅"],["Не вдалося експортувати дані.","Could not export data."],["Виведення Stars","Stars withdrawal"],["Виведення виконується власником через Telegram / Fragment. VYBE не зберігає 2FA і не запускає виведення від імені бота.","Withdrawal is performed by the owner through Telegram / Fragment. VYBE does not store 2FA and does not initiate withdrawals on behalf of the bot."],["Як вивести","How to withdraw"],["Спроб","Attempts"],["Успішних","Successful"],["Відкритих","Pending"],["Помилок","Failed"],["Прострочених","Expired"],["Скасованих","Cancelled"],["Останні замовлення","Recent orders"],["Оплата користувача","User payment"],["Повернення користувачу","Refund to user"],["Вхідна транзакція","Incoming transaction"],["Вихідна транзакція","Outgoing transaction"],["owner","owner"],["admin","admin"]
 ];
 
 let currentLang=load("vybeLanguage",null)||(String(tuser?.language_code||"").toLowerCase().startsWith("en")?"en":"uk");
@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.12",
+      app_version:"0.9.13",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -1009,6 +1009,39 @@ async function adminRefundOrder(orderId,stars,title){
   showAlert("Повернення виконано ✅");
   await openAdminFinance();
 }
+
+async function getFinanceCsv(){
+  const r=await secureApi("admin_finance_export");
+  if(!r.ok||!r.csv){showAlert("Не вдалося експортувати дані.");return null}
+  return r;
+}
+async function copyFinanceCsv(){
+  const r=await getFinanceCsv();if(!r)return;
+  try{
+    await navigator.clipboard.writeText(r.csv);
+    showAlert("CSV скопійовано ✅");
+  }catch{
+    const ta=document.createElement("textarea");
+    ta.value=r.csv;ta.style.position="fixed";ta.style.opacity="0";
+    document.body.appendChild(ta);ta.select();
+    const ok=document.execCommand?.("copy");
+    ta.remove();
+    showAlert(ok?"CSV скопійовано ✅":"Не вдалося експортувати дані.");
+  }
+}
+async function downloadFinanceCsv(){
+  const r=await getFinanceCsv();if(!r)return;
+  try{
+    const blob=new Blob([r.csv],{type:"text/csv;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download=r.filename||"vybe-stars.csv";
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+  }catch{
+    await copyFinanceCsv();
+  }
+}
 async function openAdminFinance(){
   if(!adminRole){showAlert("Admin access required");return}
   content.innerHTML='<h2>'+uiText("Фінанси VYBE ⭐")+'</h2><div class="empty">'+uiText("Завантаження…")+'</div>';
@@ -1024,6 +1057,8 @@ async function openAdminFinance(){
   const txs=r.telegram_transactions||[];
   const status=r.order_status_counts||{};
   const products=r.product_breakdown||[];
+  const refunds=r.refund_history||[];
+  const withdrawal=r.withdrawal||{};
   const orderHtml=orders.length?orders.map((o,i)=>{
     const title=adminOrderTitle(o);
     const refund=o.status==="paid"&&r.admin_role==="owner"?'<button class="choice adminRefundBtn" data-index="'+i+'">'+uiText("Повернути Stars")+'</button>':"";
@@ -1031,6 +1066,11 @@ async function openAdminFinance(){
   }).join(""):'<div class="empty">'+uiText("Немає покупок.")+'</div>';
   const productHtml=products.length?products.map(p=>'<div class="adminProduct"><div><b>'+escapeHtml(currentLang==="en"?(p.title_en||p.product_key):(p.title_uk||p.product_key))+'</b><small>'+uiText("Спроб")+': '+Number(p.attempts||0)+' • '+uiText("Оплачені")+': '+Number(p.paid_orders||0)+' • '+uiText("Повернення")+': '+Number(p.refund_orders||0)+'</small></div><div class="adminProductStars"><strong>⭐ '+Number(p.net_stars||0)+'</strong><small>'+uiText("Валові")+': '+Number(p.gross_stars||0)+'</small></div></div>').join(""):'<div class="empty">—</div>';
   const attemptHtml=attempts.length?attempts.map(o=>'<div class="adminAttempt"><b>'+escapeHtml(adminOrderTitle(o))+'</b><small>⭐ '+Number(o.stars||0)+' • '+escapeHtml(adminStatusLabel(o.status))+' • '+escapeHtml(adminDate(o.created_at))+'</small></div>').join(""):'<div class="empty">—</div>';
+  const refundHtml=refunds.length?refunds.map(o=>{
+    const source=o.source==="owner"?uiText("Власник"):uiText("Автоматично");
+    return '<div class="adminRefundHistory"><div><b>'+escapeHtml(adminOrderTitle(o))+'</b><small>'+escapeHtml(source)+' • '+escapeHtml(adminDate(o.refunded_at||o.audit_created_at))+'</small></div><strong>−'+Number(o.stars||0)+' ⭐</strong></div>';
+  }).join(""):'<div class="empty">—</div>';
+
 
   const txHtml=txs.length?txs.slice(0,20).map(tx=>{
     const signed=Number(tx.signed_amount??tx.amount??0);
@@ -1048,11 +1088,17 @@ async function openAdminFinance(){
     '<div class="adminRecon"><b>'+uiText("Звірка Telegram ↔ VYBE")+'</b><span>'+uiText("Збігів")+': '+Number(rec.matched_orders||0)+' '+uiText("з")+' '+Number(rec.checked_orders||0)+'</span></div>'+
     '<h3>'+uiText("Продажі за продуктами")+'</h3><div class="adminProducts">'+productHtml+'</div>'+
     '<h3>'+uiText("Статуси замовлень")+'</h3><div class="adminStatusGrid"><div><b>'+Number(status.paid||0)+'</b><span>'+uiText("Успішних")+'</span></div><div><b>'+Number(status.refunded||0)+'</b><span>'+uiText("Повернення")+'</span></div><div><b>'+Number(status.pending||0)+'</b><span>'+uiText("Відкритих")+'</span></div><div><b>'+Number(status.failed||0)+'</b><span>'+uiText("Помилок")+'</span></div><div><b>'+Number(status.expired||0)+'</b><span>'+uiText("Прострочених")+'</span></div><div><b>'+Number(status.cancelled||0)+'</b><span>'+uiText("Скасованих")+'</span></div></div>'+
+    '<div class="adminWithdraw"><div><b>'+uiText("Виведення Stars")+'</b><span>'+uiText("Виведення виконується власником через Telegram / Fragment. VYBE не зберігає 2FA і не запускає виведення від імені бота.")+'</span></div><button id="withdrawHelpBtn" class="choice">'+uiText("Як вивести")+'</button></div>'+
+    '<div class="adminExport"><div><b>'+uiText("Експорт продажів")+'</b><span>CSV • '+Number((status.paid||0)+(status.refunded||0)+(status.failed||0)+(status.expired||0)+(status.cancelled||0)+(status.pending||0))+' '+uiText("Спроб").toLowerCase()+'</span></div><div><button id="downloadCsvBtn" class="choice">'+uiText("Завантажити CSV")+'</button><button id="copyCsvBtn" class="choice">'+uiText("Скопіювати CSV")+'</button></div></div>'+
+    '<h3>'+uiText("Історія повернень")+'</h3><div class="adminRefundHistoryList">'+refundHtml+'</div>'+
     '<h3>'+uiText("Останні замовлення")+'</h3><div class="adminOrders">'+orderHtml+'</div>'+
     '<details class="adminAttempts"><summary>'+uiText("Технічні спроби")+' ('+attempts.length+')</summary><div class="adminAttemptList">'+attemptHtml+'</div></details>'+
     '<h3>'+uiText("Останні транзакції Telegram")+'</h3><div class="adminTransactions">'+txHtml+'</div>';
 
   $("adminRefreshBtn").onclick=openAdminFinance;
+  const withdrawHelp=$("withdrawHelpBtn");if(withdrawHelp)withdrawHelp.onclick=()=>{const url="https://core.telegram.org/api/stars#withdrawal";if(tg?.openLink)tg.openLink(url);else window.open(url,"_blank","noopener,noreferrer")};
+  const downloadCsv=$("downloadCsvBtn");if(downloadCsv)downloadCsv.onclick=downloadFinanceCsv;
+  const copyCsv=$("copyCsvBtn");if(copyCsv)copyCsv.onclick=copyFinanceCsv;
   content.querySelectorAll(".adminRefundBtn").forEach(btn=>btn.onclick=()=>{
     const o=orders[Number(btn.dataset.index)];if(o)adminRefundOrder(o.id,o.stars,adminOrderTitle(o));
   });
