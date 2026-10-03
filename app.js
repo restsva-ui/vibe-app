@@ -102,7 +102,7 @@ const I18N_PAIRS=[
   ["Для підтвердження введи ","To confirm, enter "],["Скасувати","Cancel"],
   ["Налаштування ⚙","Settings ⚙"],["🔐 Приватність","🔐 Privacy"],["🛡 Правила спільноти","🛡 Community rules"],["📄 Умови користування","📄 Terms of Use"],["Повна політика приватності","Full Privacy Policy"],["Повні правила спільноти","Full Community Rules"],["Умови","Terms"],["Правила","Rules"],["Приватність","Privacy"],["🗑 Видалити акаунт","🗑 Delete account"],
   ["Мова","Language"],["Аналітика продукту","Product analytics"],["Допомагає покращувати VYBE. Без текстів чатів, bio, імен чи міста.","Helps improve VYBE. No chat text, bio, names or city."],["Увімкнено","On"],["Вимкнено","Off"],["Українська","Українська"],["English","English"],
-  ["VYBE+ на 3 дні","VYBE+ for 3 days"],["Магазин Stars ⭐","Stars Store ⭐"],["Купити за ","Buy for "],["Оплата відкриється у Telegram.","Payment will open in Telegram."],["Не вдалося створити рахунок.","Could not create the invoice."],["Платежі доступні лише всередині Telegram.","Payments are available only inside Telegram."],["Оплата успішна ⭐ Покупку зараховано.","Payment successful ⭐ Your purchase was added."],["Платіж обробляється. Баланс оновиться автоматично.","Payment is processing. Your balance will update automatically."],["Оплату скасовано.","Payment cancelled."],["Оплата не пройшла.","Payment failed."],["Перевіряємо покупку…","Checking your purchase…"],["Хто лайкнув мене","Who liked me"],["VYBE+ відкриває список людей, які вже лайкнули тебе.","VYBE+ unlocks the list of people who already liked you."],["Поки немає нових лайків.","No new likes yet."],["Лайкнути у відповідь","Like back"],["Потрібен активний VYBE+.","Active VYBE+ is required."],["Завантажуємо магазин…","Loading store…"],["Покупка зарахована","Purchase added"],["Зірок","Stars"],["Я приймаю Умови користування для покупки цифрових товарів.","I accept the Terms of Use for digital purchases."],["Перед оплатою прийми Умови користування.","Accept the Terms of Use before paying."],["Очікуємо Telegram…","Waiting for Telegram…"],["Повернутися у VYBE","Return to VYBE"],["Тест успішний ✅ 1 Star повернуто.","Test successful ✅ 1 Star was refunded."],["Покупка успішна ⭐","Purchase successful ⭐"],["Фінанси VYBE ⭐","VYBE Finance ⭐"],["Баланс бота","Bot balance"],["24 години","24 hours"],["7 днів","7 days"],["30 днів","30 days"],["Весь час","All time"],["Валові","Gross"],["Повернення","Refunds"],["Чисті","Net"],["Оплачені","Paid"],["Звірка Telegram ↔ VYBE","Telegram ↔ VYBE reconciliation"],["Останні покупки","Recent purchases"],["Останні транзакції Telegram","Recent Telegram transactions"],["Оновити","Refresh"],["Повернути Stars","Refund Stars"],["Повернути ","Refund "],[" Stars користувачу?"," Stars to the user?"],["Повернення виконано ✅","Refund completed ✅"],["Не вдалося повернути Stars.","Could not refund Stars."],["Джерело істини для поточного балансу — Telegram.","Telegram is the source of truth for the current balance."],["Збігів","Matched"],["з","of"],["Немає транзакцій.","No transactions."],["Немає покупок.","No purchases."],["Продажі за продуктами","Sales by product"],["Статуси замовлень","Order statuses"],["Технічні спроби","Technical attempts"],["Історія повернень","Refund history"],["Автоматично","Automatic"],["Власник","Owner"],["Експорт продажів","Sales export"],["Завантажити CSV","Download CSV"],["Скопіювати CSV","Copy CSV"],["CSV скопійовано ✅","CSV copied ✅"],["Не вдалося експортувати дані.","Could not export data."],["Виведення Stars","Stars withdrawal"],["Виведення виконується власником через Telegram / Fragment. VYBE не зберігає 2FA і не запускає виведення від імені бота.","Withdrawal is performed by the owner through Telegram / Fragment. VYBE does not store 2FA and does not initiate withdrawals on behalf of the bot."],["Як вивести","How to withdraw"],["Спроб","Attempts"],["Успішних","Successful"],["Відкритих","Pending"],["Помилок","Failed"],["Прострочених","Expired"],["Скасованих","Cancelled"],["Останні замовлення","Recent orders"],["Оплата користувача","User payment"],["Повернення користувачу","Refund to user"],["Вхідна транзакція","Incoming transaction"],["Вихідна транзакція","Outgoing transaction"],["owner","owner"],["admin","admin"]
+  ["VYBE+ на 3 дні","VYBE+ for 3 days"],["Магазин Stars ⭐","Stars Store ⭐"],["Купити за ","Buy for "],["Оплата відкриється у Telegram.","Payment will open in Telegram."],["Не вдалося створити рахунок.","Could not create the invoice."],["Платежі доступні лише всередині Telegram.","Payments are available only inside Telegram."],["Оплата успішна ⭐ Покупку зараховано.","Payment successful ⭐ Your purchase was added."],["Платіж обробляється. Баланс оновиться автоматично.","Payment is processing. Your balance will update automatically."],["Оплату скасовано.","Payment cancelled."],["Оплата не пройшла.","Payment failed."],["Перевіряємо покупку…","Checking your purchase…"],["Хто лайкнув мене","Who liked me"],["VYBE+ відкриває список людей, які вже лайкнули тебе.","VYBE+ unlocks the list of people who already liked you."],["Поки немає нових лайків.","No new likes yet."],["Лайкнути у відповідь","Like back"],["Потрібен активний VYBE+.","Active VYBE+ is required."],["Завантажуємо магазин…","Loading store…"],["Покупка зарахована","Purchase added"],["Зірок","Stars"],["Я приймаю Умови користування для покупки цифрових товарів.","I accept the Terms of Use for digital purchases."],["Перед оплатою прийми Умови користування.","Accept the Terms of Use before paying."],["Очікуємо Telegram…","Waiting for Telegram…"],["Повернутися у VYBE","Return to VYBE"],["Тест успішний ✅ 1 Star повернуто.","Test successful ✅ 1 Star was refunded."],["Покупка успішна ⭐","Purchase successful ⭐"],["Фінанси VYBE ⭐","VYBE Finance ⭐"],["Баланс бота","Bot balance"],["24 години","24 hours"],["7 днів","7 days"],["30 днів","30 days"],["Весь час","All time"],["Валові","Gross"],["Повернення","Refunds"],["Чисті","Net"],["Оплачені","Paid"],["Звірка Telegram ↔ VYBE","Telegram ↔ VYBE reconciliation"],["Останні покупки","Recent purchases"],["Останні транзакції Telegram","Recent Telegram transactions"],["Оновити","Refresh"],["Повернути Stars","Refund Stars"],["Повернути ","Refund "],[" Stars користувачу?"," Stars to the user?"],["Повернення виконано ✅","Refund completed ✅"],["Не вдалося повернути Stars.","Could not refund Stars."],["Джерело істини для поточного балансу — Telegram.","Telegram is the source of truth for the current balance."],["Збігів","Matched"],["з","of"],["Немає транзакцій.","No transactions."],["Немає покупок.","No purchases."],["Продажі за продуктами","Sales by product"],["Статуси замовлень","Order statuses"],["Технічні спроби","Technical attempts"],["Історія повернень","Refund history"],["Автоматично","Automatic"],["Власник","Owner"],["Експорт продажів","Sales export"],["Завантажити CSV","Download CSV"],["Скопіювати CSV","Copy CSV"],["CSV скопійовано ✅","CSV copied ✅"],["Не вдалося експортувати дані.","Could not export data."],["Виведення Stars","Stars withdrawal"],["Виведення виконується власником через Telegram / Fragment. VYBE не зберігає 2FA і не запускає виведення від імені бота.","Withdrawal is performed by the owner through Telegram / Fragment. VYBE does not store 2FA and does not initiate withdrawals on behalf of the bot."],["Як вивести","How to withdraw"],["Спроб","Attempts"],["Успішних","Successful"],["Відкритих","Pending"],["Помилок","Failed"],["Прострочених","Expired"],["Скасованих","Cancelled"],["Останні замовлення","Recent orders"],["Оплата користувача","User payment"],["Повернення користувачу","Refund to user"],["Вхідна транзакція","Incoming transaction"],["Вихідна транзакція","Outgoing transaction"],["Підтримка VYBE ⚑","VYBE Support ⚑"],["Нове звернення","New request"],["Загальне питання","General question"],["Проблема з оплатою","Payment issue"],["Опиши проблему","Describe the issue"],["Надіслати у підтримку","Send to support"],["Мої звернення","My requests"],["Звернення надіслано ✅","Request sent ✅"],["Не вдалося надіслати звернення.","Could not send the request."],["Зачекай трохи перед наступним зверненням.","Please wait before sending another request."],["Відкрите","Open"],["В роботі","In review"],["Вирішено","Resolved"],["Відповідь підтримки","Support reply"],["Це звернення вже вирішено.","This request is already resolved."],["Центр підтримки","Support Center"],["Відкриті","Open"],["В роботі","Reviewed"],["Вирішені","Resolved"],["Платіжні","Payment"],["Загальні","General"],["Остання покупка","Latest purchase"],["Відкрити звернення","Open request"],["Взяти в роботу","Mark reviewed"],["Відповісти й закрити","Reply & resolve"],["Закрити без відповіді","Resolve without reply"],["Повернути у відкриті","Reopen"],["Внутрішня нотатка","Internal note"],["Відповідь користувачу","Reply to user"],["Статус оновлено ✅","Status updated ✅"],["Не вдалося оновити звернення.","Could not update the request."],["Черга порожня.","Queue is empty."],["⚑ Підтримка VYBE","⚑ VYBE Support"],["owner","owner"],["admin","admin"]
 ];
 
 let currentLang=load("vybeLanguage",null)||(String(tuser?.language_code||"").toLowerCase().startsWith("en")?"en":"uk");
@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.13",
+      app_version:"0.9.14",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -670,6 +670,7 @@ function renderProfile(){
   }
   const remove=$("removePhotoBtn");if(remove)remove.classList.toggle("hidden",!profile.photo_url);
   const adminBtn=$("adminFinanceBtn");if(adminBtn)adminBtn.classList.toggle("hidden",!adminRole);
+  const adminSupport=$("adminSupportBtn");if(adminSupport)adminSupport.classList.toggle("hidden",!adminRole);
 }
 
 function readImageAsDataUrl(file){
@@ -925,9 +926,34 @@ function openCommunityRules(){
   $("fullRulesBtn").onclick=()=>openLegalPage("community.html");
 }
 
-function openSupportInfo(){
-  content.innerHTML='<h2>Допомога ⚑</h2><p>Якщо проблема стосується конкретного користувача, відкрий його анкету або чат → ⋯ → «Поскаржитися».</p><p>Технічні помилки зараз фіксуємо під час beta-тестування. Не надсилай у скаргах паролі, банківські дані чи інші секрети.</p>';
-  sheet.classList.remove("hidden");
+function supportStatusLabel(status){
+  return status==="open"?uiText("Відкрите"):status==="reviewed"?uiText("В роботі"):status==="resolved"?uiText("Вирішено"):String(status||"");
+}
+async function openSupportInfo(){
+  content.innerHTML='<h2>'+uiText("Підтримка VYBE ⚑")+'</h2><p>'+uiText("Якщо проблема стосується конкретного користувача, відкрий його анкету або чат → ⋯ → «Поскаржитися».")+'</p><p class="safetyHint">'+uiText("Технічні помилки зараз фіксуємо під час beta-тестування. Не надсилай у скаргах паролі, банківські дані чи інші секрети.")+'</p><h3>'+uiText("Нове звернення")+'</h3><select id="supportCategory" class="field"><option value="general">'+uiText("Загальне питання")+'</option><option value="payment">'+uiText("Проблема з оплатою")+'</option></select><textarea id="supportMessage" class="field supportMessage" maxlength="1500" placeholder="'+uiText("Опиши проблему")+'"></textarea><button id="supportSubmitBtn" class="primary">'+uiText("Надіслати у підтримку")+'</button><h3>'+uiText("Мої звернення")+'</h3><div id="mySupportTickets"><div class="empty">'+uiText("Завантаження…")+'</div></div>';
+  sheet.classList.remove("hidden");tg?.BackButton?.show?.();
+  const list=$("mySupportTickets");
+  const mine=await secureApi("support_my");
+  if(mine.ok){
+    const rows=mine.tickets||[];
+    list.innerHTML=rows.length?rows.map(t=>'<div class="myTicket"><div class="myTicketHead"><b>'+escapeHtml(t.category==="payment"?uiText("Проблема з оплатою"):uiText("Загальне питання"))+'</b><span class="supportStatus '+escapeHtml(t.status)+'">'+escapeHtml(supportStatusLabel(t.status))+'</span></div><p>'+escapeHtml(t.message)+'</p><small>'+escapeHtml(adminDate(t.created_at))+'</small>'+(t.reply_text?'<div class="supportReply"><b>'+uiText("Відповідь підтримки")+'</b><p>'+escapeHtml(t.reply_text)+'</p></div>':'')+'</div>').join(""):'<div class="empty">'+uiText("Черга порожня.")+'</div>';
+  }
+  $("supportSubmitBtn").onclick=async()=>{
+    const btn=$("supportSubmitBtn");
+    const message=$("supportMessage").value.trim();
+    if(message.length<3){showAlert("Опиши проблему");return}
+    btn.disabled=true;
+    const r=await secureApi("support_create",{category:$("supportCategory").value,message});
+    btn.disabled=false;
+    if(!r.ok){
+      showAlert(r.status===429?"Зачекай трохи перед наступним зверненням.":"Не вдалося надіслати звернення.");
+      return;
+    }
+    analyticsCapture("support_request_created",{category:$("supportCategory").value});
+    tg?.HapticFeedback?.notificationOccurred("success");
+    showAlert("Звернення надіслано ✅");
+    await openSupportInfo();
+  };
 }
 
 function resetLocalVYBE(){
@@ -1105,6 +1131,48 @@ async function openAdminFinance(){
   requestAnimationFrame(()=>{const card=sheet.querySelector(".sheetCard");if(card)card.scrollTop=0});
 }
 
+function adminSupportTicketTitle(t){
+  const name=t.user?.name||"VYBE";
+  const category=t.category==="payment"?uiText("Проблема з оплатою"):uiText("Загальне питання");
+  return name+" • "+category;
+}
+async function updateAdminSupport(ticketId,status,replyText="",adminNote=""){
+  const r=await secureApi("admin_support_update",{ticket_id:ticketId,status,reply_text:replyText,admin_note:adminNote});
+  if(!r.ok){showAlert("Не вдалося оновити звернення.");return false}
+  analyticsCapture("admin_support_updated",{status,replied:!!replyText});
+  tg?.HapticFeedback?.notificationOccurred("success");
+  showAlert("Статус оновлено ✅");
+  return true;
+}
+async function openAdminSupportTicket(ticket){
+  const order=ticket.latest_order;
+  content.innerHTML='<div class="adminHead"><div><h2>'+uiText("Центр підтримки")+'</h2><small>'+escapeHtml(adminSupportTicketTitle(ticket))+'</small></div><button id="backToSupportQueue" class="choice">←</button></div><div class="supportTicketDetail"><div class="myTicketHead"><b>'+escapeHtml(ticket.user?.name||"VYBE")+'</b><span class="supportStatus '+escapeHtml(ticket.status)+'">'+escapeHtml(supportStatusLabel(ticket.status))+'</span></div>'+(ticket.user?.username?'<small>@'+escapeHtml(ticket.user.username)+'</small>':'')+'<p>'+escapeHtml(ticket.message)+'</p><small>'+escapeHtml(adminDate(ticket.created_at))+'</small></div>'+(order?'<div class="supportOrder"><b>'+uiText("Остання покупка")+'</b><span>'+escapeHtml(order.product_key)+' • ⭐ '+Number(order.stars||0)+' • '+escapeHtml(adminStatusLabel(order.status))+'</span></div>':'')+'<label>'+uiText("Внутрішня нотатка")+'<textarea id="supportAdminNote" class="field supportMessage" maxlength="1000">'+escapeHtml(ticket.admin_note||"")+'</textarea></label><label>'+uiText("Відповідь користувачу")+'<textarea id="supportReplyText" class="field supportMessage" maxlength="1500" placeholder="'+uiText("Відповідь користувачу")+'"></textarea></label><div class="supportAdminActions">'+(ticket.status!=="reviewed"?'<button id="markReviewedBtn" class="choice">'+uiText("Взяти в роботу")+'</button>':'')+'<button id="replyResolveBtn" class="primary">'+uiText("Відповісти й закрити")+'</button><button id="resolveNoReplyBtn" class="choice">'+uiText("Закрити без відповіді")+'</button>'+(ticket.status==="resolved"?'<button id="reopenTicketBtn" class="choice">'+uiText("Повернути у відкриті")+'</button>':'')+'</div>';
+  $("backToSupportQueue").onclick=openAdminSupport;
+  const note=()=>$("supportAdminNote")?.value?.trim()||"";
+  const reply=()=>$("supportReplyText")?.value?.trim()||"";
+  const reviewed=$("markReviewedBtn");if(reviewed)reviewed.onclick=async()=>{if(await updateAdminSupport(ticket.id,"reviewed","",note()))openAdminSupport()};
+  $("replyResolveBtn").onclick=async()=>{const text=reply();if(text.length<2){showAlert("Відповідь користувачу");return}if(await updateAdminSupport(ticket.id,"resolved",text,note()))openAdminSupport()};
+  $("resolveNoReplyBtn").onclick=async()=>{if(await updateAdminSupport(ticket.id,"resolved","",note()))openAdminSupport()};
+  const reopen=$("reopenTicketBtn");if(reopen)reopen.onclick=async()=>{if(await updateAdminSupport(ticket.id,"open","",note()))openAdminSupport()};
+}
+async function openAdminSupport(){
+  if(!adminRole){showAlert("Admin access required");return}
+  content.innerHTML='<h2>'+uiText("Центр підтримки")+'</h2><div class="empty">'+uiText("Завантаження…")+'</div>';
+  sheet.classList.remove("hidden");tg?.BackButton?.show?.();
+  const r=await secureApi("admin_support_list");
+  if(!r.ok){content.innerHTML='<h2>'+uiText("Центр підтримки")+'</h2><div class="empty">'+escapeHtml(r.error||"Error")+'</div>';return}
+  const c=r.counts||{};
+  const tickets=(r.tickets||[]).sort((a,b)=>{
+    const rank={open:0,reviewed:1,resolved:2};
+    return (rank[a.status]??9)-(rank[b.status]??9)||new Date(b.created_at)-new Date(a.created_at);
+  });
+  const rows=tickets.length?tickets.map((t,i)=>'<button class="supportQueueItem" data-index="'+i+'"><div class="myTicketHead"><b>'+escapeHtml(t.user?.name||"VYBE")+'</b><span class="supportStatus '+escapeHtml(t.status)+'">'+escapeHtml(supportStatusLabel(t.status))+'</span></div><p>'+escapeHtml(t.message)+'</p><small>'+escapeHtml(t.category==="payment"?uiText("Проблема з оплатою"):uiText("Загальне питання"))+' • '+escapeHtml(adminDate(t.created_at))+'</small></button>').join(""):'<div class="empty">'+uiText("Черга порожня.")+'</div>';
+  content.innerHTML='<div class="adminHead"><div><h2>'+uiText("Центр підтримки")+'</h2><small>'+escapeHtml(String(r.admin_role||adminRole))+'</small></div><button id="supportRefreshBtn" class="choice">'+uiText("Оновити")+'</button></div><div class="supportStats"><div><b>'+Number(c.open||0)+'</b><span>'+uiText("Відкриті")+'</span></div><div><b>'+Number(c.reviewed||0)+'</b><span>'+uiText("В роботі")+'</span></div><div><b>'+Number(c.resolved||0)+'</b><span>'+uiText("Вирішені")+'</span></div><div><b>'+Number(c.payment||0)+'</b><span>'+uiText("Платіжні")+'</span></div><div><b>'+Number(c.general||0)+'</b><span>'+uiText("Загальні")+'</span></div></div><div class="supportQueue">'+rows+'</div>';
+  $("supportRefreshBtn").onclick=openAdminSupport;
+  content.querySelectorAll(".supportQueueItem").forEach(btn=>btn.onclick=()=>{const t=tickets[Number(btn.dataset.index)];if(t)openAdminSupportTicket(t)});
+  requestAnimationFrame(()=>{const card=sheet.querySelector(".sheetCard");if(card)card.scrollTop=0});
+}
+
 function openSettings(){
   content.innerHTML='<h2>'+uiText("Налаштування ⚙")+'</h2><p class="settingsLabel">'+uiText("Мова")+'</p><div class="languageGrid"><button id="langUkBtn" class="choice '+(currentLang==="uk"?"selected":"")+'">🇺🇦 Українська</button><button id="langEnBtn" class="choice '+(currentLang==="en"?"selected":"")+'">🇬🇧 English</button></div><p class="settingsLabel">'+uiText("Аналітика продукту")+'</p><button id="analyticsToggleBtn" class="choice safetyChoice">'+uiText("Аналітика продукту")+': <b>'+uiText(analyticsEnabled?"Увімкнено":"Вимкнено")+'</b></button><p class="safetyHint">'+uiText("Допомагає покращувати VYBE. Без текстів чатів, bio, імен чи міста.")+'</p><button id="privacyInfoBtn" class="choice safetyChoice">'+uiText("🔐 Приватність")+'</button><button id="communityRulesBtn" class="choice safetyChoice">'+uiText("🛡 Правила спільноти")+'</button><button id="termsBtn" class="choice safetyChoice">'+uiText("📄 Умови користування")+'</button><button id="settingsBlockedBtn" class="choice safetyChoice">'+uiText("🚫 Заблоковані користувачі")+'</button><button id="deleteAccountBtn" class="choice safetyChoice dangerChoice">'+uiText("🗑 Видалити акаунт")+'</button>';
   sheet.classList.remove("hidden");
@@ -1130,6 +1198,7 @@ if(ageRulesBtn)ageRulesBtn.onclick=()=>openLegalPage("community.html");
 const referralBtn=document.getElementById("referralBtn");if(referralBtn)referralBtn.onclick=openReferral;const blockedUsersBtn=document.getElementById("blockedUsersBtn");if(blockedUsersBtn)blockedUsersBtn.onclick=openBlockedUsers;const supportBtn=document.getElementById("supportBtn");if(supportBtn)supportBtn.onclick=openSupportInfo;
 const settingsBtn=document.getElementById("settingsBtn");if(settingsBtn)settingsBtn.onclick=openSettings;
 const adminFinanceBtn=document.getElementById("adminFinanceBtn");if(adminFinanceBtn)adminFinanceBtn.onclick=openAdminFinance;
+const adminSupportBtn=document.getElementById("adminSupportBtn");if(adminSupportBtn)adminSupportBtn.onclick=openAdminSupport;
 const photoBtn=document.getElementById("photoBtn"),removePhotoBtn=document.getElementById("removePhotoBtn");
 if(photoBtn)photoBtn.onclick=()=>{
   const input=document.createElement("input");
