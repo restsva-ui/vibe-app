@@ -531,7 +531,78 @@ async function openChat(matchId,name,userId,options={}){
 }
 function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 document.querySelectorAll(".navItem").forEach(b=>b.onclick=()=>{document.querySelectorAll(".navItem").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));$(b.dataset.target).classList.add("active")});setInterval(renderNow,60000);
-const referralBtn=document.getElementById("referralBtn");if(referralBtn)referralBtn.onclick=openReferral;const blockedUsersBtn=document.getElementById("blockedUsersBtn");if(blockedUsersBtn)blockedUsersBtn.onclick=openBlockedUsers;
+
+function openPrivacyInfo(){
+  content.innerHTML='<h2>Приватність 🔐</h2><p>VYBE використовує Telegram-авторизацію та зберігає лише дані, потрібні для роботи сервісу: Telegram ID, анкету, фото, VYBE NOW, лайки, збіги, приватні повідомлення, блокування, скарги та бонуси.</p><p>Фото зберігаються у Supabase Storage. Тексти приватних повідомлень не передаються в Realtime Broadcast — через realtime передаються лише технічні сигнали про зміни.</p><p>Ти можеш видалити акаунт у Налаштуваннях. Після підтвердження профіль і пов’язані дані видаляються з активної бази.</p>';
+  sheet.classList.remove("hidden");
+}
+
+function openCommunityRules(){
+  content.innerHTML='<h2>Правила спільноти 🛡</h2><p>VYBE — лише для повнолітніх 18+.</p><p>Заборонені: примус, шантаж, переслідування, шахрайство, видавання себе за іншу людину, участь неповнолітніх, продаж сексуальних послуг та незаконний контент.</p><p>Для небезпечного або підозрілого профілю використовуй «Поскаржитися» або «Заблокувати».</p>';
+  sheet.classList.remove("hidden");
+}
+
+function openSupportInfo(){
+  content.innerHTML='<h2>Допомога ⚑</h2><p>Якщо проблема стосується конкретного користувача, відкрий його анкету або чат → ⋯ → «Поскаржитися».</p><p>Технічні помилки зараз фіксуємо під час beta-тестування. Не надсилай у скаргах паролі, банківські дані чи інші секрети.</p>';
+  sheet.classList.remove("hidden");
+}
+
+function resetLocalVYBE(){
+  const keys=[];
+  for(let i=0;i<localStorage.length;i++){
+    const key=localStorage.key(i);
+    if(key&&key.startsWith("vybe"))keys.push(key);
+  }
+  keys.forEach(key=>localStorage.removeItem(key));
+}
+
+async function deleteAccount(){
+  const typed=$("deleteConfirmInput")?.value?.trim()||"";
+  const button=$("deleteAccountConfirm");
+  if(typed!=="ВИДАЛИТИ"){
+    tg?.showAlert?.('Для підтвердження введи слово «ВИДАЛИТИ».');
+    return;
+  }
+  if(button){button.disabled=true;button.textContent="Видаляємо…"}
+  const r=await secureApi("account_delete",{confirmation:typed});
+  if(!r.ok){
+    if(button){button.disabled=false;button.textContent="Видалити акаунт назавжди"}
+    tg?.showAlert?.("Не вдалося видалити акаунт. Спробуй ще раз.");
+    return;
+  }
+  if(realtimeUserChannel&&realtimeClient){try{realtimeClient.removeChannel(realtimeUserChannel)}catch{}}
+  for(const entry of realtimeMatchChannels.values()){try{realtimeClient?.removeChannel(entry.channel)}catch{}}
+  realtimeMatchChannels.clear();
+  resetLocalVYBE();
+  profile=null;now=null;matches=[];remotePeople=[];activeChat=null;
+  sheet.classList.add("hidden");
+  tg?.HapticFeedback?.notificationOccurred("success");
+  if(tg?.showAlert){
+    tg.showAlert("Акаунт VYBE та пов’язані дані видалено.",()=>{try{tg.close()}catch{location.reload()}});
+  }else{
+    alert("Акаунт VYBE та пов’язані дані видалено.");
+    location.reload();
+  }
+}
+
+function openDeleteAccount(){
+  content.innerHTML='<h2>Видалити акаунт</h2><p class="dangerText">Ця дія незворотна. Будуть видалені анкета, фото, VYBE NOW, лайки, збіги, повідомлення, блокування, скарги, реферальні дані та бонуси, пов’язані з цим акаунтом.</p><label>Для підтвердження введи <b>ВИДАЛИТИ</b><input id="deleteConfirmInput" class="field" autocomplete="off" maxlength="20" placeholder="ВИДАЛИТИ"></label><button id="deleteAccountConfirm" class="primary dangerPrimary">Видалити акаунт назавжди</button><button id="cancelDeleteAccount" class="choice filterReset">Скасувати</button>';
+  sheet.classList.remove("hidden");
+  $("deleteAccountConfirm").onclick=deleteAccount;
+  $("cancelDeleteAccount").onclick=()=>sheet.classList.add("hidden");
+}
+
+function openSettings(){
+  content.innerHTML='<h2>Налаштування ⚙</h2><button id="privacyInfoBtn" class="choice safetyChoice">🔐 Приватність</button><button id="communityRulesBtn" class="choice safetyChoice">🛡 Правила спільноти</button><button id="settingsBlockedBtn" class="choice safetyChoice">🚫 Заблоковані користувачі</button><button id="deleteAccountBtn" class="choice safetyChoice dangerChoice">🗑 Видалити акаунт</button><p class="safetyHint">Повне перемикання мови UA/EN готується окремим наступним блоком, щоб не залишати частково перекладений інтерфейс.</p>';
+  sheet.classList.remove("hidden");
+  $("privacyInfoBtn").onclick=openPrivacyInfo;
+  $("communityRulesBtn").onclick=openCommunityRules;
+  $("settingsBlockedBtn").onclick=openBlockedUsers;
+  $("deleteAccountBtn").onclick=openDeleteAccount;
+}
+
+const referralBtn=document.getElementById("referralBtn");if(referralBtn)referralBtn.onclick=openReferral;const blockedUsersBtn=document.getElementById("blockedUsersBtn");if(blockedUsersBtn)blockedUsersBtn.onclick=openBlockedUsers;const supportBtn=document.getElementById("supportBtn");if(supportBtn)supportBtn.onclick=openSupportInfo;
+const settingsBtn=document.getElementById("settingsBtn");if(settingsBtn)settingsBtn.onclick=openSettings;
 const photoBtn=document.getElementById("photoBtn"),removePhotoBtn=document.getElementById("removePhotoBtn");
 if(photoBtn)photoBtn.onclick=()=>{
   const input=document.createElement("input");
