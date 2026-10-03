@@ -300,12 +300,13 @@ async function getNotificationPreferences(db: ReturnType<typeof dbClient>, userI
 async function recordNotificationEvent(
   db: ReturnType<typeof dbClient>,
   input: {
-    eventType: "like" | "match" | "message";
+    eventType: "like" | "match" | "message" | "system";
     recipientUserId: string;
     actorUserId?: string | null;
     matchId?: string | null;
     sourceKey?: string | null;
     variant?: "like" | "super";
+    payload?: Record<string, unknown>;
   },
 ) {
   if (input.sourceKey) {
@@ -324,7 +325,7 @@ async function recordNotificationEvent(
         event_type: input.eventType,
         match_id: input.matchId ?? null,
         source_key: input.sourceKey ?? null,
-        payload: input.variant ? { variant: input.variant } : {},
+        payload: { ...(input.payload ?? {}), ...(input.variant ? { variant: input.variant } : {}) },
       }),
     }) ?? [];
     return { event: rows?.[0] ?? null, created: true };
@@ -1337,6 +1338,16 @@ Deno.serve(async (req: Request) => {
         }),
       });
 
+      await recordNotificationEvent(db,{
+        eventType:"system",
+        recipientUserId:targetUserId,
+        sourceKey:`moderation:${mode}:${targetUserId}:${Date.now()}`,
+        payload:{
+          kind:mode === "restore" ? "account_restored" : "account_restricted",
+          reason:mode === "restore" ? null : (clean(body.reason,120) || "moderation"),
+        },
+      });
+
       if (mode === "restrict" && reportId && linkedReporterId) {
         await notifyReporterReviewed(db,botToken,linkedReporterId,reportId);
       }
@@ -1528,6 +1539,15 @@ Deno.serve(async (req: Request) => {
           },
         }),
       });
+
+      if (replyText) {
+        await recordNotificationEvent(db,{
+          eventType:"system",
+          recipientUserId:String(ticket.user_id),
+          sourceKey:`support_reply:${ticket.id}`,
+          payload:{kind:"support_reply",ticket_id:String(ticket.id)},
+        });
+      }
 
       console.log("admin:support_ticket_update", {
         actor_user_id: user.id,
