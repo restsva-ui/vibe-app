@@ -672,11 +672,67 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true, ticket_id: ticket?.id ?? null, status: ticket?.status ?? "open" });
     }
 
+    if (action === "support_counts") {
+      const mine = await db(
+        `support_tickets?user_id=eq.${encodeURIComponent(user.id)}&select=id,reply_sent_at,user_seen_at,status,created_at&order=created_at.desc&limit=100`,
+      ) ?? [];
+      const userUnread = (mine ?? []).filter((t: any) =>
+        !!t.reply_sent_at && (!t.user_seen_at || new Date(t.user_seen_at).getTime() < new Date(t.reply_sent_at).getTime())
+      ).length;
+
+      const adminRole = await getAdminRole(db, user.id);
+      let adminUnread = 0;
+      if (adminRole) {
+        const adminRows = await db(
+          "support_tickets?select=id,status,admin_seen_at,created_at&order=created_at.desc&limit=300",
+        ) ?? [];
+        adminUnread = (adminRows ?? []).filter((t: any) =>
+          (t.status === "open" || t.status === "reviewed") && !t.admin_seen_at
+        ).length;
+      }
+
+      return json({ ok: true, user_unread: userUnread, admin_unread: adminUnread, admin_role: adminRole });
+    }
+
+    if (action === "support_mark_seen") {
+      const ids = Array.isArray(body.ticket_ids)
+        ? [...new Set(body.ticket_ids.map((x: unknown) => clean(x, 80)).filter(Boolean))].slice(0, 20)
+        : [];
+      if (!ids.length) return json({ ok: true, marked: 0 });
+
+      const now = new Date().toISOString();
+      let marked = 0;
+      for (const id of ids) {
+        const rows = await db(
+          `support_tickets?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(user.id)}&reply_sent_at=not.is.null`,
+          { method: "PATCH", body: JSON.stringify({ user_seen_at: now }) },
+        ) ?? [];
+        marked += rows.length;
+      }
+      return json({ ok: true, marked });
+    }
+
     if (action === "support_my") {
       const rows = await db(
-        `support_tickets?user_id=eq.${encodeURIComponent(user.id)}&select=id,category,message,status,created_at,reviewed_at,reply_text,resolved_at,updated_at&order=created_at.desc&limit=20`,
+        `support_tickets?user_id=eq.${encodeURIComponent(user.id)}&select=id,category,message,status,created_at,reviewed_at,reply_text,reply_sent_at,user_seen_at,resolved_at,updated_at&order=created_at.desc&limit=20`,
       ) ?? [];
-      return json({ ok: true, tickets: rows });
+      const tickets = (rows ?? []).map((t: any) => ({
+        ...t,
+        unread_reply: !!t.reply_sent_at && (!t.user_seen_at || new Date(t.user_seen_at).getTime() < new Date(t.reply_sent_at).getTime()),
+      }));
+      return json({ ok: true, tickets });
+    }
+
+    if (action === "admin_support_mark_seen") {
+      const adminRole = await getAdminRole(db, user.id);
+      if (!adminRole) return json({ ok: false, error: "Admin access required" }, 403);
+      const ticketId = clean(body.ticket_id, 80);
+      if (!ticketId) return json({ ok: false, error: "Ticket is required" }, 400);
+      const rows = await db(
+        `support_tickets?id=eq.${encodeURIComponent(ticketId)}`,
+        { method: "PATCH", body: JSON.stringify({ admin_seen_at: new Date().toISOString() }) },
+      ) ?? [];
+      return json({ ok: true, marked: rows.length });
     }
 
     if (action === "admin_support_list") {
@@ -684,7 +740,7 @@ Deno.serve(async (req: Request) => {
       if (!adminRole) return json({ ok: false, error: "Admin access required" }, 403);
 
       const [tickets, orders] = await Promise.all([
-        db("support_tickets?select=id,user_id,telegram_id,category,message,status,created_at,reviewed_at,updated_at,admin_note,reply_text,resolved_at,resolved_by&order=created_at.desc&limit=300") ?? [],
+        db("support_tickets?select=id,user_id,telegram_id,category,message,status,created_at,reviewed_at,updated_at,admin_note,reply_text,reply_sent_at,user_seen_at,admin_seen_at,resolved_at,resolved_by&order=created_at.desc&limit=300") ?? [],
         db("star_orders?select=id,user_id,telegram_id,product_key,status,total_amount,created_at,paid_at,refunded_at&order=created_at.desc&limit=1000") ?? [],
       ]);
 
@@ -744,52 +800,108 @@ Deno.serve(async (req: Request) => {
       const nextStatus = ["open","reviewed","resolved"].includes(String(body.status)) ? String(body.status) : "";
       const adminNote = clean(body.admin_note, 1000);
       const replyText = clean(body.reply_text, 1500);
+      const operationId = clean(body.operation_id, 100) || crypto.randomUUID();
       if (!ticketId || !nextStatus) return json({ ok: false, error: "Invalid support update" }, 400);
+      if (replyText && nextStatus !== "resolved") {
+        return json({ ok: false, error: "Replies must resolve the ticket" }, 400);
+      }
 
       const rows = await db(
-        `support_tickets?id=eq.${encodeURIComponent(ticketId)}&select=id,user_id,telegram_id,category,message,status,created_at&limit=1`,
+        `support_tickets?id=eq.${encodeURIComponent(ticketId)}&select=id,user_id,telegram_id,category,message,status,created_at,reply_text,reply_sent_at,reply_dispatch_key&limit=1`,
       ) ?? [];
       const ticket = rows?.[0];
       if (!ticket) return json({ ok: false, error: "Ticket not found" }, 404);
 
-      if (replyText) {
-        await telegramApi(botToken, "sendMessage", {
-          chat_id: Number(ticket.telegram_id),
-          text: `VYBE Support / Підтримка VYBE:\n\n${replyText}`,
-          reply_markup: {
-            inline_keyboard: [[{
-              text: "Open request / Відкрити звернення",
-              web_app: { url: `https://restsva-ui.github.io/vibe-app/?support=ticket&ticket=${encodeURIComponent(String(ticket.id))}` },
-            }]],
-          },
+      if (replyText && ticket.reply_sent_at) {
+        return json({
+          ok: true,
+          ticket_id: ticket.id,
+          status: ticket.status,
+          replied: true,
+          duplicate_prevented: true,
         });
       }
 
       const now = new Date().toISOString();
-      const payload: Record<string, unknown> = {
-        status: nextStatus,
-        updated_at: now,
-        admin_note: adminNote || null,
-        reply_text: replyText || null,
-      };
-      if (nextStatus === "reviewed") {
-        payload.reviewed_at = now;
-        payload.resolved_at = null;
-        payload.resolved_by = null;
-      } else if (nextStatus === "resolved") {
-        payload.reviewed_at = now;
-        payload.resolved_at = now;
-        payload.resolved_by = user.id;
-      } else {
-        payload.reviewed_at = null;
-        payload.resolved_at = null;
-        payload.resolved_by = null;
-      }
 
-      await db(`support_tickets?id=eq.${encodeURIComponent(ticketId)}`, {
-        method: "PATCH",
-        body: JSON.stringify(payload),
-      });
+      if (replyText) {
+        const claimed = await db(
+          `support_tickets?id=eq.${encodeURIComponent(ticketId)}&reply_sent_at=is.null&reply_dispatch_key=is.null`,
+          {
+            method: "PATCH",
+            body: JSON.stringify({
+              reply_dispatch_key: operationId,
+              admin_seen_at: now,
+              updated_at: now,
+            }),
+          },
+        ) ?? [];
+
+        if (!claimed.length) {
+          return json({ ok: false, error: "Reply is already being processed" }, 409);
+        }
+
+        try {
+          await telegramApi(botToken, "sendMessage", {
+            chat_id: Number(ticket.telegram_id),
+            text: `VYBE Support / Підтримка VYBE:\n\n${replyText}`,
+            reply_markup: {
+              inline_keyboard: [[{
+                text: "Open request / Відкрити звернення",
+                web_app: { url: `https://restsva-ui.github.io/vibe-app/?support=ticket&ticket=${encodeURIComponent(String(ticket.id))}` },
+              }]],
+            },
+          });
+        } catch (e) {
+          await db(
+            `support_tickets?id=eq.${encodeURIComponent(ticketId)}&reply_dispatch_key=eq.${encodeURIComponent(operationId)}&reply_sent_at=is.null`,
+            { method: "PATCH", body: JSON.stringify({ reply_dispatch_key: null, updated_at: new Date().toISOString() }) },
+          );
+          throw e;
+        }
+
+        const sentAt = new Date().toISOString();
+        await db(`support_tickets?id=eq.${encodeURIComponent(ticketId)}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            status: "resolved",
+            reviewed_at: sentAt,
+            resolved_at: sentAt,
+            resolved_by: user.id,
+            updated_at: sentAt,
+            admin_seen_at: sentAt,
+            admin_note: adminNote || null,
+            reply_text: replyText,
+            reply_sent_at: sentAt,
+            user_seen_at: null,
+          }),
+        });
+      } else {
+        const payload: Record<string, unknown> = {
+          status: nextStatus,
+          updated_at: now,
+          admin_seen_at: now,
+          admin_note: adminNote || null,
+        };
+        if (nextStatus === "reviewed") {
+          payload.reviewed_at = now;
+          payload.resolved_at = null;
+          payload.resolved_by = null;
+        } else if (nextStatus === "resolved") {
+          payload.reviewed_at = now;
+          payload.resolved_at = now;
+          payload.resolved_by = user.id;
+        } else {
+          payload.reviewed_at = null;
+          payload.resolved_at = null;
+          payload.resolved_by = null;
+        }
+
+        await db(`support_tickets?id=eq.${encodeURIComponent(ticketId)}`, {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        });
+      }
 
       await db("admin_audit_log", {
         method: "POST",
@@ -799,9 +911,10 @@ Deno.serve(async (req: Request) => {
           target_ticket_id: ticket.id,
           metadata: {
             previous_status: ticket.status,
-            status: nextStatus,
+            status: replyText ? "resolved" : nextStatus,
             category: ticket.category,
             replied: !!replyText,
+            operation_id: operationId,
             admin_role: adminRole,
           },
         }),
@@ -810,11 +923,17 @@ Deno.serve(async (req: Request) => {
       console.log("admin:support_ticket_update", {
         actor_user_id: user.id,
         ticket_id: ticket.id,
-        status: nextStatus,
+        status: replyText ? "resolved" : nextStatus,
         replied: !!replyText,
       });
 
-      return json({ ok: true, ticket_id: ticket.id, status: nextStatus, replied: !!replyText });
+      return json({
+        ok: true,
+        ticket_id: ticket.id,
+        status: replyText ? "resolved" : nextStatus,
+        replied: !!replyText,
+        duplicate_prevented: false,
+      });
     }
 
     if (action === "admin_finance_summary") {
