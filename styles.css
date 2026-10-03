@@ -217,3 +217,10 @@
 .restrictionReason{margin:14px 0;padding:12px;border:1px solid var(--line);border-radius:14px;text-align:left;background:#101019}
 .restrictionReason b,.restrictionReason span{display:block}
 .restrictionReason span{margin-top:4px;color:#ffb1c0}
+
+
+/* VYBE 0.9.19 — support/report distinction */
+.supportReportHint{margin:8px 0 14px;padding:12px 13px;border:1px solid rgba(255,216,102,.24);border-radius:14px;background:rgba(255,216,102,.06)}
+.supportReportHint b,.supportReportHint span{display:block}
+.supportReportHint b{line-height:1.45}
+.supportReportHint span{margin-top:6px;color:var(--muted);font-size:12px;line-height:1.45}
