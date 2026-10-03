@@ -730,6 +730,7 @@ Deno.serve(async (req: Request) => {
           category,
           message,
           status: "open",
+          block_requested: shouldBlock,
           updated_at: new Date().toISOString(),
         }),
       });
@@ -830,7 +831,7 @@ Deno.serve(async (req: Request) => {
       if (!adminRole) return json({ ok: false, error: "Admin access required" }, 403);
 
       const reports = await db(
-        "reports?select=id,reporter_id,reported_id,reason,details,status,created_at,reviewed_at,resolved_at,updated_at,admin_note,resolved_by,admin_seen_at&order=created_at.desc&limit=500",
+        "reports?select=id,reporter_id,reported_id,reason,details,status,created_at,reviewed_at,resolved_at,updated_at,admin_note,resolved_by,admin_seen_at,block_requested&order=created_at.desc&limit=500",
       ) ?? [];
       const userIds = [...new Set((reports ?? []).flatMap((r: any) => [String(r.reporter_id || ""), String(r.reported_id || "")]).filter(Boolean))];
       const [users, profiles] = await Promise.all([
@@ -1766,7 +1767,7 @@ Deno.serve(async (req: Request) => {
       const targetId = clean(body.target_user_id, 80);
       const reason = clean(body.reason, 40);
       const details = clean(body.details, 1000) || null;
-      const shouldBlock = body.block === true;
+      const shouldBlock = body.block === true || body.block === "true" || body.block === 1 || body.block === "1";
       const allowedReasons = new Set([
         "fake_profile",
         "spam",
@@ -1802,6 +1803,14 @@ Deno.serve(async (req: Request) => {
         await ensureBlock(db, user.id, targetId);
         await removePairLikes(db, user.id, targetId);
       }
+
+      console.log("report:create", {
+        report_id: report?.[0]?.id ?? null,
+        reporter_id: user.id,
+        reported_id: targetId,
+        reason,
+        block_requested: shouldBlock,
+      });
 
       return json({
         ok: true,
