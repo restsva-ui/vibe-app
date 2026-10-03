@@ -127,3 +127,24 @@
 /* VYBE 0.9.11 — finance transaction direction */
 .adminTx.incoming b{color:#72e6ad}
 .adminTx.outgoing b{color:#ff8fa8}
+
+
+/* VYBE 0.9.12 — finance breakdown */
+.adminProducts{display:grid;gap:8px}
+.adminProduct{display:flex;justify-content:space-between;gap:12px;padding:13px;border:1px solid var(--line);border-radius:15px;background:#101019}
+.adminProduct b,.adminProduct small{display:block}
+.adminProduct small{color:var(--muted);font-size:11px;margin-top:3px}
+.adminProductStars{text-align:right;flex:0 0 auto}
+.adminProductStars strong{font-size:18px;color:#ffd866}
+.adminStatusGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.adminStatusGrid>div{padding:11px;border:1px solid var(--line);border-radius:14px;background:#101019;text-align:center}
+.adminStatusGrid b,.adminStatusGrid span{display:block}
+.adminStatusGrid b{font-size:20px}
+.adminStatusGrid span{font-size:10px;color:var(--muted);margin-top:2px}
+.adminAttempts{margin:14px 0;border:1px solid var(--line);border-radius:15px;background:#0f0f18}
+.adminAttempts summary{cursor:pointer;padding:12px 14px;font-weight:700}
+.adminAttemptList{display:grid;gap:6px;padding:0 10px 10px}
+.adminAttempt{padding:10px;border-radius:12px;background:#151520}
+.adminAttempt b,.adminAttempt small{display:block}
+.adminAttempt small{color:var(--muted);font-size:11px;margin-top:2px}
+@media (max-width:390px){.adminStatusGrid{grid-template-columns:repeat(2,1fr)}.adminProduct{flex-direction:column}.adminProductStars{text-align:left}}
