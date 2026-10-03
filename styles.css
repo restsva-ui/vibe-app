@@ -193,7 +193,7 @@
 
 /* VYBE 0.9.16 — support hardening */
 .menuCard button{position:relative}
-.menuBadge{margin-left:auto;margin-right:8px;min-width:22px;height:22px;padding:0 6px;border-radius:999px;display:inline-grid;place-items:center;background:#ff3f81;color:#fff;font-size:11px;font-weight:900;line-height:1}
+.menuBadge{position:absolute;right:34px;top:50%;transform:translateY(-50%);margin:0;min-width:22px;height:22px;padding:0 6px;border-radius:999px;display:inline-grid;place-items:center;background:#ff3f81;color:#fff;font-size:11px;font-weight:900;line-height:1}
 .ticketUnread{color:#ff4f8b;font-size:12px;vertical-align:middle}
 .myTicket.unread,.supportQueueItem.unread{border-color:rgba(255,63,129,.55);box-shadow:0 0 0 1px rgba(255,63,129,.08) inset}
 .supportQueueItem.unread{background:linear-gradient(135deg,rgba(255,63,129,.07),#101019 46%)}
