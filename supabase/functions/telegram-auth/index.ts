@@ -628,6 +628,55 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true, order });
     }
 
+    if (action === "likes_received") {
+      const nowIso = new Date().toISOString();
+      const plusRows = await db(
+        `user_entitlements?user_id=eq.${encodeURIComponent(user.id)}&vybe_plus_until=gt.${encodeURIComponent(nowIso)}&select=vybe_plus_until&limit=1`,
+      ) ?? [];
+      if (!plusRows?.length) return json({ ok: false, error: "VYBE+ required" }, 403);
+
+      const [likes, blockedIds, currentMatches] = await Promise.all([
+        db(`likes?to_user_id=eq.${encodeURIComponent(user.id)}&select=from_user_id,kind,created_at&order=created_at.desc&limit=200`) ?? [],
+        getBlockedUserIds(db, user.id),
+        db(`matches?or=(user_a_id.eq.${encodeURIComponent(user.id)},user_b_id.eq.${encodeURIComponent(user.id)})&select=user_a_id,user_b_id&limit=500`) ?? [],
+      ]);
+      const matchedIds = new Set((currentMatches ?? []).map((m: any) =>
+        String(m.user_a_id) === String(user.id) ? String(m.user_b_id) : String(m.user_a_id)
+      ));
+      const senderIds = [...new Set((likes ?? [])
+        .map((x: any) => String(x.from_user_id))
+        .filter((id: string) => !blockedIds.has(id) && !matchedIds.has(id)))];
+
+      if (!senderIds.length) {
+        return json({ ok: true, vybe_plus_until: plusRows[0].vybe_plus_until, people: [] });
+      }
+
+      const [profiles, statuses] = await Promise.all([
+        db(`profiles?user_id=in.(${senderIds.map((x) => encodeURIComponent(x)).join(",")})&select=user_id,name,age,city,bio,photo_url,verified`) ?? [],
+        db(`users?id=in.(${senderIds.map((x) => encodeURIComponent(x)).join(",")})&select=id,last_seen`) ?? [],
+      ]);
+      const profileById = new Map(profiles.map((p: any) => [String(p.user_id), p]));
+      const statusById = new Map(statuses.map((x: any) => [String(x.id), x.last_seen]));
+      const latestLikeByUser = new Map<string, any>();
+      for (const like of likes ?? []) {
+        const id = String(like.from_user_id);
+        if (!senderIds.includes(id) || latestLikeByUser.has(id)) continue;
+        latestLikeByUser.set(id, like);
+      }
+
+      const people = senderIds.map((id) => ({
+        user_id: id,
+        profile: {
+          ...(profileById.get(id) ?? {}),
+          online: !!statusById.get(id) && new Date(statusById.get(id)).getTime() >= Date.now() - 3 * 60 * 1000,
+        },
+        like_kind: latestLikeByUser.get(id)?.kind ?? "like",
+        liked_at: latestLikeByUser.get(id)?.created_at ?? null,
+      }));
+
+      return json({ ok: true, vybe_plus_until: plusRows[0].vybe_plus_until, people });
+    }
+
     if (action === "spotlight_use") {
       try {
         const result = await rpc("use_spotlight", { p_user_id: user.id });
