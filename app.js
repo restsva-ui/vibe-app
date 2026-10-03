@@ -34,7 +34,7 @@ const I18N_PAIRS=[
   ["Фейкова анкета / видає себе за іншу людину","Fake profile / impersonation"],["Спам або шахрайство","Spam or scam"],
   ["Образи, переслідування або шантаж","Abuse, harassment or blackmail"],["Можливо, користувачу немає 18 років","User may be under 18"],
   ["Продаж або купівля сексуальних послуг","Buying or selling sexual services"],["Незаконний або небезпечний контент","Illegal or dangerous content"],["Інша причина","Other reason"],
-  ["Безпека 🛡","Safety 🛡"],["Дії щодо ","Actions for "],["⚑ Поскаржитися","⚑ Report"],["🚫 Заблокувати","🚫 Block"],
+  ["Безпека 🛡","Safety 🛡"],["Дії щодо ","Actions for "],["Заблокувати ","Block "],["? Ви більше не бачитимете одне одного у VYBE.","? You will no longer see each other in VYBE."],["⚑ Поскаржитися","⚑ Report"],["🚫 Заблокувати","🚫 Block"],
   ["Після блокування ви не бачитимете одне одного у VYBE, а чат і нові лайки стануть недоступними.","After blocking, you will no longer see each other in VYBE, and chat and new likes will be disabled."],
   ["Не вдалося заблокувати користувача.","Could not block this user."],["Користувача заблоковано.","User blocked."],
   ["Поскаржитися ⚑","Report ⚑"],["Скарга на ","A report about "],[" буде передана на модерацію."," will be sent for moderation."],
@@ -86,12 +86,18 @@ let currentLang=load("vybeLanguage",null)||(String(tuser?.language_code||"").toL
 currentLang=currentLang==="en"?"en":"uk";
 
 const I18N_SORTED=[...I18N_PAIRS].sort((a,b)=>Math.max(b[0].length,b[1].length)-Math.max(a[0].length,a[1].length));
+const I18N_EXACT=new Set(["Я","до","Ти"]);
 function uiText(value){
   let out=String(value??"");
   for(const [uk,en] of I18N_SORTED){
     const from=currentLang==="en"?uk:en;
     const to=currentLang==="en"?en:uk;
-    if(from&&from!==to&&out.includes(from))out=out.split(from).join(to);
+    if(!from||from===to)continue;
+    if(I18N_EXACT.has(uk)){
+      if(out.trim()===from)out=out.replace(from,to);
+      continue;
+    }
+    if(out.includes(from))out=out.split(from).join(to);
   }
   return out;
 }
@@ -322,7 +328,7 @@ async function refreshSocial(){
 function openUserSafety(userId,name){
   if(!userId)return;
   sendTyping(activeChat?.matchId,false);activeChat=null;syncMatchRealtimeChannels();
-  const safeName=escapeHtml(name||"користувача");
+  const safeName=escapeHtml(name||(currentLang==="en"?"user":"користувача"));
   content.innerHTML='<h2>Безпека 🛡</h2><p>Дії щодо <b>'+safeName+'</b>.</p><button id="reportUserBtn" class="choice safetyChoice">⚑ Поскаржитися</button><button id="blockUserBtn" class="choice safetyChoice dangerChoice">🚫 Заблокувати</button><p class="safetyHint">Після блокування ви не бачитимете одне одного у VYBE, а чат і нові лайки стануть недоступними.</p>';
   sheet.classList.remove("hidden");
   $("reportUserBtn").onclick=()=>openReport(userId,name);
@@ -330,7 +336,7 @@ function openUserSafety(userId,name){
 }
 
 async function blockUser(userId,name){
-  const ok=await confirmAction("Заблокувати "+(name||"цього користувача")+"? Ви більше не бачитимете одне одного у VYBE.");
+  const ok=await confirmAction("Заблокувати "+(name||(currentLang==="en"?"this user":"цього користувача"))+"? Ви більше не бачитимете одне одного у VYBE.");
   if(!ok)return;
   const r=await secureApi("block_user",{target_user_id:userId});
   if(!r.ok){showAlert("Не вдалося заблокувати користувача.");return}
@@ -342,7 +348,7 @@ async function blockUser(userId,name){
 
 function openReport(userId,name){
   const options=REPORT_REASONS.map(([value,label])=>'<option value="'+value+'">'+escapeHtml(label)+'</option>').join("");
-  content.innerHTML='<h2>Поскаржитися ⚑</h2><p>Скарга на <b>'+escapeHtml(name||"користувача")+'</b> буде передана на модерацію.</p><label>Причина<select id="reportReason" class="field">'+options+'</select></label><label>Деталі<textarea id="reportDetails" class="field" maxlength="1000" placeholder="Коротко опиши, що сталося. Не додавай зайві особисті дані."></textarea></label><label class="checkRow safetyCheck"><input id="reportBlock" type="checkbox" checked><span>Також заблокувати цього користувача</span></label><button id="submitReport" class="primary">Надіслати скаргу</button>';
+  content.innerHTML='<h2>Поскаржитися ⚑</h2><p>Скарга на <b>'+escapeHtml(name||(currentLang==="en"?"user":"користувача"))+'</b> буде передана на модерацію.</p><label>Причина<select id="reportReason" class="field">'+options+'</select></label><label>Деталі<textarea id="reportDetails" class="field" maxlength="1000" placeholder="Коротко опиши, що сталося. Не додавай зайві особисті дані."></textarea></label><label class="checkRow safetyCheck"><input id="reportBlock" type="checkbox" checked><span>Також заблокувати цього користувача</span></label><button id="submitReport" class="primary">Надіслати скаргу</button>';
   sheet.classList.remove("hidden");
   $("submitReport").onclick=async()=>{
     const button=$("submitReport");
