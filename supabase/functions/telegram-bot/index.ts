@@ -148,6 +148,49 @@ async function handleSuccessfulPayment(update: any) {
     applied: result?.applied === true,
   });
 
+  if (result?.applied === true && result?.product_key === "test_1_star") {
+    const db = dbClient();
+    try {
+      await telegram("refundStarPayment", {
+        user_id: Number(msg.from.id),
+        telegram_payment_charge_id: String(payment.telegram_payment_charge_id || ""),
+      });
+      await db(
+        `paid_rewards?source_order_id=eq.${encodeURIComponent(String(result.order_id))}`,
+        { method: "DELETE" },
+      );
+      await db(
+        `star_orders?id=eq.${encodeURIComponent(String(result.order_id))}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ status: "refunded", refunded_at: new Date().toISOString() }),
+        },
+      );
+      await db("star_products?product_key=eq.test_1_star", {
+        method: "PATCH",
+        body: JSON.stringify({ active: false, updated_at: new Date().toISOString() }),
+      });
+      console.log("stars:test_refunded", {
+        telegram_id: msg.from.id,
+        order_id: result.order_id,
+      });
+      if (msg?.chat?.id) {
+        await telegram("sendMessage", {
+          chat_id: msg.chat.id,
+          text: isEnglish(msg.from)
+            ? "Payment test successful ✅ 1 Star was automatically returned."
+            : "Тест оплати успішний ✅ 1 Star автоматично повернуто.",
+          reply_markup: {
+            inline_keyboard: [[{ text: isEnglish(msg.from) ? "Open VYBE ✨" : "Відкрити VYBE ✨", web_app: { url: APP_URL } }]],
+          },
+        });
+      }
+    } catch (e) {
+      console.error("stars:test_refund_failed", e instanceof Error ? e.message : String(e));
+    }
+    return true;
+  }
+
   if (result?.applied === true && msg?.chat?.id) {
     const text = isEnglish(msg.from)
       ? "Payment received ⭐ Your VYBE purchase is active."
