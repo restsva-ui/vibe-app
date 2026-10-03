@@ -80,7 +80,7 @@ const I18N_PAIRS=[
   ["Для підтвердження введи ","To confirm, enter "],["Скасувати","Cancel"],
   ["Налаштування ⚙","Settings ⚙"],["🔐 Приватність","🔐 Privacy"],["🛡 Правила спільноти","🛡 Community rules"],["📄 Умови користування","📄 Terms of Use"],["Повна політика приватності","Full Privacy Policy"],["Повні правила спільноти","Full Community Rules"],["Умови","Terms"],["Правила","Rules"],["Приватність","Privacy"],["🗑 Видалити акаунт","🗑 Delete account"],
   ["Мова","Language"],["Аналітика продукту","Product analytics"],["Допомагає покращувати VYBE. Без текстів чатів, bio, імен чи міста.","Helps improve VYBE. No chat text, bio, names or city."],["Увімкнено","On"],["Вимкнено","Off"],["Українська","Українська"],["English","English"],
-  ["VYBE+ на 3 дні","VYBE+ for 3 days"],["Магазин Stars ⭐","Stars Store ⭐"],["Купити за ","Buy for "],["Оплата відкриється у Telegram.","Payment will open in Telegram."],["Не вдалося створити рахунок.","Could not create the invoice."],["Платежі доступні лише всередині Telegram.","Payments are available only inside Telegram."],["Оплата успішна ⭐ Покупку зараховано.","Payment successful ⭐ Your purchase was added."],["Платіж обробляється. Баланс оновиться автоматично.","Payment is processing. Your balance will update automatically."],["Оплату скасовано.","Payment cancelled."],["Оплата не пройшла.","Payment failed."],["Перевіряємо покупку…","Checking your purchase…"],["Хто лайкнув мене","Who liked me"],["VYBE+ відкриває список людей, які вже лайкнули тебе.","VYBE+ unlocks the list of people who already liked you."],["Поки немає нових лайків.","No new likes yet."],["Лайкнути у відповідь","Like back"],["Потрібен активний VYBE+.","Active VYBE+ is required."],["Завантажуємо магазин…","Loading store…"],["Покупка зарахована","Purchase added"],["Зірок","Stars"],["Я приймаю Умови користування для покупки цифрових товарів.","I accept the Terms of Use for digital purchases."],["Перед оплатою прийми Умови користування.","Accept the Terms of Use before paying."]
+  ["VYBE+ на 3 дні","VYBE+ for 3 days"],["Магазин Stars ⭐","Stars Store ⭐"],["Купити за ","Buy for "],["Оплата відкриється у Telegram.","Payment will open in Telegram."],["Не вдалося створити рахунок.","Could not create the invoice."],["Платежі доступні лише всередині Telegram.","Payments are available only inside Telegram."],["Оплата успішна ⭐ Покупку зараховано.","Payment successful ⭐ Your purchase was added."],["Платіж обробляється. Баланс оновиться автоматично.","Payment is processing. Your balance will update automatically."],["Оплату скасовано.","Payment cancelled."],["Оплата не пройшла.","Payment failed."],["Перевіряємо покупку…","Checking your purchase…"],["Хто лайкнув мене","Who liked me"],["VYBE+ відкриває список людей, які вже лайкнули тебе.","VYBE+ unlocks the list of people who already liked you."],["Поки немає нових лайків.","No new likes yet."],["Лайкнути у відповідь","Like back"],["Потрібен активний VYBE+.","Active VYBE+ is required."],["Завантажуємо магазин…","Loading store…"],["Покупка зарахована","Purchase added"],["Зірок","Stars"],["Я приймаю Умови користування для покупки цифрових товарів.","I accept the Terms of Use for digital purchases."],["Перед оплатою прийми Умови користування.","Accept the Terms of Use before paying."],["Очікуємо Telegram…","Waiting for Telegram…"]
 ];
 
 let currentLang=load("vybeLanguage",null)||(String(tuser?.language_code||"").toLowerCase().startsWith("en")?"en":"uk");
@@ -177,7 +177,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.6",
+      app_version:"0.9.7",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -447,17 +447,20 @@ async function buyStarProduct(productKey,button){
   if(!tg?.openInvoice){showAlert("Платежі доступні лише всередині Telegram.");return}
   const terms=$("acceptPurchaseTerms");
   if(!terms?.checked){showAlert("Перед оплатою прийми Умови користування.");return}
+  const originalLabel=button?.textContent||"";
   if(button){button.disabled=true;button.textContent=uiText("Перевіряємо покупку…")}
   const r=await secureApi("star_invoice",{product_key:productKey,lang:currentLang,terms_accepted:true});
   if(!r.ok||!r.invoice_url){
-    if(button)button.disabled=false;
+    if(button){button.disabled=false;button.textContent=originalLabel}
     showAlert("Не вдалося створити рахунок.");
     return;
   }
+  if(button)button.textContent=uiText("Очікуємо Telegram…");
   analyticsCapture("stars_checkout_started",{product_key:productKey,stars:Number(r.stars||0)});
   tg.openInvoice(r.invoice_url,async status=>{
-    analyticsCapture("stars_checkout_closed",{product_key:productKey,status:String(status||"unknown")});
-    if(status==="paid"||status==="pending"){
+    const finalStatus=String(status||"unknown");
+    analyticsCapture("stars_checkout_closed",{product_key:productKey,status:finalStatus});
+    if(finalStatus==="paid"||finalStatus==="pending"){
       const order=await waitForStarOrder(r.order_id);
       await loadEntitlements();
       if(order?.status==="paid"){
@@ -470,9 +473,14 @@ async function buyStarProduct(productKey,button){
       await renderPremiumShop();
       return;
     }
-    if(status==="cancelled")showAlert("Оплату скасовано.");
-    else if(status==="failed")showAlert("Оплата не пройшла.");
-    if(button)button.disabled=false;
+    if(finalStatus==="cancelled"){
+      await secureApi("star_order_close",{order_id:r.order_id,status:"cancelled"});
+      showAlert("Оплату скасовано.");
+    }else if(finalStatus==="failed"){
+      await secureApi("star_order_close",{order_id:r.order_id,status:"failed"});
+      showAlert("Оплата не пройшла.");
+    }
+    if(button){button.disabled=false;button.textContent=originalLabel}
   });
 }
 async function openWhoLikedMe(){
