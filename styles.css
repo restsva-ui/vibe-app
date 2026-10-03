@@ -197,3 +197,23 @@
 .ticketUnread{color:#ff4f8b;font-size:12px;vertical-align:middle}
 .myTicket.unread,.supportQueueItem.unread{border-color:rgba(255,63,129,.55);box-shadow:0 0 0 1px rgba(255,63,129,.08) inset}
 .supportQueueItem.unread{background:linear-gradient(135deg,rgba(255,63,129,.07),#101019 46%)}
+
+
+/* VYBE 0.9.18 — moderation center */
+.moderationQueueItem.urgent{border-color:rgba(255,91,91,.55);background:linear-gradient(135deg,rgba(255,72,72,.08),#101019 48%)}
+.moderationCase,.moderationReporter{margin:10px 0;padding:14px;border:1px solid var(--line);border-radius:16px;background:#101019}
+.moderationCase.urgent{border-color:rgba(255,91,91,.55)}
+.moderationCase hr{border:0;border-top:1px solid var(--line);margin:14px 0}
+.moderationPerson b,.moderationPerson small,.moderationReporter b,.moderationReporter span{display:block}
+.moderationPerson small,.moderationReporter span{color:var(--muted);font-size:12px;margin-top:3px}
+.accountState{display:inline-block;margin-top:8px;padding:5px 9px;border-radius:999px;font-size:10px;font-weight:800}
+.accountState.active{background:rgba(114,230,173,.12);color:#72e6ad}
+.accountState.restricted{background:rgba(255,80,110,.13);color:#ff8fa8}
+.moderationDanger{border-color:rgba(255,80,110,.45)!important;color:#ff9eb2!important}
+.restrictionNotice{text-align:center;padding:12px 4px}
+.restrictionIcon{font-size:48px}
+.restrictionNotice h2{margin-bottom:10px}
+.restrictionNotice p{color:var(--muted);line-height:1.5}
+.restrictionReason{margin:14px 0;padding:12px;border:1px solid var(--line);border-radius:14px;text-align:left;background:#101019}
+.restrictionReason b,.restrictionReason span{display:block}
+.restrictionReason span{margin-top:4px;color:#ffb1c0}
