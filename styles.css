@@ -98,3 +98,27 @@
 .appNotice span{flex:1;font-weight:700}
 .appNotice button{border:0;background:#2c263a;color:#fff;width:30px;height:30px;border-radius:50%;font-size:18px}
 .sheetCard{scroll-padding-top:18px;scroll-padding-bottom:84px}
+
+
+/* VYBE 0.9.10 — admin finance */
+.adminMenuBtn{color:#ffd866!important;background:rgba(255,216,102,.06)!important}
+.adminHead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-right:42px}
+.adminHead h2{margin:0}
+.adminHead small{color:var(--muted)}
+.adminHead .choice{width:auto;padding:9px 12px}
+.adminBalance{margin:16px 0;padding:18px;border:1px solid #5a456f;border-radius:20px;background:linear-gradient(135deg,rgba(139,92,246,.15),rgba(255,63,129,.08))}
+.adminBalance small,.adminBalance span{display:block;color:var(--muted)}
+.adminBalance strong{display:block;font-size:34px;margin:4px 0 2px;color:#ffd866}
+.adminMetrics{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.adminMetric{padding:13px;border:1px solid var(--line);border-radius:16px;background:#101019}
+.adminMetric small,.adminMetric span{display:block;color:var(--muted);font-size:11px}
+.adminMetric strong{display:block;margin:4px 0;font-size:20px}
+.adminRecon{display:flex;justify-content:space-between;gap:12px;margin:14px 0;padding:12px 14px;border:1px solid var(--line);border-radius:14px}
+.adminRecon span{color:var(--muted);font-size:12px}
+.adminOrders,.adminTransactions{display:grid;gap:8px}
+.adminOrder,.adminTx{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;border:1px solid var(--line);border-radius:15px;background:#101019}
+.adminOrderMain{min-width:0;flex:1}
+.adminOrder b,.adminOrder small,.adminTx b,.adminTx small{display:block}
+.adminOrder small,.adminTx small{margin-top:3px;color:var(--muted);font-size:11px}
+.adminRefundBtn{width:auto;flex:0 0 auto;padding:9px 10px;color:#ff9aae;border-color:rgba(255,71,115,.35)}
+@media (max-width:390px){.adminMetrics{grid-template-columns:1fr}.adminOrder{align-items:flex-start;flex-direction:column}.adminRefundBtn{width:100%}}
