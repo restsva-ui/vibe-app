@@ -79,7 +79,7 @@ const I18N_PAIRS=[
   ["Видалити акаунт","Delete account"],["Ця дія незворотна. Будуть видалені анкета, фото, VYBE NOW, лайки, збіги, повідомлення, блокування, скарги, реферальні дані та бонуси, пов’язані з цим акаунтом.","This cannot be undone. Your profile, photo, VYBE NOW, likes, matches, messages, blocks, reports, referral data and rewards linked to this account will be deleted."],
   ["Для підтвердження введи ","To confirm, enter "],["Скасувати","Cancel"],
   ["Налаштування ⚙","Settings ⚙"],["🔐 Приватність","🔐 Privacy"],["🛡 Правила спільноти","🛡 Community rules"],["📄 Умови користування","📄 Terms of Use"],["Повна політика приватності","Full Privacy Policy"],["Повні правила спільноти","Full Community Rules"],["Умови","Terms"],["Правила","Rules"],["Приватність","Privacy"],["🗑 Видалити акаунт","🗑 Delete account"],
-  ["Мова","Language"],["Українська","Українська"],["English","English"],
+  ["Мова","Language"],["Аналітика продукту","Product analytics"],["Допомагає покращувати VYBE. Без текстів чатів, bio, імен чи міста.","Helps improve VYBE. No chat text, bio, names or city."],["Увімкнено","On"],["Вимкнено","Off"],["Українська","Українська"],["English","English"],
   ["VYBE+ на 3 дні","VYBE+ for 3 days"]
 ];
 
@@ -138,6 +138,7 @@ function deleteToken(){return currentLang==="en"?"DELETE":"ВИДАЛИТИ"}
 function setLanguage(next){
   currentLang=next==="en"?"en":"uk";
   store("vybeLanguage",currentLang);
+  analyticsCapture("language_changed",{language:currentLang});
   localizeDom(document);
   if(profile)renderProfile();
   renderNow();
@@ -164,6 +165,32 @@ queueMicrotask(()=>localizeDom(document));
 const SUPABASE_URL="https://qifxxzpnuxchnkowxzgp.supabase.co";
 const SUPABASE_KEY="sb_publishable_a-yy3lcgCXbDJosdQAWbPQ_bRLnN_LF";
 const TELEGRAM_AUTH_URL=SUPABASE_URL+"/functions/v1/telegram-auth";
+const POSTHOG_HOST="https://eu.i.posthog.com";
+const POSTHOG_PROJECT_TOKEN="phc_pBHQg5iKgvw66j7dCYoRHZvZaTUhe5Gmu6SPU3fWmmVC";
+let analyticsDistinctId=null;
+let analyticsEnabled=load("vybeAnalytics",true)!==false;
+function analyticsCapture(event,properties={},useBeacon=false){
+  if(!analyticsEnabled||!analyticsDistinctId||!event)return;
+  const payload={
+    api_key:POSTHOG_PROJECT_TOKEN,
+    event,
+    properties:{
+      distinct_id:analyticsDistinctId,
+      "$process_person_profile":false,
+      app_version:"0.9.4",
+      platform:"telegram_mini_app",
+      language:currentLang,
+      ...properties,
+    },
+  };
+  const body=JSON.stringify(payload);
+  const url=POSTHOG_HOST+"/capture/";
+  if(useBeacon&&navigator.sendBeacon){
+    try{navigator.sendBeacon(url,new Blob([body],{type:"application/json"}));return}catch{}
+  }
+  fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body,keepalive:true,credentials:"omit"}).catch(()=>{});
+}
+
 const realtimeClient=window.supabase?.createClient?.(SUPABASE_URL,SUPABASE_KEY,{
   auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},
 });
@@ -299,7 +326,7 @@ async function openReferral(){
   const rewards=(r.rewards||[]).map(x=>'<div class="choice" style="margin-top:8px;opacity:'+(x.unlocked?'1':'.72')+'"><b>'+(x.unlocked?'✅ ':'🔒 ')+x.milestone+' активн.</b> — '+x.label+'<br><small>'+(x.unlocked?'Отримано':'Прогрес: '+x.progress+'/'+x.milestone)+'</small></div>').join("");
   content.innerHTML='<h2>Запросити друзів 🔗</h2><p>Запрошено: <b>'+r.invited+'</b> • Активували анкету: <b>'+r.activated+'</b></p><h3 style="margin:14px 0 6px">Нагороди 🎁</h3>'+rewards+'<p style="margin-top:12px">Зараховуються лише друзі, які створили анкету 18+.</p><button id="shareReferral" class="primary">Поділитися запрошенням</button><button id="copyReferral" class="choice" style="width:100%;margin-top:10px">Скопіювати посилання</button>';
   sheet.classList.remove("hidden");
-  $("shareReferral").onclick=()=>{const u="https://t.me/share/url?url="+encodeURIComponent(link)+"&text="+encodeURIComponent("Приєднуйся до VYBE 💜. Відкрий бота та натисни кнопку запуску VYBE.");tg?.openTelegramLink?.(u)};
+  $("shareReferral").onclick=()=>{const u="https://t.me/share/url?url="+encodeURIComponent(link)+"&text="+encodeURIComponent(uiText("Приєднуйся до VYBE 💜. Відкрий бота та натисни кнопку запуску VYBE."));analyticsCapture("referral_shared");tg?.openTelegramLink?.(u)};
   $("copyReferral").onclick=async()=>{try{await navigator.clipboard.writeText(link);showAlert("Посилання скопійовано ✅")}catch{showAlert(link)}};
 }
 
@@ -343,6 +370,7 @@ async function blockUser(userId,name){
   if(!r.ok){showAlert("Не вдалося заблокувати користувача.");return}
   sheet.classList.add("hidden");
   await refreshSocial();
+  analyticsCapture("user_blocked");
   tg?.HapticFeedback?.notificationOccurred("success");
   showAlert("Користувача заблоковано.");
 }
@@ -363,6 +391,7 @@ function openReport(userId,name){
     if(!r.ok){button.disabled=false;showAlert("Не вдалося надіслати скаргу.");return}
     sheet.classList.add("hidden");
     if(r.blocked)await refreshSocial();
+    analyticsCapture("report_submitted",{blocked:r.blocked===true});
     tg?.HapticFeedback?.notificationOccurred("success");
     showAlert(r.blocked?"Скаргу надіслано, користувача заблоковано.":"Скаргу надіслано.");
   };
@@ -395,7 +424,7 @@ localStorage.removeItem("vybeMatches");
 async function loadEntitlements(){const r=await secureApi("entitlements");if(r.ok)entitlements=r;return r}
 function spotlightStatus(){const until=entitlements?.spotlight_until?new Date(entitlements.spotlight_until):null;if(!until||until<=new Date())return uiText("не активний");const min=Math.max(1,Math.ceil((until-Date.now())/60000));return uiText("🔦 активний ще ")+min+uiText(" хв.")}
 function entitlementText(){const plus=entitlements?.vybe_plus_until&&new Date(entitlements.vybe_plus_until)>new Date()?new Date(entitlements.vybe_plus_until).toLocaleDateString(uiLocale()):"—";return "SuperVYBE: "+(entitlements?.balances?.supervybe||0)+" • Spotlight: "+(entitlements?.balances?.spotlight||0)+" • "+spotlightStatus()+uiText(" • VYBE+ до: ")+plus}
-async function useSpotlight(){const r=await secureApi("spotlight_use");if(!r.ok){showAlert("Spotlight не списано. Перевір баланс і спробуй ще раз.");return}await loadEntitlements();tg?.HapticFeedback?.notificationOccurred("success");showAlert("Spotlight активовано на 30 хвилин ✨");openSheet("premium")}
+async function useSpotlight(){const r=await secureApi("spotlight_use");if(!r.ok){showAlert("Spotlight не списано. Перевір баланс і спробуй ще раз.");return}await loadEntitlements();analyticsCapture("spotlight_used");tg?.HapticFeedback?.notificationOccurred("success");showAlert("Spotlight активовано на 30 хвилин ✨");openSheet("premium")}
 
 const intentIcon=x=>({"Поговорити":"💬","Флірт":"🔥","Вірт":"🌙","Дружба":"🫶","Голос":"🎙","Зустріч":"☕"}[x]||"⚡");
 $("hello").textContent=uiText("Привіт, ")+(tuser?.first_name||profile?.name||"")+" 👋";
@@ -437,6 +466,7 @@ async function loadPeople(){
 }
 async function hydrateProfile(){
   const r=await secureApi("profile_get");if(!r.ok)return;
+  analyticsDistinctId=r.user_id||null;
   if(r.realtime_topic){realtimeUserTopic=r.realtime_topic;setupUserRealtime(realtimeUserTopic)}
   if(r.profile){profile={name:r.profile.name,age:r.profile.age,city:r.profile.city||"",gender:r.profile.gender||"",looking:r.profile.looking_for||"",bio:r.profile.bio||"",photo_url:r.profile.photo_url||null,verified:r.profile.verified===true,user_id:r.user_id};store("vybeProfile",profile)}
 }
@@ -445,6 +475,7 @@ async function begin(){
   if(!auth?.ok){console.warn("VYBE secure auth not confirmed",auth);showAlert("Не вдалося підтвердити Telegram-авторизацію. Відкрий VYBE заново через бота.");return}
   await claimReferral();
   await hydrateProfile();
+  analyticsCapture("app_open");
   if(!profile)showOnboarding();else{renderProfile();await syncProfile();await loadPeople()}
   await loadEntitlements();await loadMatches();renderNow();renderCard();renderMatches();renderChats();
 }
@@ -461,7 +492,7 @@ enterBtn.addEventListener("click",async()=>{
 syncAgeButton();
 if(localStorage.getItem("vybe18")==="yes"){$("ageGate").classList.add("hidden");setTimeout(begin,0)}
 function showOnboarding(){const o=$("onboarding");o.classList.remove("hidden");$("obName").value=profile?.name||tuser?.first_name||"";$("obAge").value=profile?.age||"";$("obCity").value=profile?.city||"";$("obGender").value=profile?.gender||"";$("obLooking").value=profile?.looking||"";$("obBio").value=profile?.bio||""}
-$("saveProfile").onclick=async()=>{const age=+$("obAge").value;if(!$("obName").value.trim()||age<18||age>99){showAlert("Вкажи ім’я та вік 18+.");return}profile={...profile,name:$("obName").value.trim(),age,city:$("obCity").value.trim(),gender:$("obGender").value.trim(),looking:$("obLooking").value.trim(),bio:$("obBio").value.trim()};store("vybeProfile",profile);$("onboarding").classList.add("hidden");renderProfile();await syncProfile();await loadPeople();tg?.HapticFeedback?.notificationOccurred("success")};
+$("saveProfile").onclick=async()=>{const age=+$("obAge").value;if(!$("obName").value.trim()||age<18||age>99){showAlert("Вкажи ім’я та вік 18+.");return}profile={...profile,name:$("obName").value.trim(),age,city:$("obCity").value.trim(),gender:$("obGender").value.trim(),looking:$("obLooking").value.trim(),bio:$("obBio").value.trim()};store("vybeProfile",profile);$("onboarding").classList.add("hidden");renderProfile();const saved=await syncProfile();if(saved)analyticsCapture("profile_saved");await loadPeople();tg?.HapticFeedback?.notificationOccurred("success")};
 $("editProfile").onclick=showOnboarding;
 function renderProfile(){
   if(!profile)return;
@@ -521,6 +552,7 @@ async function uploadProfilePhoto(file){
     const r=await secureApi("photo_upload",{mime_type:prepared.mime,image_base64:prepared.image_base64});
     if(!r.ok)throw new Error(r.error||"upload_failed");
     profile={...profile,photo_url:r.photo_url||null};store("vybeProfile",profile);renderProfile();await loadPeople();
+    analyticsCapture("photo_updated");
     tg?.HapticFeedback?.notificationOccurred("success");showAlert("Фото профілю оновлено ✅");
   }catch(e){
     console.error("VYBE photo upload",e);
@@ -536,6 +568,7 @@ async function removeProfilePhoto(){
   const r=await secureApi("photo_remove");
   if(!r.ok){showAlert("Не вдалося видалити фото.");return}
   profile={...profile,photo_url:null};store("vybeProfile",profile);renderProfile();await loadPeople();
+  analyticsCapture("photo_removed");
 }
 
 function openDiscoverFilters(){
@@ -546,7 +579,9 @@ function openDiscoverFilters(){
     const minAge=Math.max(18,Math.min(99,Number($("filterMinAge").value)||18));
     const maxAge=Math.max(minAge,Math.min(99,Number($("filterMaxAge").value)||99));
     discoverFilters={minAge,maxAge,city:$("filterCity").value.trim(),onlineOnly:$("filterOnline").checked,verifiedOnly:$("filterVerified").checked};
-    store("vybeDiscoverFilters",discoverFilters);sheet.classList.add("hidden");await loadPeople();
+    store("vybeDiscoverFilters",discoverFilters);sheet.classList.add("hidden");
+    analyticsCapture("discover_filters_applied",{age_filter:minAge!==18||maxAge!==99,city_filter:!!discoverFilters.city,online_only:discoverFilters.onlineOnly,verified_only:discoverFilters.verifiedOnly});
+    await loadPeople();
   };
   $("resetFilters").onclick=async()=>{
     discoverFilters={minAge:18,maxAge:99,city:"",onlineOnly:false,verifiedOnly:false};
@@ -562,7 +597,7 @@ if(smart){const d=new Date(),hour=d.getHours();let target=new Date(d);
 if(hour<8){target.setHours(8,0,0,0);smart.textContent="До ранку";}
 else if(hour<18){target.setHours(20,0,0,0);smart.textContent="До вечора";}
 else{target.setDate(target.getDate()+1);target.setHours(8,0,0,0);smart.textContent="До ранку";}
-smart.dataset.until=String(target.getTime());}content.querySelectorAll(".choice[data-intent]").forEach(b=>b.onclick=()=>{content.querySelectorAll(".choice[data-intent]").forEach(x=>x.classList.remove("selected"));b.classList.add("selected");chosen={intent:b.dataset.intent,icon:b.dataset.icon}});content.querySelectorAll(".duration").forEach(b=>b.onclick=()=>{content.querySelectorAll(".duration").forEach(x=>x.classList.remove("selected"));b.classList.add("selected");hours=b.dataset.smart?Math.max(1,(Number(b.dataset.until)-Date.now())/3600000):+b.dataset.hours});$("saveNow").onclick=async()=>{if(!chosen){showAlert("Спочатку обери свій вайб.");return}now={...chosen,expires:Date.now()+hours*3600000};store("vybeNow",now);renderNow();await syncNow(hours);sheet.classList.add("hidden");tg?.HapticFeedback?.notificationOccurred("success")}}}
+smart.dataset.until=String(target.getTime());}content.querySelectorAll(".choice[data-intent]").forEach(b=>b.onclick=()=>{content.querySelectorAll(".choice[data-intent]").forEach(x=>x.classList.remove("selected"));b.classList.add("selected");chosen={intent:b.dataset.intent,icon:b.dataset.icon}});content.querySelectorAll(".duration").forEach(b=>b.onclick=()=>{content.querySelectorAll(".duration").forEach(x=>x.classList.remove("selected"));b.classList.add("selected");hours=b.dataset.smart?Math.max(1,(Number(b.dataset.until)-Date.now())/3600000):+b.dataset.hours});$("saveNow").onclick=async()=>{if(!chosen){showAlert("Спочатку обери свій вайб.");return}now={...chosen,expires:Date.now()+hours*3600000};store("vybeNow",now);renderNow();const saved=await syncNow(hours);if(saved)analyticsCapture("vybe_now_set");sheet.classList.add("hidden");tg?.HapticFeedback?.notificationOccurred("success")}}}
 $("setNow").onclick=()=>openSheet("now");$("premiumBtn").onclick=()=>openSheet("premium");$("filterBtn").onclick=openDiscoverFilters;$("safetyBtn").onclick=()=>openSheet("safety");
 function people(){return remotePeople}function filtered(){const arr=people();return filter==="Усе"?arr:arr.filter(p=>p.intent===filter)}
 function renderCard(){const arr=filtered();if(!arr.length||index>=arr.length){$("cardStack").innerHTML='<div class="empty">Анкет за цим вайбом поки немає.<br>Спробуй інший фільтр.</div>';return}const p=arr[index];const visual=p.img?'<img src="'+escapeHtml(p.img)+'" alt="'+escapeHtml(p.name)+'">':'<div class="generatedAvatar">'+escapeHtml(p.name?.[0]||"V")+'</div>';$("cardStack").innerHTML='<article class="personCard">'+visual+'<button id="cardSafetyBtn" class="cardSafety" aria-label="Безпека">⋯</button><div class="gradient"></div><div class="personMeta"><div class="nameRow"><h2>'+escapeHtml(p.name)+", "+escapeHtml(p.age)+(p.verified?' <span class="verifiedMark">✓</span>':'')+'</h2></div><div class="intent">'+escapeHtml(p.icon)+" "+escapeHtml(p.intent)+'</div><p class="bio">'+escapeHtml(p.bio)+'</p><div class="meta">'+escapeHtml(p.meta)+"</div></div></article>";const safety=$("cardSafetyBtn");if(safety)safety.onclick=e=>{e.stopPropagation();openUserSafety(p.id,p.name)}}
@@ -602,7 +637,8 @@ async function next(kind){
       : await secureApi("like",{target_user_id:p.id,kind:"like"});
     if(!r.ok){showAlert(kind==="super"?"SuperVYBE не списано. Спробуй ще раз.":"Не вдалося надіслати VYBE. Спробуй ще раз.");return}
     if(kind==="super")await loadEntitlements();
-    if(r.matched){await loadMatches();tg?.HapticFeedback?.notificationOccurred("success");showAlert("У вас взаємний VYBE 💜")}
+    analyticsCapture(kind==="super"?"supervybe_sent":"like_sent");
+    if(r.matched){analyticsCapture("match_created");await loadMatches();tg?.HapticFeedback?.notificationOccurred("success");showAlert("У вас взаємний VYBE 💜")}
     else if(kind==="super")showAlert("SuperVYBE надіслано ✦")
   }
   index++;renderCard();tg?.HapticFeedback?.impactOccurred("light");
@@ -649,6 +685,7 @@ async function openChat(matchId,name,userId,options={}){
   }
 
   activeChat={matchId:key,name,userId:String(userId)};
+  if(!options.silent&&!options.noMatchRefresh)analyticsCapture("chat_opened");
   syncMatchRealtimeChannels();
   const peerReadAt=r.peer_last_read_at?new Date(r.peer_last_read_at).getTime():0;
   const messages=r.messages||[];
@@ -686,6 +723,7 @@ async function openChat(matchId,name,userId,options={}){
     const x=await secureApi("message_send",{match_id:matchId,message});
     if(!x.ok){$("sendMessage").disabled=false;showAlert("Не вдалося надіслати повідомлення.");return}
     if($("chatMessage"))$("chatMessage").value="";
+    analyticsCapture("message_sent");
     await openChat(matchId,name,userId,{noMatchRefresh:true});
     loadMatches();
     tg?.HapticFeedback?.notificationOccurred("success");
@@ -697,6 +735,7 @@ document.querySelectorAll(".navItem").forEach(b=>b.onclick=()=>{document.querySe
 function openLegalPage(page){
   const safe=["privacy.html","terms.html","community.html"].includes(page)?page:"privacy.html";
   const url=new URL("./"+safe,location.href).href;
+  analyticsCapture("legal_opened",{document:safe.replace(".html","")});
   if(tg?.openLink)tg.openLink(url);
   else window.open(url,"_blank","noopener,noreferrer");
 }
@@ -744,6 +783,7 @@ async function deleteAccount(){
   if(realtimeUserChannel&&realtimeClient){try{realtimeClient.removeChannel(realtimeUserChannel)}catch{}}
   for(const entry of realtimeMatchChannels.values()){try{realtimeClient?.removeChannel(entry.channel)}catch{}}
   realtimeMatchChannels.clear();
+  analyticsCapture("account_deleted",{},true);
   resetLocalVYBE();
   profile=null;now=null;matches=[];remotePeople=[];activeChat=null;
   sheet.classList.add("hidden");
@@ -765,10 +805,16 @@ function openDeleteAccount(){
 }
 
 function openSettings(){
-  content.innerHTML='<h2>'+uiText("Налаштування ⚙")+'</h2><p class="settingsLabel">'+uiText("Мова")+'</p><div class="languageGrid"><button id="langUkBtn" class="choice '+(currentLang==="uk"?"selected":"")+'">🇺🇦 Українська</button><button id="langEnBtn" class="choice '+(currentLang==="en"?"selected":"")+'">🇬🇧 English</button></div><button id="privacyInfoBtn" class="choice safetyChoice">'+uiText("🔐 Приватність")+'</button><button id="communityRulesBtn" class="choice safetyChoice">'+uiText("🛡 Правила спільноти")+'</button><button id="termsBtn" class="choice safetyChoice">'+uiText("📄 Умови користування")+'</button><button id="settingsBlockedBtn" class="choice safetyChoice">'+uiText("🚫 Заблоковані користувачі")+'</button><button id="deleteAccountBtn" class="choice safetyChoice dangerChoice">'+uiText("🗑 Видалити акаунт")+'</button>';
+  content.innerHTML='<h2>'+uiText("Налаштування ⚙")+'</h2><p class="settingsLabel">'+uiText("Мова")+'</p><div class="languageGrid"><button id="langUkBtn" class="choice '+(currentLang==="uk"?"selected":"")+'">🇺🇦 Українська</button><button id="langEnBtn" class="choice '+(currentLang==="en"?"selected":"")+'">🇬🇧 English</button></div><p class="settingsLabel">'+uiText("Аналітика продукту")+'</p><button id="analyticsToggleBtn" class="choice safetyChoice">'+uiText("Аналітика продукту")+': <b>'+uiText(analyticsEnabled?"Увімкнено":"Вимкнено")+'</b></button><p class="safetyHint">'+uiText("Допомагає покращувати VYBE. Без текстів чатів, bio, імен чи міста.")+'</p><button id="privacyInfoBtn" class="choice safetyChoice">'+uiText("🔐 Приватність")+'</button><button id="communityRulesBtn" class="choice safetyChoice">'+uiText("🛡 Правила спільноти")+'</button><button id="termsBtn" class="choice safetyChoice">'+uiText("📄 Умови користування")+'</button><button id="settingsBlockedBtn" class="choice safetyChoice">'+uiText("🚫 Заблоковані користувачі")+'</button><button id="deleteAccountBtn" class="choice safetyChoice dangerChoice">'+uiText("🗑 Видалити акаунт")+'</button>';
   sheet.classList.remove("hidden");
   $("langUkBtn").onclick=()=>setLanguage("uk");
   $("langEnBtn").onclick=()=>setLanguage("en");
+  $("analyticsToggleBtn").onclick=()=>{
+    analyticsEnabled=!analyticsEnabled;
+    store("vybeAnalytics",analyticsEnabled);
+    if(analyticsEnabled)analyticsCapture("analytics_opt_in");
+    openSettings();
+  };
   $("privacyInfoBtn").onclick=openPrivacyInfo;
   $("communityRulesBtn").onclick=openCommunityRules;
   $("termsBtn").onclick=()=>openLegalPage("terms.html");
