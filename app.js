@@ -80,7 +80,7 @@ const I18N_PAIRS=[
   ["Для підтвердження введи ","To confirm, enter "],["Скасувати","Cancel"],
   ["Налаштування ⚙","Settings ⚙"],["🔐 Приватність","🔐 Privacy"],["🛡 Правила спільноти","🛡 Community rules"],["📄 Умови користування","📄 Terms of Use"],["Повна політика приватності","Full Privacy Policy"],["Повні правила спільноти","Full Community Rules"],["Умови","Terms"],["Правила","Rules"],["Приватність","Privacy"],["🗑 Видалити акаунт","🗑 Delete account"],
   ["Мова","Language"],["Аналітика продукту","Product analytics"],["Допомагає покращувати VYBE. Без текстів чатів, bio, імен чи міста.","Helps improve VYBE. No chat text, bio, names or city."],["Увімкнено","On"],["Вимкнено","Off"],["Українська","Українська"],["English","English"],
-  ["VYBE+ на 3 дні","VYBE+ for 3 days"]
+  ["VYBE+ на 3 дні","VYBE+ for 3 days"],["Магазин Stars ⭐","Stars Store ⭐"],["Купити за ","Buy for "],["Оплата відкриється у Telegram.","Payment will open in Telegram."],["Не вдалося створити рахунок.","Could not create the invoice."],["Платежі доступні лише всередині Telegram.","Payments are available only inside Telegram."],["Оплата успішна ⭐ Покупку зараховано.","Payment successful ⭐ Your purchase was added."],["Платіж обробляється. Баланс оновиться автоматично.","Payment is processing. Your balance will update automatically."],["Оплату скасовано.","Payment cancelled."],["Оплата не пройшла.","Payment failed."],["Перевіряємо покупку…","Checking your purchase…"],["Хто лайкнув мене","Who liked me"],["VYBE+ відкриває список людей, які вже лайкнули тебе.","VYBE+ unlocks the list of people who already liked you."],["Поки немає нових лайків.","No new likes yet."],["Лайкнути у відповідь","Like back"],["Потрібен активний VYBE+.","Active VYBE+ is required."],["Завантажуємо магазин…","Loading store…"],["Покупка зарахована","Purchase added"],["Зірок","Stars"]
 ];
 
 let currentLang=load("vybeLanguage",null)||(String(tuser?.language_code||"").toLowerCase().startsWith("en")?"en":"uk");
@@ -177,7 +177,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.4",
+      app_version:"0.9.5",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -418,13 +418,95 @@ async function openBlockedUsers(){
   });
 }
 
-let profile=load("vybeProfile",null),now=load("vybeNow",null),matches=[],index=0,filter="Усе",remotePeople=[],entitlements={balances:{supervybe:0,spotlight:0},vybe_plus_until:null,spotlight_until:null};
+let profile=load("vybeProfile",null),now=load("vybeNow",null),matches=[],index=0,filter="Усе",remotePeople=[],entitlements={balances:{supervybe:0,spotlight:0},vybe_plus_until:null,spotlight_until:null},starCatalog=[];
 let discoverFilters=load("vybeDiscoverFilters",{minAge:18,maxAge:99,city:"",onlineOnly:false,verifiedOnly:false});
 localStorage.removeItem("vybeMatches");
 async function loadEntitlements(){const r=await secureApi("entitlements");if(r.ok)entitlements=r;return r}
 function spotlightStatus(){const until=entitlements?.spotlight_until?new Date(entitlements.spotlight_until):null;if(!until||until<=new Date())return uiText("не активний");const min=Math.max(1,Math.ceil((until-Date.now())/60000));return uiText("🔦 активний ще ")+min+uiText(" хв.")}
 function entitlementText(){const plus=entitlements?.vybe_plus_until&&new Date(entitlements.vybe_plus_until)>new Date()?new Date(entitlements.vybe_plus_until).toLocaleDateString(uiLocale()):"—";return "SuperVYBE: "+(entitlements?.balances?.supervybe||0)+" • Spotlight: "+(entitlements?.balances?.spotlight||0)+" • "+spotlightStatus()+uiText(" • VYBE+ до: ")+plus}
 async function useSpotlight(){const r=await secureApi("spotlight_use");if(!r.ok){showAlert("Spotlight не списано. Перевір баланс і спробуй ще раз.");return}await loadEntitlements();analyticsCapture("spotlight_used");tg?.HapticFeedback?.notificationOccurred("success");showAlert("Spotlight активовано на 30 хвилин ✨");openSheet("premium")}
+
+async function loadStarCatalog(){
+  const r=await secureApi("star_catalog");
+  if(r.ok)starCatalog=r.products||[];
+  return r;
+}
+function starProductTitle(p){return currentLang==="en"?p.title_en:p.title_uk}
+function starProductDescription(p){return currentLang==="en"?p.description_en:p.description_uk}
+function plusActive(){return !!entitlements?.vybe_plus_until&&new Date(entitlements.vybe_plus_until)>new Date()}
+async function waitForStarOrder(orderId){
+  for(let i=0;i<10;i++){
+    const r=await secureApi("star_order_status",{order_id:orderId});
+    if(r.ok&&r.order?.status==="paid")return r.order;
+    if(r.ok&&["failed","expired","refunded"].includes(r.order?.status))return r.order;
+    await new Promise(resolve=>setTimeout(resolve,700+i*120));
+  }
+  return null;
+}
+async function buyStarProduct(productKey,button){
+  if(!tg?.openInvoice){showAlert("Платежі доступні лише всередині Telegram.");return}
+  if(button){button.disabled=true;button.textContent=uiText("Перевіряємо покупку…")}
+  const r=await secureApi("star_invoice",{product_key:productKey,lang:currentLang});
+  if(!r.ok||!r.invoice_url){
+    if(button)button.disabled=false;
+    showAlert("Не вдалося створити рахунок.");
+    return;
+  }
+  analyticsCapture("stars_checkout_started",{product_key:productKey,stars:Number(r.stars||0)});
+  tg.openInvoice(r.invoice_url,async status=>{
+    analyticsCapture("stars_checkout_closed",{product_key:productKey,status:String(status||"unknown")});
+    if(status==="paid"||status==="pending"){
+      const order=await waitForStarOrder(r.order_id);
+      await loadEntitlements();
+      if(order?.status==="paid"){
+        analyticsCapture("stars_purchase_confirmed",{product_key:productKey,stars:Number(r.stars||0)});
+        tg?.HapticFeedback?.notificationOccurred("success");
+        showAlert("Оплата успішна ⭐ Покупку зараховано.");
+      }else{
+        showAlert("Платіж обробляється. Баланс оновиться автоматично.");
+      }
+      await renderPremiumShop();
+      return;
+    }
+    if(status==="cancelled")showAlert("Оплату скасовано.");
+    else if(status==="failed")showAlert("Оплата не пройшла.");
+    if(button)button.disabled=false;
+  });
+}
+async function openWhoLikedMe(){
+  content.innerHTML='<h2>'+uiText("Хто лайкнув мене")+'</h2><div class="empty">'+uiText("Завантаження…")+'</div>';
+  sheet.classList.remove("hidden");
+  const r=await secureApi("likes_received");
+  if(!r.ok){
+    content.innerHTML='<h2>'+uiText("Хто лайкнув мене")+'</h2><div class="empty">'+uiText("Потрібен активний VYBE+.")+'</div>';
+    return;
+  }
+  const rows=r.people||[];
+  content.innerHTML='<h2>'+uiText("Хто лайкнув мене")+'</h2><p class="safetyHint">'+uiText("VYBE+ відкриває список людей, які вже лайкнули тебе.")+'</p>'+(rows.length?rows.map((x,i)=>{
+    const p=x.profile||{};
+    return '<div class="blockedRow"><div>'+(p.photo_url?'<img class="avatar avatarPhoto" src="'+escapeHtml(p.photo_url)+'" alt="">':'')+'<b class="userNameNoI18n">'+escapeHtml(p.name||"VYBE")+(p.age?", "+escapeHtml(p.age):"")+(p.verified?' ✓':'')+'</b><small>'+[p.city,p.online?uiText("● онлайн"):"",x.like_kind==="super"?"✦ SuperVYBE":""].filter(Boolean).map(escapeHtml).join(" • ")+'</small></div><button class="choice likeBackBtn" data-index="'+i+'">'+uiText("Лайкнути у відповідь")+'</button></div>';
+  }).join(""):'<div class="empty">'+uiText("Поки немає нових лайків.")+'</div>');
+  content.querySelectorAll(".likeBackBtn").forEach(btn=>btn.onclick=async()=>{
+    const row=rows[Number(btn.dataset.index)];if(!row)return;
+    btn.disabled=true;
+    const x=await secureApi("like",{target_user_id:row.user_id,kind:"like"});
+    if(!x.ok){btn.disabled=false;showAlert("Не вдалося надіслати VYBE. Спробуй ще раз.");return}
+    analyticsCapture("like_back_from_vybe_plus");
+    if(x.matched){await loadMatches();showAlert("У вас взаємний VYBE 💜")}
+    await openWhoLikedMe();
+  });
+}
+async function renderPremiumShop(){
+  await Promise.all([loadEntitlements(),loadStarCatalog()]);
+  const b=entitlements?.balances||{};
+  const plus=plusActive()?new Date(entitlements.vybe_plus_until).toLocaleDateString(uiLocale()):uiText("не активний");
+  const products=starCatalog.map(p=>'<div class="starProduct"><div><b>'+escapeHtml(starProductTitle(p))+'</b><small>'+escapeHtml(starProductDescription(p))+'</small></div><button class="choice buyStarBtn" data-product="'+escapeHtml(p.product_key)+'">'+uiText("Купити за ")+'⭐ '+Number(p.stars||0)+'</button></div>').join("");
+  content.innerHTML='<h2>'+uiText("Мої бонуси ✨")+'</h2><p>'+entitlementText()+'</p><div class="priceGrid"><div class="price"><span>SuperVYBE</span><strong>'+Number(b.supervybe||0)+'</strong></div><div class="price"><span>Spotlight</span><strong>'+Number(b.spotlight||0)+'</strong></div><div class="price"><span>VYBE+</span><strong>'+escapeHtml(plus)+'</strong></div></div>'+(Number(b.spotlight||0)>0?'<button id="useSpotlight" class="primary">'+uiText("Активувати Spotlight на 30 хв")+'</button>':'')+(plusActive()?'<button id="whoLikedBtn" class="choice premiumFeatureBtn">♥ '+uiText("Хто лайкнув мене")+'</button>':'')+'<h3 class="shopTitle">'+uiText("Магазин Stars ⭐")+'</h3><p class="safetyHint">'+uiText("Оплата відкриється у Telegram.")+'</p><div class="starShop">'+(products||'<div class="empty">'+uiText("Завантажуємо магазин…")+'</div>')+'</div>';
+  const u=$("useSpotlight");if(u)u.onclick=useSpotlight;
+  const liked=$("whoLikedBtn");if(liked)liked.onclick=openWhoLikedMe;
+  content.querySelectorAll(".buyStarBtn").forEach(btn=>btn.onclick=()=>buyStarProduct(btn.dataset.product,btn));
+}
+
 
 const intentIcon=x=>({"Поговорити":"💬","Флірт":"🔥","Вірт":"🌙","Дружба":"🫶","Голос":"🎙","Зустріч":"☕"}[x]||"⚡");
 $("hello").textContent=uiText("Привіт, ")+(tuser?.first_name||profile?.name||"")+" 👋";
@@ -591,7 +673,7 @@ function openDiscoverFilters(){
 function validNow(){return now&&now.expires>Date.now()}
 function renderNow(){if(!validNow()){now=null;localStorage.removeItem("vybeNow");$("nowLabel").textContent=uiText("⚡ VYBE NOW не задано");$("nowTime").textContent=uiText("Покажи, чого хочеш саме зараз");return}$("nowLabel").textContent=now.icon+" "+uiText(now.intent);$("nowTime").textContent=uiText("Активний ще ")+Math.max(1,Math.ceil((now.expires-Date.now())/3600000))+uiText(" год.")}
 const sheet=$("sheet"),content=$("sheetContent");$("closeSheet").onclick=()=>{sendTyping(activeChat?.matchId,false);activeChat=null;syncMatchRealtimeChannels();clearTimeout(typingStopTimer);sheet.classList.add("hidden")};
-function openSheet(type){let h="";if(type==="now")h='<h2>Твій VYBE NOW ⚡</h2><p>Що ти хочеш саме зараз?</p><div class="choiceGrid">'+[["💬","Поговорити"],["🔥","Флірт"],["🌙","Вірт"],["🫶","Дружба"],["🎙","Голос"],["☕","Зустріч"]].map(x=>'<button class="choice" data-intent="'+x[1]+'" data-icon="'+x[0]+'">'+x[0]+" "+x[1]+"</button>").join("")+'</div><p>На скільки?</p><div class="choiceGrid"><button class="choice duration selected" data-hours="1">1 година</button><button class="choice duration" data-hours="3">3 години</button><button id="smartDuration" class="choice duration" data-smart="1">До ранку</button></div><button id="saveNow" class="primary">Увімкнути VYBE NOW</button>';else if(type==="premium"){const b=entitlements?.balances||{};const plus=entitlements?.vybe_plus_until&&new Date(entitlements.vybe_plus_until)>new Date()?new Date(entitlements.vybe_plus_until).toLocaleDateString(uiLocale()):"не активний";h='<h2>Мої бонуси ✨</h2><p>'+entitlementText()+'</p><div class="priceGrid"><div class="price"><span>SuperVYBE</span><strong>'+Number(b.supervybe||0)+'</strong></div><div class="price"><span>Spotlight</span><strong>'+Number(b.spotlight||0)+'</strong></div><div class="price"><span>VYBE+</span><strong>'+plus+'</strong></div></div>'+(Number(b.spotlight||0)>0?'<button id="useSpotlight" class="primary">Активувати Spotlight на 30 хв</button>':'')+'<p><small>SuperVYBE витрачається кнопкою ✦ на реальній анкеті.</small></p>';} else if(type==="filter")h='<h2>Фільтри</h2><p>Вік, місто, дистанція, кого шукаєш, онлайн та верифікація — наступний етап.</p><button class="primary" onclick="document.getElementById(\'sheet\').classList.add(\'hidden\')">Готово</button>';else if(type==="safety")h='<h2>Безпека 🛡</h2><p>VYBE працює тільки для 18+. Блокування та скарги вже захищені серверною перевіркою: заблоковані користувачі не бачать одне одного у пошуку, збігах і чатах.</p><button id="openBlockedFromSafety" class="choice safetyChoice">🚫 Мої блокування</button><p class="safetyHint">Якщо бачиш погрози, шантаж, неповнолітнього користувача, незаконний контент або пропозиції сексуальних послуг — надішли скаргу з профілю/чату.</p>';else h='<h2>VYBE</h2>';content.innerHTML=h;sheet.classList.remove("hidden");if(type==="safety"){const b=$("openBlockedFromSafety");if(b)b.onclick=openBlockedUsers}if(type==="premium"){const u=$("useSpotlight");if(u)u.onclick=useSpotlight}if(type==="now"){let chosen=null,hours=1;
+function openSheet(type){let h="";if(type==="now")h='<h2>Твій VYBE NOW ⚡</h2><p>Що ти хочеш саме зараз?</p><div class="choiceGrid">'+[["💬","Поговорити"],["🔥","Флірт"],["🌙","Вірт"],["🫶","Дружба"],["🎙","Голос"],["☕","Зустріч"]].map(x=>'<button class="choice" data-intent="'+x[1]+'" data-icon="'+x[0]+'">'+x[0]+" "+x[1]+"</button>").join("")+'</div><p>На скільки?</p><div class="choiceGrid"><button class="choice duration selected" data-hours="1">1 година</button><button class="choice duration" data-hours="3">3 години</button><button id="smartDuration" class="choice duration" data-smart="1">До ранку</button></div><button id="saveNow" class="primary">Увімкнути VYBE NOW</button>';else if(type==="premium"){h='<h2>'+uiText("Мої бонуси ✨")+'</h2><div class="empty">'+uiText("Завантажуємо магазин…")+'</div>';} else if(type==="filter")h='<h2>Фільтри</h2><p>Вік, місто, дистанція, кого шукаєш, онлайн та верифікація — наступний етап.</p><button class="primary" onclick="document.getElementById(\'sheet\').classList.add(\'hidden\')">Готово</button>';else if(type==="safety")h='<h2>Безпека 🛡</h2><p>VYBE працює тільки для 18+. Блокування та скарги вже захищені серверною перевіркою: заблоковані користувачі не бачать одне одного у пошуку, збігах і чатах.</p><button id="openBlockedFromSafety" class="choice safetyChoice">🚫 Мої блокування</button><p class="safetyHint">Якщо бачиш погрози, шантаж, неповнолітнього користувача, незаконний контент або пропозиції сексуальних послуг — надішли скаргу з профілю/чату.</p>';else h='<h2>VYBE</h2>';content.innerHTML=h;sheet.classList.remove("hidden");if(type==="safety"){const b=$("openBlockedFromSafety");if(b)b.onclick=openBlockedUsers}if(type==="premium"){renderPremiumShop()}if(type==="now"){let chosen=null,hours=1;
 const smart=content.querySelector("#smartDuration");
 if(smart){const d=new Date(),hour=d.getHours();let target=new Date(d);
 if(hour<8){target.setHours(8,0,0,0);smart.textContent="До ранку";}
