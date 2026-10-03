@@ -55,3 +55,9 @@
 /* VYBE 0.9.1 — account safety */
 .dangerText{color:#ffb0bf;line-height:1.5}
 .dangerPrimary{background:linear-gradient(135deg,#ff4773,#d7204f)!important;box-shadow:0 12px 30px rgba(215,32,79,.24)}
+
+
+/* VYBE 0.9.2 — language selector */
+.settingsLabel{margin:8px 2px 7px;color:var(--muted);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.languageGrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
+.languageGrid .choice{text-align:center}
