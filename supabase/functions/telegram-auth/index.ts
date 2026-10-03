@@ -770,6 +770,9 @@ Deno.serve(async (req: Request) => {
         admin_unread: adminUnread,
         moderation_unread: moderationUnread,
         admin_role: adminRole,
+        account_status: user.account_status ?? "active",
+        restriction_reason: user.restriction_reason ?? null,
+        restricted_at: user.restricted_at ?? null,
       });
     }
 
@@ -940,12 +943,23 @@ Deno.serve(async (req: Request) => {
       if (targetUserId === String(user.id)) return json({ok:false,error:"Cannot restrict owner account"},400);
 
       const targetRows = await db(
-        `users?id=eq.${encodeURIComponent(targetUserId)}&select=id,account_status&limit=1`,
+        `users?id=eq.${encodeURIComponent(targetUserId)}&select=id,telegram_id,account_status,restriction_reason&limit=1`,
       ) ?? [];
       const target = targetRows?.[0];
       if (!target) return json({ok:false,error:"User not found"},404);
 
       const now = new Date().toISOString();
+      const reasonLabels: Record<string,string> = {
+        fake_profile:"fake profile / фейковий профіль",
+        spam:"spam or fraud / спам або шахрайство",
+        harassment:"harassment / переслідування",
+        underage:"suspected minor / підозра на неповнолітнього",
+        sexual_services:"sexual services / сексуальні послуги",
+        illegal_content:"illegal or dangerous content / незаконний або небезпечний контент",
+        other:"moderation review / модерація",
+        moderation:"moderation review / модерація",
+      };
+
       if (mode === "restore") {
         await db(`users?id=eq.${encodeURIComponent(targetUserId)}`, {
           method:"PATCH",
@@ -956,6 +970,18 @@ Deno.serve(async (req: Request) => {
             restricted_by:null,
           }),
         });
+
+        try {
+          await telegramApi(botToken,"sendMessage",{
+            chat_id:Number(target.telegram_id),
+            text:"VYBE 🛡\n\nYour access has been restored. / Доступ до VYBE відновлено.",
+            reply_markup:{
+              inline_keyboard:[[{text:"Open VYBE / Відкрити VYBE",web_app:{url:"https://restsva-ui.github.io/vibe-app/"}}]],
+            },
+          });
+        } catch {
+          console.warn("moderation:restore_notify_failed",{user_id:targetUserId});
+        }
       } else {
         let reason = clean(body.reason,120) || "moderation";
         if (reportId) {
@@ -983,6 +1009,18 @@ Deno.serve(async (req: Request) => {
               updated_at:now,
             }),
           });
+        }
+
+        try {
+          await telegramApi(botToken,"sendMessage",{
+            chat_id:Number(target.telegram_id),
+            text:`VYBE 🛡\n\nYour account access is temporarily restricted. / Доступ до акаунта тимчасово обмежено.\nReason / Причина: ${reasonLabels[reason] || reason}\n\nYou can contact support from VYBE. / Ти можеш звернутися у підтримку через VYBE.`,
+            reply_markup:{
+              inline_keyboard:[[{text:"Support / Підтримка",web_app:{url:"https://restsva-ui.github.io/vibe-app/?support=ticket"}}]],
+            },
+          });
+        } catch {
+          console.warn("moderation:restrict_notify_failed",{user_id:targetUserId});
         }
       }
 
