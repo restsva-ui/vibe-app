@@ -42,7 +42,7 @@ const I18N_PAIRS=[
   ["Твій профіль","Your profile"],["Заповни анкету.","Complete your profile."],["Редагувати профіль","Edit profile"],
   ["Додати фото","Add photo"],["Змінити фото","Change photo"],["Видалити","Remove"],
   ["🔗 Запросити друзів","🔗 Invite friends"],["🛡 Безпека та приватність","🛡 Safety & privacy"],
-  ["🚫 Заблоковані користувачі","🚫 Blocked users"],["⚑ Скарги та підтримка","⚑ Reports & support"],["⚙ Налаштування","⚙ Settings"],
+  ["🚫 Заблоковані користувачі","🚫 Blocked users"],["⚑ Підтримка VYBE","⚑ VYBE Support"],["Потрібно поскаржитися на конкретного користувача? Відкрий його анкету або чат → ⋯ → «Поскаржитися».","Need to report a specific user? Open their profile or chat → ⋯ → “Report”."],["Звернення тут — це технічна або платіжна підтримка, а не скарга на користувача.","Requests here are for technical or payment support, not reports about another user."],["⚙ Налаштування","⚙ Settings"],
   ["Вайб","Vibe"],["Збіги","Matches"],["Профіль","Profile"],["Усе","All"],
   ["Поговорити","Talk"],["Флірт","Flirt"],["Вірт","Virtual"],["Дружба","Friendship"],["Голос","Voice"],["Зустріч","Meet"],
   ["● автооновлення","● auto refresh"],["друкує…","typing…"],["realtime • приватний чат","realtime • private chat"],["автооновлення • приватний чат","auto refresh • private chat"],
@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.18",
+      app_version:"0.9.19",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -1019,7 +1019,7 @@ function supportStatusLabel(status){
   return status==="open"?uiText("Відкрите"):status==="reviewed"?uiText("В роботі"):status==="resolved"?uiText("Вирішено"):String(status||"");
 }
 async function openSupportInfo(){
-  content.innerHTML='<h2>'+uiText("Підтримка VYBE ⚑")+'</h2><p>'+uiText("Якщо проблема стосується конкретного користувача, відкрий його анкету або чат → ⋯ → «Поскаржитися».")+'</p><p class="safetyHint">'+uiText("Технічні помилки зараз фіксуємо під час beta-тестування. Не надсилай у скаргах паролі, банківські дані чи інші секрети.")+'</p><h3>'+uiText("Нове звернення")+'</h3><select id="supportCategory" class="field"><option value="general">'+uiText("Загальне питання")+'</option><option value="payment">'+uiText("Проблема з оплатою")+'</option></select><textarea id="supportMessage" class="field supportMessage" maxlength="1500" placeholder="'+uiText("Опиши проблему")+'"></textarea><button id="supportSubmitBtn" class="primary">'+uiText("Надіслати у підтримку")+'</button><h3>'+uiText("Мої звернення")+'</h3><div id="mySupportTickets"><div class="empty">'+uiText("Завантаження…")+'</div></div>';
+  content.innerHTML='<h2>'+uiText("Підтримка VYBE ⚑")+'</h2><div class="supportReportHint"><b>⚑ '+uiText("Потрібно поскаржитися на конкретного користувача? Відкрий його анкету або чат → ⋯ → «Поскаржитися».")+'</b><span>'+uiText("Звернення тут — це технічна або платіжна підтримка, а не скарга на користувача.")+'</span></div><p class="safetyHint">'+uiText("Технічні помилки зараз фіксуємо під час beta-тестування. Не надсилай у скаргах паролі, банківські дані чи інші секрети.")+'</p><h3>'+uiText("Нове звернення")+'</h3><select id="supportCategory" class="field"><option value="general">'+uiText("Загальне питання")+'</option><option value="payment">'+uiText("Проблема з оплатою")+'</option></select><textarea id="supportMessage" class="field supportMessage" maxlength="1500" placeholder="'+uiText("Опиши проблему")+'"></textarea><button id="supportSubmitBtn" class="primary">'+uiText("Надіслати у підтримку")+'</button><h3>'+uiText("Мої звернення")+'</h3><div id="mySupportTickets"><div class="empty">'+uiText("Завантаження…")+'</div></div>';
   sheet.classList.remove("hidden");tg?.BackButton?.show?.();
   const list=$("mySupportTickets");
   const mine=await secureApi("support_my");
