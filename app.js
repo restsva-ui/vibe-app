@@ -1,5 +1,159 @@
 const tg=window.Telegram?.WebApp;if(tg){tg.ready();tg.expand();tg.setHeaderColor("#0b0b12");tg.setBackgroundColor("#0b0b12")}const tuser=tg?.initDataUnsafe?.user;const $=id=>document.getElementById(id),store=(k,v)=>localStorage.setItem(k,JSON.stringify(v)),load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}};
 
+
+const I18N_PAIRS=[
+  ["Знайомства, флірт, дружба та приватне спілкування для дорослих.","Dating, flirting, friendship and private communication for adults."],
+  ["Мені виповнилося 18 років, я приймаю правила спільноти.","I am 18 or older and I accept the community rules."],
+  ["Заборонені неповнолітні, примус, шантаж, продаж сексуальних послуг і незаконний контент.","Minors, coercion, blackmail, sexual services and illegal content are prohibited."],
+  ["Створи свою анкету","Create your profile"],
+  ["Анкета синхронізується з VYBE. Не додавай приватні контактні дані в опис.","Your profile syncs with VYBE. Do not put private contact details in your bio."],
+  ["Коротко й живо — що варто знати про тебе?","A short, lively intro — what should people know about you?"],
+  ["Чоловік / Жінка / Інше","Man / Woman / Other"],
+  ["Напр. жінок 25–40","E.g. women 25–40"],
+  ["Зберегти →","Save →"],
+  ["Ім’я","Name"],["Вік","Age"],["Місто","City"],["Кого шукаю","Looking for"],["Про себе","About me"],
+  ["⚡ VYBE NOW не задано","⚡ VYBE NOW not set"],
+  ["Покажи, чого хочеш саме зараз","Show what you want right now"],
+  ["Задати","Set"],
+  ["Люди по твоєму вайбу","People matching your vibe"],
+  ["Фільтри","Filters"],["Мої збіги","My matches"],["Чати","Chats"],
+  ["Твій профіль","Your profile"],["Заповни анкету.","Complete your profile."],["Редагувати профіль","Edit profile"],
+  ["Додати фото","Add photo"],["Змінити фото","Change photo"],["Видалити","Remove"],
+  ["🔗 Запросити друзів","🔗 Invite friends"],["🛡 Безпека та приватність","🛡 Safety & privacy"],
+  ["🚫 Заблоковані користувачі","🚫 Blocked users"],["⚑ Скарги та підтримка","⚑ Reports & support"],["⚙ Налаштування","⚙ Settings"],
+  ["Вайб","Vibe"],["Збіги","Matches"],["Профіль","Profile"],["Усе","All"],
+  ["Поговорити","Talk"],["Флірт","Flirt"],["Вірт","Virtual"],["Дружба","Friendship"],["Голос","Voice"],["Зустріч","Meet"],
+  ["● автооновлення","● auto refresh"],["друкує…","typing…"],["realtime • приватний чат","realtime • private chat"],["автооновлення • приватний чат","auto refresh • private chat"],
+  ["Не вдалося завантажити реферальну статистику.","Could not load referral statistics."],
+  ["Запросити друзів 🔗","Invite friends 🔗"],["Запрошено: ","Invited: "],[" • Активували анкету: "," • Activated profile: "],
+  ["Нагороди 🎁","Rewards 🎁"],[" активн."," active"],["Отримано","Unlocked"],["Прогрес: ","Progress: "],
+  ["Зараховуються лише друзі, які створили анкету 18+.","Only friends who create an 18+ profile count."],
+  ["Поділитися запрошенням","Share invite"],["Скопіювати посилання","Copy link"],
+  ["Приєднуйся до VYBE 💜. Відкрий бота та натисни кнопку запуску VYBE.","Join VYBE 💜. Open the bot and tap the button to launch VYBE."],
+  ["Посилання скопійовано ✅","Link copied ✅"],
+  ["Фейкова анкета / видає себе за іншу людину","Fake profile / impersonation"],["Спам або шахрайство","Spam or scam"],
+  ["Образи, переслідування або шантаж","Abuse, harassment or blackmail"],["Можливо, користувачу немає 18 років","User may be under 18"],
+  ["Продаж або купівля сексуальних послуг","Buying or selling sexual services"],["Незаконний або небезпечний контент","Illegal or dangerous content"],["Інша причина","Other reason"],
+  ["Безпека 🛡","Safety 🛡"],["Дії щодо ","Actions for "],["⚑ Поскаржитися","⚑ Report"],["🚫 Заблокувати","🚫 Block"],
+  ["Після блокування ви не бачитимете одне одного у VYBE, а чат і нові лайки стануть недоступними.","After blocking, you will no longer see each other in VYBE, and chat and new likes will be disabled."],
+  ["Не вдалося заблокувати користувача.","Could not block this user."],["Користувача заблоковано.","User blocked."],
+  ["Поскаржитися ⚑","Report ⚑"],["Скарга на ","A report about "],[" буде передана на модерацію."," will be sent for moderation."],
+  ["Причина","Reason"],["Деталі","Details"],["Коротко опиши, що сталося. Не додавай зайві особисті дані.","Briefly describe what happened. Do not add unnecessary personal data."],
+  ["Також заблокувати цього користувача","Also block this user"],["Надіслати скаргу","Submit report"],
+  ["Не вдалося надіслати скаргу.","Could not submit the report."],["Скаргу надіслано, користувача заблоковано.","Report submitted and user blocked."],["Скаргу надіслано.","Report submitted."],
+  ["Заблоковані користувачі 🚫","Blocked users 🚫"],["Завантаження…","Loading…"],["Не вдалося завантажити список.","Could not load the list."],
+  ["Користувач","User"],["Розблокувати","Unblock"],["Тут поки нікого немає.","No one here yet."],["Не вдалося розблокувати.","Could not unblock."],
+  ["не активний","inactive"],["🔦 активний ще ","🔦 active for "],[" хв."," min"],[" • VYBE+ до: "," • VYBE+ until: "],
+  ["Spotlight не списано. Перевір баланс і спробуй ще раз.","Spotlight was not used. Check your balance and try again."],
+  ["Spotlight активовано на 30 хвилин ✨","Spotlight activated for 30 minutes ✨"],
+  ["Привіт, ","Hi, "],["Новий користувач VYBE","New VYBE user"],["● онлайн","● online"],["нещодавно","recently"],["✓ верифіковано","✓ verified"],
+  ["Не вдалося підтвердити Telegram-авторизацію. Відкрий VYBE заново через бота.","Could not verify Telegram authorization. Reopen VYBE from the bot."],
+  ["Входимо…","Entering…"],["Увійти","Enter"],["Вкажи ім’я та вік 18+.","Enter your name and age (18+)."],["Шукаю: ","Looking for: "],["Без опису","No bio"],
+  ["Фото профілю оновлено ✅","Profile photo updated ✅"],["Не вдалося завантажити фото. Обери JPG/PNG/WebP до 12 МБ.","Could not upload the photo. Choose a JPG/PNG/WebP file up to 12 MB."],
+  ["Видалити фото профілю?","Remove profile photo?"],["Не вдалося видалити фото.","Could not remove the photo."],
+  ["Фільтри 🔎","Filters 🔎"],["Вік від","Age from"],["до","to"],["Напр. Київ","E.g. Kyiv"],["Лише онлайн зараз","Online now only"],["Лише верифіковані","Verified only"],["Застосувати","Apply"],["Скинути фільтри","Reset filters"],
+  ["Активний ще ","Active for "],[" год."," h"],
+  ["Твій VYBE NOW ⚡","Your VYBE NOW ⚡"],["Що ти хочеш саме зараз?","What do you want right now?"],["На скільки?","For how long?"],
+  ["1 година","1 hour"],["3 години","3 hours"],["До ранку","Until morning"],["До вечора","Until evening"],["Увімкнути VYBE NOW","Enable VYBE NOW"],
+  ["Мої бонуси ✨","My bonuses ✨"],["Активувати Spotlight на 30 хв","Activate Spotlight for 30 min"],["SuperVYBE витрачається кнопкою ✦ на реальній анкеті.","Use SuperVYBE with the ✦ button on a real profile."],
+  ["VYBE працює тільки для 18+. Блокування та скарги вже захищені серверною перевіркою: заблоковані користувачі не бачать одне одного у пошуку, збігах і чатах.","VYBE is for adults 18+ only. Blocks and reports are enforced server-side: blocked users cannot see each other in discovery, matches or chats."],
+  ["🚫 Мої блокування","🚫 My blocked users"],["Якщо бачиш погрози, шантаж, неповнолітнього користувача, незаконний контент або пропозиції сексуальних послуг — надішли скаргу з профілю/чату.","If you see threats, blackmail, a minor, illegal content or offers of sexual services, report it from the profile or chat."],
+  ["Спочатку обери свій вайб.","Choose your vibe first."],["Анкет за цим вайбом поки немає.","No profiles match this vibe yet."],["Спробуй інший фільтр.","Try another filter."],
+  ["Це демо-анкета. Реальна дія працює тільки для реальних користувачів.","This is a demo profile. Real actions work only with real users."],
+  ["SuperVYBE не списано. Спробуй ще раз.","SuperVYBE was not used. Try again."],["Не вдалося надіслати VYBE. Спробуй ще раз.","Could not send VYBE. Try again."],
+  ["У вас взаємний VYBE 💜","You have a mutual VYBE 💜"],["SuperVYBE надіслано ✦","SuperVYBE sent ✦"],
+  ["Взаємний VYBE","Mutual VYBE"],["Поки немає взаємних збігів.","No mutual matches yet."],["Відкрити приватний чат","Open private chat"],["Чати з’являться після взаємних збігів.","Chats will appear after mutual matches."],
+  ["Не вдалося відкрити чат.","Could not open chat."],["Ти","You"],["Почни розмову 👋","Start the conversation 👋"],["Напиши повідомлення…","Write a message…"],["Надіслати","Send"],["Не вдалося надіслати повідомлення.","Could not send message."],
+  ["Приватність 🔐","Privacy 🔐"],
+  ["VYBE використовує Telegram-авторизацію та зберігає лише дані, потрібні для роботи сервісу: Telegram ID, анкету, фото, VYBE NOW, лайки, збіги, приватні повідомлення, блокування, скарги та бонуси.","VYBE uses Telegram authorization and stores only data needed to operate the service: Telegram ID, profile, photo, VYBE NOW, likes, matches, private messages, blocks, reports and rewards."],
+  ["Фото зберігаються у Supabase Storage. Тексти приватних повідомлень не передаються в Realtime Broadcast — через realtime передаються лише технічні сигнали про зміни.","Photos are stored in Supabase Storage. Private message text is not sent through Realtime Broadcast — realtime carries only technical change signals."],
+  ["Ти можеш видалити акаунт у Налаштуваннях. Після підтвердження профіль і пов’язані дані видаляються з активної бази.","You can delete your account in Settings. After confirmation, the profile and related data are removed from the active database."],
+  ["Правила спільноти 🛡","Community rules 🛡"],["VYBE — лише для повнолітніх 18+.","VYBE is for adults 18+ only."],
+  ["Заборонені: примус, шантаж, переслідування, шахрайство, видавання себе за іншу людину, участь неповнолітніх, продаж сексуальних послуг та незаконний контент.","Prohibited: coercion, blackmail, harassment, scams, impersonation, minors, sexual services and illegal content."],
+  ["Для небезпечного або підозрілого профілю використовуй «Поскаржитися» або «Заблокувати».","For a dangerous or suspicious profile, use Report or Block."],
+  ["Допомога ⚑","Help ⚑"],["Якщо проблема стосується конкретного користувача, відкрий його анкету або чат → ⋯ → «Поскаржитися».","If the issue concerns a specific user, open their profile or chat → ⋯ → Report."],
+  ["Технічні помилки зараз фіксуємо під час beta-тестування. Не надсилай у скаргах паролі, банківські дані чи інші секрети.","We are logging technical issues during beta testing. Do not include passwords, banking details or other secrets in reports."],
+  ["ВИДАЛИТИ","DELETE"],["Для підтвердження введи слово «ВИДАЛИТИ».","To confirm, enter the word DELETE."],["Видаляємо…","Deleting…"],["Видалити акаунт назавжди","Delete account permanently"],
+  ["Не вдалося видалити акаунт. Спробуй ще раз.","Could not delete the account. Try again."],["Акаунт VYBE та пов’язані дані видалено.","Your VYBE account and related data were deleted."],
+  ["Видалити акаунт","Delete account"],["Ця дія незворотна. Будуть видалені анкета, фото, VYBE NOW, лайки, збіги, повідомлення, блокування, скарги, реферальні дані та бонуси, пов’язані з цим акаунтом.","This cannot be undone. Your profile, photo, VYBE NOW, likes, matches, messages, blocks, reports, referral data and rewards linked to this account will be deleted."],
+  ["Для підтвердження введи ","To confirm, enter "],["Скасувати","Cancel"],
+  ["Налаштування ⚙","Settings ⚙"],["🔐 Приватність","🔐 Privacy"],["🛡 Правила спільноти","🛡 Community rules"],["🗑 Видалити акаунт","🗑 Delete account"],
+  ["Мова","Language"],["Українська","Українська"],["English","English"],
+  ["VYBE+ на 3 дні","VYBE+ for 3 days"]
+];
+
+let currentLang=load("vybeLanguage",null)||(String(tuser?.language_code||"").toLowerCase().startsWith("en")?"en":"uk");
+currentLang=currentLang==="en"?"en":"uk";
+
+const I18N_SORTED=[...I18N_PAIRS].sort((a,b)=>Math.max(b[0].length,b[1].length)-Math.max(a[0].length,a[1].length));
+function uiText(value){
+  let out=String(value??"");
+  for(const [uk,en] of I18N_SORTED){
+    const from=currentLang==="en"?uk:en;
+    const to=currentLang==="en"?en:uk;
+    if(from&&from!==to&&out.includes(from))out=out.split(from).join(to);
+  }
+  return out;
+}
+function uiLocale(){return currentLang==="en"?"en-US":"uk-UA"}
+function skipI18nElement(el){
+  if(!el?.closest)return false;
+  return !!el.closest(".msgBubble,.bio,#profileBio,#profileMeta,#profileName,.chatTitle h2,.blockedRow b,.chatOpen .itemMain small");
+}
+function localizeDom(root=document){
+  document.documentElement.lang=currentLang==="en"?"en":"uk";
+  const target=root.nodeType===Node.ELEMENT_NODE?root:document;
+  const walker=document.createTreeWalker(target,NodeFilter.SHOW_TEXT);
+  const nodes=[];
+  while(walker.nextNode())nodes.push(walker.currentNode);
+  for(const node of nodes){
+    if(skipI18nElement(node.parentElement))continue;
+    const next=uiText(node.nodeValue);
+    if(next!==node.nodeValue)node.nodeValue=next;
+  }
+  const elements=(target.matches?[target,...target.querySelectorAll("*")]:[...document.querySelectorAll("*")]);
+  for(const el of elements){
+    if(skipI18nElement(el))continue;
+    for(const attr of ["placeholder","aria-label","title"]){
+      if(el.hasAttribute?.(attr)){
+        const before=el.getAttribute(attr),after=uiText(before);
+        if(after!==before)el.setAttribute(attr,after);
+      }
+    }
+  }
+}
+function showAlert(message,callback){
+  const text=uiText(message);
+  if(tg?.showAlert)return tg.showAlert(text,callback);
+  window.alert(text);if(typeof callback==="function")callback();
+}
+function deleteToken(){return currentLang==="en"?"DELETE":"ВИДАЛИТИ"}
+function setLanguage(next){
+  currentLang=next==="en"?"en":"uk";
+  store("vybeLanguage",currentLang);
+  localizeDom(document);
+  if(profile)renderProfile();
+  renderNow();
+  renderCard();
+  renderMatches();
+  renderChats();
+  setRealtimeBadge(realtimeConnected);
+  $("hello").textContent=uiText("Привіт, ")+(tuser?.first_name||profile?.name||"")+" 👋";
+  if(!sheet.classList.contains("hidden"))openSettings();
+}
+const languageObserver=new MutationObserver(records=>{
+  for(const record of records){
+    for(const node of record.addedNodes){
+      if(node.nodeType===Node.ELEMENT_NODE)localizeDom(node);
+      else if(node.nodeType===Node.TEXT_NODE&&!skipI18nElement(node.parentElement)){
+        const next=uiText(node.nodeValue);if(next!==node.nodeValue)node.nodeValue=next;
+      }
+    }
+  }
+});
+languageObserver.observe(document.body,{childList:true,subtree:true});
+queueMicrotask(()=>localizeDom(document));
+
 const SUPABASE_URL="https://qifxxzpnuxchnkowxzgp.supabase.co";
 const SUPABASE_KEY="sb_publishable_a-yy3lcgCXbDJosdQAWbPQ_bRLnN_LF";
 const TELEGRAM_AUTH_URL=SUPABASE_URL+"/functions/v1/telegram-auth";
@@ -26,14 +180,14 @@ function formatMessageTime(iso){
   if(!iso)return "";
   const d=new Date(iso);
   if(Number.isNaN(d.getTime()))return "";
-  return d.toLocaleTimeString("uk-UA",{hour:"2-digit",minute:"2-digit"});
+  return d.toLocaleTimeString(uiLocale(),{hour:"2-digit",minute:"2-digit"});
 }
 function formatChatListTime(iso){
   if(!iso)return "";
   const d=new Date(iso);if(Number.isNaN(d.getTime()))return "";
   const n=new Date();
   if(d.toDateString()===n.toDateString())return formatMessageTime(iso);
-  return d.toLocaleDateString("uk-UA",{day:"2-digit",month:"2-digit"});
+  return d.toLocaleDateString(uiLocale(),{day:"2-digit",month:"2-digit"});
 }
 function scheduleSocialRefresh(delay=180){
   clearTimeout(socialRefreshTimer);
@@ -133,13 +287,13 @@ async function claimReferral(){
   else console.warn("VYBE referral claim failed",r);
 }
 async function openReferral(){
-  const r=await secureApi("referral_stats");if(!r.ok){tg?.showAlert?.("Не вдалося завантажити реферальну статистику.");return}
+  const r=await secureApi("referral_stats");if(!r.ok){showAlert("Не вдалося завантажити реферальну статистику.");return}
   const link="https://t.me/vybe_now_bot?start="+encodeURIComponent("ref_"+r.code);
   const rewards=(r.rewards||[]).map(x=>'<div class="choice" style="margin-top:8px;opacity:'+(x.unlocked?'1':'.72')+'"><b>'+(x.unlocked?'✅ ':'🔒 ')+x.milestone+' активн.</b> — '+x.label+'<br><small>'+(x.unlocked?'Отримано':'Прогрес: '+x.progress+'/'+x.milestone)+'</small></div>').join("");
   content.innerHTML='<h2>Запросити друзів 🔗</h2><p>Запрошено: <b>'+r.invited+'</b> • Активували анкету: <b>'+r.activated+'</b></p><h3 style="margin:14px 0 6px">Нагороди 🎁</h3>'+rewards+'<p style="margin-top:12px">Зараховуються лише друзі, які створили анкету 18+.</p><button id="shareReferral" class="primary">Поділитися запрошенням</button><button id="copyReferral" class="choice" style="width:100%;margin-top:10px">Скопіювати посилання</button>';
   sheet.classList.remove("hidden");
   $("shareReferral").onclick=()=>{const u="https://t.me/share/url?url="+encodeURIComponent(link)+"&text="+encodeURIComponent("Приєднуйся до VYBE 💜. Відкрий бота та натисни кнопку запуску VYBE.");tg?.openTelegramLink?.(u)};
-  $("copyReferral").onclick=async()=>{try{await navigator.clipboard.writeText(link);tg?.showAlert?.("Посилання скопійовано ✅")}catch{tg?.showAlert?.(link)}};
+  $("copyReferral").onclick=async()=>{try{await navigator.clipboard.writeText(link);showAlert("Посилання скопійовано ✅")}catch{showAlert(link)}};
 }
 
 const REPORT_REASONS=[
@@ -153,9 +307,10 @@ const REPORT_REASONS=[
 ];
 
 function confirmAction(message){
+  const localized=uiText(message);
   return new Promise(resolve=>{
-    if(tg?.showConfirm)tg.showConfirm(message,ok=>resolve(ok===true));
-    else resolve(window.confirm(message));
+    if(tg?.showConfirm)tg.showConfirm(localized,ok=>resolve(ok===true));
+    else resolve(window.confirm(localized));
   });
 }
 
@@ -178,11 +333,11 @@ async function blockUser(userId,name){
   const ok=await confirmAction("Заблокувати "+(name||"цього користувача")+"? Ви більше не бачитимете одне одного у VYBE.");
   if(!ok)return;
   const r=await secureApi("block_user",{target_user_id:userId});
-  if(!r.ok){tg?.showAlert?.("Не вдалося заблокувати користувача.");return}
+  if(!r.ok){showAlert("Не вдалося заблокувати користувача.");return}
   sheet.classList.add("hidden");
   await refreshSocial();
   tg?.HapticFeedback?.notificationOccurred("success");
-  tg?.showAlert?.("Користувача заблоковано.");
+  showAlert("Користувача заблоковано.");
 }
 
 function openReport(userId,name){
@@ -198,11 +353,11 @@ function openReport(userId,name){
       details:$("reportDetails").value.trim(),
       block:$("reportBlock").checked,
     });
-    if(!r.ok){button.disabled=false;tg?.showAlert?.("Не вдалося надіслати скаргу.");return}
+    if(!r.ok){button.disabled=false;showAlert("Не вдалося надіслати скаргу.");return}
     sheet.classList.add("hidden");
     if(r.blocked)await refreshSocial();
     tg?.HapticFeedback?.notificationOccurred("success");
-    tg?.showAlert?.(r.blocked?"Скаргу надіслано, користувача заблоковано.":"Скаргу надіслано.");
+    showAlert(r.blocked?"Скаргу надіслано, користувача заблоковано.":"Скаргу надіслано.");
   };
 }
 
@@ -221,7 +376,7 @@ async function openBlockedUsers(){
     const row=rows[Number(btn.dataset.index)];if(!row)return;
     btn.disabled=true;
     const x=await secureApi("unblock_user",{target_user_id:row.user_id});
-    if(!x.ok){btn.disabled=false;tg?.showAlert?.("Не вдалося розблокувати.");return}
+    if(!x.ok){btn.disabled=false;showAlert("Не вдалося розблокувати.");return}
     await refreshSocial();
     await openBlockedUsers();
   });
@@ -231,12 +386,12 @@ let profile=load("vybeProfile",null),now=load("vybeNow",null),matches=[],index=0
 let discoverFilters=load("vybeDiscoverFilters",{minAge:18,maxAge:99,city:"",onlineOnly:false,verifiedOnly:false});
 localStorage.removeItem("vybeMatches");
 async function loadEntitlements(){const r=await secureApi("entitlements");if(r.ok)entitlements=r;return r}
-function spotlightStatus(){const until=entitlements?.spotlight_until?new Date(entitlements.spotlight_until):null;if(!until||until<=new Date())return "не активний";const min=Math.max(1,Math.ceil((until-Date.now())/60000));return "🔦 активний ще "+min+" хв."}
-function entitlementText(){const plus=entitlements?.vybe_plus_until&&new Date(entitlements.vybe_plus_until)>new Date()?new Date(entitlements.vybe_plus_until).toLocaleDateString("uk-UA"):"—";return "SuperVYBE: "+(entitlements?.balances?.supervybe||0)+" • Spotlight: "+(entitlements?.balances?.spotlight||0)+" • "+spotlightStatus()+" • VYBE+ до: "+plus}
-async function useSpotlight(){const r=await secureApi("spotlight_use");if(!r.ok){tg?.showAlert?.("Spotlight не списано. Перевір баланс і спробуй ще раз.");return}await loadEntitlements();tg?.HapticFeedback?.notificationOccurred("success");tg?.showAlert?.("Spotlight активовано на 30 хвилин ✨");openSheet("premium")}
+function spotlightStatus(){const until=entitlements?.spotlight_until?new Date(entitlements.spotlight_until):null;if(!until||until<=new Date())return uiText("не активний");const min=Math.max(1,Math.ceil((until-Date.now())/60000));return uiText("🔦 активний ще ")+min+uiText(" хв.")}
+function entitlementText(){const plus=entitlements?.vybe_plus_until&&new Date(entitlements.vybe_plus_until)>new Date()?new Date(entitlements.vybe_plus_until).toLocaleDateString(uiLocale()):"—";return "SuperVYBE: "+(entitlements?.balances?.supervybe||0)+" • Spotlight: "+(entitlements?.balances?.spotlight||0)+" • "+spotlightStatus()+uiText(" • VYBE+ до: ")+plus}
+async function useSpotlight(){const r=await secureApi("spotlight_use");if(!r.ok){showAlert("Spotlight не списано. Перевір баланс і спробуй ще раз.");return}await loadEntitlements();tg?.HapticFeedback?.notificationOccurred("success");showAlert("Spotlight активовано на 30 хвилин ✨");openSheet("premium")}
 
 const intentIcon=x=>({"Поговорити":"💬","Флірт":"🔥","Вірт":"🌙","Дружба":"🫶","Голос":"🎙","Зустріч":"☕"}[x]||"⚡");
-$("hello").textContent="Привіт, "+(tuser?.first_name||profile?.name||"")+" 👋";
+$("hello").textContent=uiText("Привіт, ")+(tuser?.first_name||profile?.name||"")+" 👋";
 
 async function syncProfile(){
   if(!profile)return false;
@@ -266,7 +421,7 @@ async function loadPeople(){
     intent:p.intent||"Поговорити",
     icon:intentIcon(p.intent),
     bio:p.bio||"Новий користувач VYBE",
-    meta:[p.city||"VYBE",p.online?"● онлайн":"нещодавно",p.verified?"✓ верифіковано":""].filter(Boolean).join(" • "),
+    meta:[p.city||"VYBE",p.online?uiText("● онлайн"):uiText("нещодавно"),p.verified?uiText("✓ верифіковано"):""].filter(Boolean).join(" • "),
     img:p.photo_url||null,
     verified:p.verified===true,
     online:p.online===true,
@@ -280,7 +435,7 @@ async function hydrateProfile(){
 }
 async function begin(){
   const auth=await verifyTelegramAuth();window.__vybeAuth=auth;
-  if(!auth?.ok){console.warn("VYBE secure auth not confirmed",auth);tg?.showAlert?.("Не вдалося підтвердити Telegram-авторизацію. Відкрий VYBE заново через бота.");return}
+  if(!auth?.ok){console.warn("VYBE secure auth not confirmed",auth);showAlert("Не вдалося підтвердити Telegram-авторизацію. Відкрий VYBE заново через бота.");return}
   await claimReferral();
   await hydrateProfile();
   if(!profile)showOnboarding();else{renderProfile();await syncProfile();await loadPeople()}
@@ -299,12 +454,12 @@ enterBtn.addEventListener("click",async()=>{
 syncAgeButton();
 if(localStorage.getItem("vybe18")==="yes"){$("ageGate").classList.add("hidden");setTimeout(begin,0)}
 function showOnboarding(){const o=$("onboarding");o.classList.remove("hidden");$("obName").value=profile?.name||tuser?.first_name||"";$("obAge").value=profile?.age||"";$("obCity").value=profile?.city||"";$("obGender").value=profile?.gender||"";$("obLooking").value=profile?.looking||"";$("obBio").value=profile?.bio||""}
-$("saveProfile").onclick=async()=>{const age=+$("obAge").value;if(!$("obName").value.trim()||age<18||age>99){tg?.showAlert?.("Вкажи ім’я та вік 18+.");return}profile={...profile,name:$("obName").value.trim(),age,city:$("obCity").value.trim(),gender:$("obGender").value.trim(),looking:$("obLooking").value.trim(),bio:$("obBio").value.trim()};store("vybeProfile",profile);$("onboarding").classList.add("hidden");renderProfile();await syncProfile();await loadPeople();tg?.HapticFeedback?.notificationOccurred("success")};
+$("saveProfile").onclick=async()=>{const age=+$("obAge").value;if(!$("obName").value.trim()||age<18||age>99){showAlert("Вкажи ім’я та вік 18+.");return}profile={...profile,name:$("obName").value.trim(),age,city:$("obCity").value.trim(),gender:$("obGender").value.trim(),looking:$("obLooking").value.trim(),bio:$("obBio").value.trim()};store("vybeProfile",profile);$("onboarding").classList.add("hidden");renderProfile();await syncProfile();await loadPeople();tg?.HapticFeedback?.notificationOccurred("success")};
 $("editProfile").onclick=showOnboarding;
 function renderProfile(){
   if(!profile)return;
   $("profileName").textContent=profile.name+", "+profile.age+(profile.verified?" ✓":"");
-  $("profileMeta").textContent=[profile.city,profile.gender,profile.looking&&"Шукаю: "+profile.looking].filter(Boolean).join(" • ");
+  $("profileMeta").textContent=[profile.city,profile.gender,profile.looking&&uiText("Шукаю: ")+profile.looking].filter(Boolean).join(" • ");
   $("profileBio").textContent=profile.bio||"Без опису";
   const avatar=$("profileAvatar");
   if(avatar){
@@ -359,10 +514,10 @@ async function uploadProfilePhoto(file){
     const r=await secureApi("photo_upload",{mime_type:prepared.mime,image_base64:prepared.image_base64});
     if(!r.ok)throw new Error(r.error||"upload_failed");
     profile={...profile,photo_url:r.photo_url||null};store("vybeProfile",profile);renderProfile();await loadPeople();
-    tg?.HapticFeedback?.notificationOccurred("success");tg?.showAlert?.("Фото профілю оновлено ✅");
+    tg?.HapticFeedback?.notificationOccurred("success");showAlert("Фото профілю оновлено ✅");
   }catch(e){
     console.error("VYBE photo upload",e);
-    tg?.showAlert?.("Не вдалося завантажити фото. Обери JPG/PNG/WebP до 12 МБ.");
+    showAlert("Не вдалося завантажити фото. Обери JPG/PNG/WebP до 12 МБ.");
   }finally{
     if(btn){btn.disabled=false;btn.textContent=profile?.photo_url?"Змінити фото":"Додати фото"}
   }
@@ -372,7 +527,7 @@ async function removeProfilePhoto(){
   const ok=await confirmAction("Видалити фото профілю?");
   if(!ok)return;
   const r=await secureApi("photo_remove");
-  if(!r.ok){tg?.showAlert?.("Не вдалося видалити фото.");return}
+  if(!r.ok){showAlert("Не вдалося видалити фото.");return}
   profile={...profile,photo_url:null};store("vybeProfile",profile);renderProfile();await loadPeople();
 }
 
@@ -392,15 +547,15 @@ function openDiscoverFilters(){
   };
 }
 function validNow(){return now&&now.expires>Date.now()}
-function renderNow(){if(!validNow()){now=null;localStorage.removeItem("vybeNow");$("nowLabel").textContent="⚡ VYBE NOW не задано";$("nowTime").textContent="Покажи, чого хочеш саме зараз";return}$("nowLabel").textContent=now.icon+" "+now.intent;$("nowTime").textContent="Активний ще "+Math.max(1,Math.ceil((now.expires-Date.now())/3600000))+" год."}
+function renderNow(){if(!validNow()){now=null;localStorage.removeItem("vybeNow");$("nowLabel").textContent=uiText("⚡ VYBE NOW не задано");$("nowTime").textContent=uiText("Покажи, чого хочеш саме зараз");return}$("nowLabel").textContent=now.icon+" "+uiText(now.intent);$("nowTime").textContent=uiText("Активний ще ")+Math.max(1,Math.ceil((now.expires-Date.now())/3600000))+uiText(" год.")}
 const sheet=$("sheet"),content=$("sheetContent");$("closeSheet").onclick=()=>{sendTyping(activeChat?.matchId,false);activeChat=null;syncMatchRealtimeChannels();clearTimeout(typingStopTimer);sheet.classList.add("hidden")};
-function openSheet(type){let h="";if(type==="now")h='<h2>Твій VYBE NOW ⚡</h2><p>Що ти хочеш саме зараз?</p><div class="choiceGrid">'+[["💬","Поговорити"],["🔥","Флірт"],["🌙","Вірт"],["🫶","Дружба"],["🎙","Голос"],["☕","Зустріч"]].map(x=>'<button class="choice" data-intent="'+x[1]+'" data-icon="'+x[0]+'">'+x[0]+" "+x[1]+"</button>").join("")+'</div><p>На скільки?</p><div class="choiceGrid"><button class="choice duration selected" data-hours="1">1 година</button><button class="choice duration" data-hours="3">3 години</button><button id="smartDuration" class="choice duration" data-smart="1">До ранку</button></div><button id="saveNow" class="primary">Увімкнути VYBE NOW</button>';else if(type==="premium"){const b=entitlements?.balances||{};const plus=entitlements?.vybe_plus_until&&new Date(entitlements.vybe_plus_until)>new Date()?new Date(entitlements.vybe_plus_until).toLocaleDateString("uk-UA"):"не активний";h='<h2>Мої бонуси ✨</h2><p>'+entitlementText()+'</p><div class="priceGrid"><div class="price"><span>SuperVYBE</span><strong>'+Number(b.supervybe||0)+'</strong></div><div class="price"><span>Spotlight</span><strong>'+Number(b.spotlight||0)+'</strong></div><div class="price"><span>VYBE+</span><strong>'+plus+'</strong></div></div>'+(Number(b.spotlight||0)>0?'<button id="useSpotlight" class="primary">Активувати Spotlight на 30 хв</button>':'')+'<p><small>SuperVYBE витрачається кнопкою ✦ на реальній анкеті.</small></p>';} else if(type==="filter")h='<h2>Фільтри</h2><p>Вік, місто, дистанція, кого шукаєш, онлайн та верифікація — наступний етап.</p><button class="primary" onclick="document.getElementById(\'sheet\').classList.add(\'hidden\')">Готово</button>';else if(type==="safety")h='<h2>Безпека 🛡</h2><p>VYBE працює тільки для 18+. Блокування та скарги вже захищені серверною перевіркою: заблоковані користувачі не бачать одне одного у пошуку, збігах і чатах.</p><button id="openBlockedFromSafety" class="choice safetyChoice">🚫 Мої блокування</button><p class="safetyHint">Якщо бачиш погрози, шантаж, неповнолітнього користувача, незаконний контент або пропозиції сексуальних послуг — надішли скаргу з профілю/чату.</p>';else h='<h2>VYBE</h2>';content.innerHTML=h;sheet.classList.remove("hidden");if(type==="safety"){const b=$("openBlockedFromSafety");if(b)b.onclick=openBlockedUsers}if(type==="premium"){const u=$("useSpotlight");if(u)u.onclick=useSpotlight}if(type==="now"){let chosen=null,hours=1;
+function openSheet(type){let h="";if(type==="now")h='<h2>Твій VYBE NOW ⚡</h2><p>Що ти хочеш саме зараз?</p><div class="choiceGrid">'+[["💬","Поговорити"],["🔥","Флірт"],["🌙","Вірт"],["🫶","Дружба"],["🎙","Голос"],["☕","Зустріч"]].map(x=>'<button class="choice" data-intent="'+x[1]+'" data-icon="'+x[0]+'">'+x[0]+" "+x[1]+"</button>").join("")+'</div><p>На скільки?</p><div class="choiceGrid"><button class="choice duration selected" data-hours="1">1 година</button><button class="choice duration" data-hours="3">3 години</button><button id="smartDuration" class="choice duration" data-smart="1">До ранку</button></div><button id="saveNow" class="primary">Увімкнути VYBE NOW</button>';else if(type==="premium"){const b=entitlements?.balances||{};const plus=entitlements?.vybe_plus_until&&new Date(entitlements.vybe_plus_until)>new Date()?new Date(entitlements.vybe_plus_until).toLocaleDateString(uiLocale()):"не активний";h='<h2>Мої бонуси ✨</h2><p>'+entitlementText()+'</p><div class="priceGrid"><div class="price"><span>SuperVYBE</span><strong>'+Number(b.supervybe||0)+'</strong></div><div class="price"><span>Spotlight</span><strong>'+Number(b.spotlight||0)+'</strong></div><div class="price"><span>VYBE+</span><strong>'+plus+'</strong></div></div>'+(Number(b.spotlight||0)>0?'<button id="useSpotlight" class="primary">Активувати Spotlight на 30 хв</button>':'')+'<p><small>SuperVYBE витрачається кнопкою ✦ на реальній анкеті.</small></p>';} else if(type==="filter")h='<h2>Фільтри</h2><p>Вік, місто, дистанція, кого шукаєш, онлайн та верифікація — наступний етап.</p><button class="primary" onclick="document.getElementById(\'sheet\').classList.add(\'hidden\')">Готово</button>';else if(type==="safety")h='<h2>Безпека 🛡</h2><p>VYBE працює тільки для 18+. Блокування та скарги вже захищені серверною перевіркою: заблоковані користувачі не бачать одне одного у пошуку, збігах і чатах.</p><button id="openBlockedFromSafety" class="choice safetyChoice">🚫 Мої блокування</button><p class="safetyHint">Якщо бачиш погрози, шантаж, неповнолітнього користувача, незаконний контент або пропозиції сексуальних послуг — надішли скаргу з профілю/чату.</p>';else h='<h2>VYBE</h2>';content.innerHTML=h;sheet.classList.remove("hidden");if(type==="safety"){const b=$("openBlockedFromSafety");if(b)b.onclick=openBlockedUsers}if(type==="premium"){const u=$("useSpotlight");if(u)u.onclick=useSpotlight}if(type==="now"){let chosen=null,hours=1;
 const smart=content.querySelector("#smartDuration");
 if(smart){const d=new Date(),hour=d.getHours();let target=new Date(d);
 if(hour<8){target.setHours(8,0,0,0);smart.textContent="До ранку";}
 else if(hour<18){target.setHours(20,0,0,0);smart.textContent="До вечора";}
 else{target.setDate(target.getDate()+1);target.setHours(8,0,0,0);smart.textContent="До ранку";}
-smart.dataset.until=String(target.getTime());}content.querySelectorAll(".choice[data-intent]").forEach(b=>b.onclick=()=>{content.querySelectorAll(".choice[data-intent]").forEach(x=>x.classList.remove("selected"));b.classList.add("selected");chosen={intent:b.dataset.intent,icon:b.dataset.icon}});content.querySelectorAll(".duration").forEach(b=>b.onclick=()=>{content.querySelectorAll(".duration").forEach(x=>x.classList.remove("selected"));b.classList.add("selected");hours=b.dataset.smart?Math.max(1,(Number(b.dataset.until)-Date.now())/3600000):+b.dataset.hours});$("saveNow").onclick=async()=>{if(!chosen){tg?.showAlert?.("Спочатку обери свій вайб.");return}now={...chosen,expires:Date.now()+hours*3600000};store("vybeNow",now);renderNow();await syncNow(hours);sheet.classList.add("hidden");tg?.HapticFeedback?.notificationOccurred("success")}}}
+smart.dataset.until=String(target.getTime());}content.querySelectorAll(".choice[data-intent]").forEach(b=>b.onclick=()=>{content.querySelectorAll(".choice[data-intent]").forEach(x=>x.classList.remove("selected"));b.classList.add("selected");chosen={intent:b.dataset.intent,icon:b.dataset.icon}});content.querySelectorAll(".duration").forEach(b=>b.onclick=()=>{content.querySelectorAll(".duration").forEach(x=>x.classList.remove("selected"));b.classList.add("selected");hours=b.dataset.smart?Math.max(1,(Number(b.dataset.until)-Date.now())/3600000):+b.dataset.hours});$("saveNow").onclick=async()=>{if(!chosen){showAlert("Спочатку обери свій вайб.");return}now={...chosen,expires:Date.now()+hours*3600000};store("vybeNow",now);renderNow();await syncNow(hours);sheet.classList.add("hidden");tg?.HapticFeedback?.notificationOccurred("success")}}}
 $("setNow").onclick=()=>openSheet("now");$("premiumBtn").onclick=()=>openSheet("premium");$("filterBtn").onclick=openDiscoverFilters;$("safetyBtn").onclick=()=>openSheet("safety");
 function people(){return remotePeople}function filtered(){const arr=people();return filter==="Усе"?arr:arr.filter(p=>p.intent===filter)}
 function renderCard(){const arr=filtered();if(!arr.length||index>=arr.length){$("cardStack").innerHTML='<div class="empty">Анкет за цим вайбом поки немає.<br>Спробуй інший фільтр.</div>';return}const p=arr[index];const visual=p.img?'<img src="'+escapeHtml(p.img)+'" alt="'+escapeHtml(p.name)+'">':'<div class="generatedAvatar">'+escapeHtml(p.name?.[0]||"V")+'</div>';$("cardStack").innerHTML='<article class="personCard">'+visual+'<button id="cardSafetyBtn" class="cardSafety" aria-label="Безпека">⋯</button><div class="gradient"></div><div class="personMeta"><div class="nameRow"><h2>'+escapeHtml(p.name)+", "+escapeHtml(p.age)+(p.verified?' <span class="verifiedMark">✓</span>':'')+'</h2></div><div class="intent">'+escapeHtml(p.icon)+" "+escapeHtml(p.intent)+'</div><p class="bio">'+escapeHtml(p.bio)+'</p><div class="meta">'+escapeHtml(p.meta)+"</div></div></article>";const safety=$("cardSafetyBtn");if(safety)safety.onclick=e=>{e.stopPropagation();openUserSafety(p.id,p.name)}}
@@ -430,7 +585,7 @@ async function loadMatches(){
 async function next(kind){
   const arr=filtered(),p=arr[index];
   if((kind==="like"||kind==="super")&&p){
-    if(String(p.id).startsWith("demo")){tg?.showAlert?.("Це демо-анкета. Реальна дія працює тільки для реальних користувачів.");return}
+    if(String(p.id).startsWith("demo")){showAlert("Це демо-анкета. Реальна дія працює тільки для реальних користувачів.");return}
     if(kind==="super"){
       await loadEntitlements();
       if(Number(entitlements?.balances?.supervybe||0)<1){openSheet("premium");return}
@@ -438,10 +593,10 @@ async function next(kind){
     const r=kind==="super"
       ? await secureApi("super_like",{target_user_id:p.id})
       : await secureApi("like",{target_user_id:p.id,kind:"like"});
-    if(!r.ok){tg?.showAlert?.(kind==="super"?"SuperVYBE не списано. Спробуй ще раз.":"Не вдалося надіслати VYBE. Спробуй ще раз.");return}
+    if(!r.ok){showAlert(kind==="super"?"SuperVYBE не списано. Спробуй ще раз.":"Не вдалося надіслати VYBE. Спробуй ще раз.");return}
     if(kind==="super")await loadEntitlements();
-    if(r.matched){await loadMatches();tg?.HapticFeedback?.notificationOccurred("success");tg?.showAlert?.("У вас взаємний VYBE 💜")}
-    else if(kind==="super")tg?.showAlert?.("SuperVYBE надіслано ✦")
+    if(r.matched){await loadMatches();tg?.HapticFeedback?.notificationOccurred("success");showAlert("У вас взаємний VYBE 💜")}
+    else if(kind==="super")showAlert("SuperVYBE надіслано ✦")
   }
   index++;renderCard();tg?.HapticFeedback?.impactOccurred("light");
 }
@@ -465,7 +620,7 @@ function renderChats(){
   const rows=[...matches].sort((a,b)=>new Date(b.last_message_at||0)-new Date(a.last_message_at||0));
   list.innerHTML=rows.length?rows.map((p,i)=>{
     const unread=Number(p.unread_count||0);
-    const subtitle=p.last_message?escapeHtml(p.last_message):"Відкрити приватний чат";
+    const subtitle=p.last_message?escapeHtml(p.last_message):uiText("Відкрити приватний чат");
     const time=formatChatListTime(p.last_message_at);
     return '<button type="button" class="listItem chatOpen" data-index="'+i+'">'+(p.photo_url?'<img class="avatar avatarPhoto" src="'+escapeHtml(p.photo_url)+'" alt="">':'<div class="avatar">'+escapeHtml((p.name||"V").trim().charAt(0).toUpperCase())+'</div>')+'<div class="itemMain"><b>'+escapeHtml(p.name)+(p.age?", "+escapeHtml(p.age):"")+(p.online?' <span class="onlineMini">●</span>':'')+'</b><small>'+subtitle+'</small></div><div class="chatTail">'+(time?'<small class="chatTime">'+escapeHtml(time)+'</small>':'')+(unread?'<span class="unreadBadge">'+unread+'</span>':'')+'</div><span class="chevron">›</span></button>';
   }).join(""):'<div class="empty">Чати з’являться після взаємних збігів.</div>';
@@ -483,7 +638,7 @@ async function openChat(matchId,name,userId,options={}){
   const r=await secureApi("messages_list",{match_id:matchId});
   if(!r.ok){
     if(options.silent){activeChat=null;sheet.classList.add("hidden");await loadMatches();return}
-    tg?.showAlert?.("Не вдалося відкрити чат.");return
+    showAlert("Не вдалося відкрити чат.");return
   }
 
   activeChat={matchId:key,name,userId:String(userId)};
@@ -492,7 +647,7 @@ async function openChat(matchId,name,userId,options={}){
   const messages=r.messages||[];
   const msgs=messages.map(m=>{
     const mine=String(m.sender_id)===String(profile?.user_id);
-    const sender=mine?"Ти":name;
+    const sender=mine?uiText("Ти"):name;
     const initial=escapeHtml((sender||"V").trim().charAt(0).toUpperCase());
     const createdAt=new Date(m.created_at).getTime();
     const receipt=mine?(peerReadAt&&createdAt<=peerReadAt?"✓✓":"✓"):"";
@@ -522,7 +677,7 @@ async function openChat(matchId,name,userId,options={}){
     sendTyping(key,false);clearTimeout(typingStopTimer);
     $("sendMessage").disabled=true;
     const x=await secureApi("message_send",{match_id:matchId,message});
-    if(!x.ok){$("sendMessage").disabled=false;tg?.showAlert?.("Не вдалося надіслати повідомлення.");return}
+    if(!x.ok){$("sendMessage").disabled=false;showAlert("Не вдалося надіслати повідомлення.");return}
     if($("chatMessage"))$("chatMessage").value="";
     await openChat(matchId,name,userId,{noMatchRefresh:true});
     loadMatches();
@@ -559,15 +714,15 @@ function resetLocalVYBE(){
 async function deleteAccount(){
   const typed=$("deleteConfirmInput")?.value?.trim()||"";
   const button=$("deleteAccountConfirm");
-  if(typed!=="ВИДАЛИТИ"){
-    tg?.showAlert?.('Для підтвердження введи слово «ВИДАЛИТИ».');
+  if(typed!==deleteToken()){
+    showAlert(currentLang==="en"?"To confirm, enter the word DELETE.":'Для підтвердження введи слово «ВИДАЛИТИ».');
     return;
   }
   if(button){button.disabled=true;button.textContent="Видаляємо…"}
-  const r=await secureApi("account_delete",{confirmation:typed});
+  const r=await secureApi("account_delete",{confirmation:"ВИДАЛИТИ"});
   if(!r.ok){
     if(button){button.disabled=false;button.textContent="Видалити акаунт назавжди"}
-    tg?.showAlert?.("Не вдалося видалити акаунт. Спробуй ще раз.");
+    showAlert("Не вдалося видалити акаунт. Спробуй ще раз.");
     return;
   }
   if(realtimeUserChannel&&realtimeClient){try{realtimeClient.removeChannel(realtimeUserChannel)}catch{}}
@@ -578,7 +733,7 @@ async function deleteAccount(){
   sheet.classList.add("hidden");
   tg?.HapticFeedback?.notificationOccurred("success");
   if(tg?.showAlert){
-    tg.showAlert("Акаунт VYBE та пов’язані дані видалено.",()=>{try{tg.close()}catch{location.reload()}});
+    showAlert("Акаунт VYBE та пов’язані дані видалено.",()=>{try{tg.close()}catch{location.reload()}});
   }else{
     alert("Акаунт VYBE та пов’язані дані видалено.");
     location.reload();
@@ -586,15 +741,18 @@ async function deleteAccount(){
 }
 
 function openDeleteAccount(){
-  content.innerHTML='<h2>Видалити акаунт</h2><p class="dangerText">Ця дія незворотна. Будуть видалені анкета, фото, VYBE NOW, лайки, збіги, повідомлення, блокування, скарги, реферальні дані та бонуси, пов’язані з цим акаунтом.</p><label>Для підтвердження введи <b>ВИДАЛИТИ</b><input id="deleteConfirmInput" class="field" autocomplete="off" maxlength="20" placeholder="ВИДАЛИТИ"></label><button id="deleteAccountConfirm" class="primary dangerPrimary">Видалити акаунт назавжди</button><button id="cancelDeleteAccount" class="choice filterReset">Скасувати</button>';
+  const token=deleteToken();
+  content.innerHTML='<h2>'+uiText("Видалити акаунт")+'</h2><p class="dangerText">'+uiText("Ця дія незворотна. Будуть видалені анкета, фото, VYBE NOW, лайки, збіги, повідомлення, блокування, скарги, реферальні дані та бонуси, пов’язані з цим акаунтом.")+'</p><label>'+uiText("Для підтвердження введи ")+'<b>'+token+'</b><input id="deleteConfirmInput" class="field" autocomplete="off" maxlength="20" placeholder="'+token+'"></label><button id="deleteAccountConfirm" class="primary dangerPrimary">'+uiText("Видалити акаунт назавжди")+'</button><button id="cancelDeleteAccount" class="choice filterReset">'+uiText("Скасувати")+'</button>';
   sheet.classList.remove("hidden");
   $("deleteAccountConfirm").onclick=deleteAccount;
   $("cancelDeleteAccount").onclick=()=>sheet.classList.add("hidden");
 }
 
 function openSettings(){
-  content.innerHTML='<h2>Налаштування ⚙</h2><button id="privacyInfoBtn" class="choice safetyChoice">🔐 Приватність</button><button id="communityRulesBtn" class="choice safetyChoice">🛡 Правила спільноти</button><button id="settingsBlockedBtn" class="choice safetyChoice">🚫 Заблоковані користувачі</button><button id="deleteAccountBtn" class="choice safetyChoice dangerChoice">🗑 Видалити акаунт</button><p class="safetyHint">Повне перемикання мови UA/EN готується окремим наступним блоком, щоб не залишати частково перекладений інтерфейс.</p>';
+  content.innerHTML='<h2>'+uiText("Налаштування ⚙")+'</h2><p class="settingsLabel">'+uiText("Мова")+'</p><div class="languageGrid"><button id="langUkBtn" class="choice '+(currentLang==="uk"?"selected":"")+'">🇺🇦 Українська</button><button id="langEnBtn" class="choice '+(currentLang==="en"?"selected":"")+'">🇬🇧 English</button></div><button id="privacyInfoBtn" class="choice safetyChoice">'+uiText("🔐 Приватність")+'</button><button id="communityRulesBtn" class="choice safetyChoice">'+uiText("🛡 Правила спільноти")+'</button><button id="settingsBlockedBtn" class="choice safetyChoice">'+uiText("🚫 Заблоковані користувачі")+'</button><button id="deleteAccountBtn" class="choice safetyChoice dangerChoice">'+uiText("🗑 Видалити акаунт")+'</button>';
   sheet.classList.remove("hidden");
+  $("langUkBtn").onclick=()=>setLanguage("uk");
+  $("langEnBtn").onclick=()=>setLanguage("en");
   $("privacyInfoBtn").onclick=openPrivacyInfo;
   $("communityRulesBtn").onclick=openCommunityRules;
   $("settingsBlockedBtn").onclick=openBlockedUsers;
