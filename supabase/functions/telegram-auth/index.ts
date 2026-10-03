@@ -644,7 +644,7 @@ Deno.serve(async (req: Request) => {
           .map((o: any) => String(o.id)),
       };
 
-      const recentOrders = (orders ?? []).slice(0, 40).map((o: any) => {
+      const decorateOrder = (o: any) => {
         const p = productByKey.get(String(o.product_key));
         return {
           id: o.id,
@@ -657,7 +657,65 @@ Deno.serve(async (req: Request) => {
           paid_at: o.paid_at,
           refunded_at: o.refunded_at,
         };
-      });
+      };
+
+      const successfulOrders = (orders ?? [])
+        .filter((o: any) => o.status === "paid" || o.status === "refunded")
+        .slice(0, 30)
+        .map(decorateOrder);
+
+      const attemptOrders = (orders ?? [])
+        .filter((o: any) => !["paid", "refunded"].includes(String(o.status)))
+        .slice(0, 30)
+        .map(decorateOrder);
+
+      const statusCounts = (orders ?? []).reduce((acc: Record<string, number>, o: any) => {
+        const key = String(o.status || "unknown");
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
+
+      const productStats = new Map<string, any>();
+      for (const p of products ?? []) {
+        productStats.set(String(p.product_key), {
+          product_key: String(p.product_key),
+          title_uk: p.title_uk,
+          title_en: p.title_en,
+          current_price_stars: Number(p.stars || 0),
+          attempts: 0,
+          paid_orders: 0,
+          refund_orders: 0,
+          gross_stars: 0,
+          refunded_stars: 0,
+          net_stars: 0,
+        });
+      }
+      for (const o of orders ?? []) {
+        const key = String(o.product_key);
+        const stat = productStats.get(key) ?? {
+          product_key: key,
+          title_uk: key,
+          title_en: key,
+          current_price_stars: Number(o.total_amount || 0),
+          attempts: 0,
+          paid_orders: 0,
+          refund_orders: 0,
+          gross_stars: 0,
+          refunded_stars: 0,
+          net_stars: 0,
+        };
+        stat.attempts += 1;
+        if (o.status === "paid" || o.status === "refunded") {
+          stat.paid_orders += 1;
+          stat.gross_stars += Number(o.total_amount || 0);
+        }
+        if (o.status === "refunded") {
+          stat.refund_orders += 1;
+          stat.refunded_stars += Number(o.total_amount || 0);
+        }
+        stat.net_stars = stat.gross_stars - stat.refunded_stars;
+        productStats.set(key, stat);
+      }
 
       return json({
         ok: true,
@@ -667,7 +725,10 @@ Deno.serve(async (req: Request) => {
           nanostar_amount: Number(botBalance?.nanostar_amount ?? 0),
         },
         sales: summarizeStarOrders(orders ?? []),
-        recent_orders: recentOrders,
+        order_status_counts: statusCounts,
+        product_breakdown: [...productStats.values()].sort((a: any, b: any) => b.net_stars - a.net_stars || b.gross_stars - a.gross_stars),
+        recent_orders: successfulOrders,
+        recent_attempts: attemptOrders,
         telegram_transactions: transactions.slice(0, 50),
         reconciliation,
       });
