@@ -108,6 +108,22 @@ async function rpc(name: string, payload: Record<string, unknown>) {
   return data;
 }
 
+async function telegramApi(botToken: string, method: string, payload: Record<string, unknown>) {
+  const response = await fetch(`https://api.telegram.org/bot${botToken}/${method}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const text = await response.text();
+  let data: any = null;
+  try { data = text ? JSON.parse(text) : null; } catch {}
+  if (!response.ok || !data?.ok) {
+    const description = typeof data?.description === "string" ? data.description.slice(0, 240) : text.slice(0, 240);
+    throw new Error(`Telegram API ${method} failed: ${description || response.status}`);
+  }
+  return data.result;
+}
+
 async function ensureUser(db: ReturnType<typeof dbClient>, tgUser: any) {
   const telegramId = String(tgUser.id);
   const rows = await db(`users?telegram_id=eq.${encodeURIComponent(telegramId)}&select=id,telegram_id,realtime_topic,last_seen&limit=1`);
@@ -491,12 +507,15 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "entitlements") {
-      const rewards = await db(`referral_rewards?user_id=eq.${encodeURIComponent(user.id)}&select=reward_type,reward_amount,granted_at`) ?? [];
-      const uses = await db(`reward_uses?user_id=eq.${encodeURIComponent(user.id)}&select=reward_type,reward_amount,used_at`) ?? [];
+      const [rewards, paidRewards, uses] = await Promise.all([
+        db(`referral_rewards?user_id=eq.${encodeURIComponent(user.id)}&select=reward_type,reward_amount,granted_at`) ?? [],
+        db(`paid_rewards?user_id=eq.${encodeURIComponent(user.id)}&select=reward_type,reward_amount,granted_at`) ?? [],
+        db(`reward_uses?user_id=eq.${encodeURIComponent(user.id)}&select=reward_type,reward_amount,used_at`) ?? [],
+      ]);
       const sum = (rows: any[], type: string) => rows.filter((x: any) => String(x.reward_type).toLowerCase() === type).reduce((n: number, x: any) => n + Number(x.reward_amount || 0), 0);
-      const earnedSupervybe = sum(rewards, "supervybe");
+      const earnedSupervybe = sum(rewards, "supervybe") + sum(paidRewards, "supervybe");
       const usedSupervybe = sum(uses, "supervybe");
-      const earnedSpotlight = sum(rewards, "spotlight");
+      const earnedSpotlight = sum(rewards, "spotlight") + sum(paidRewards, "spotlight");
       const usedSpotlight = sum(uses, "spotlight");
       const supervybe = Math.max(0, earnedSupervybe - usedSupervybe);
       const spotlight = Math.max(0, earnedSpotlight - usedSpotlight);
@@ -521,6 +540,92 @@ Deno.serve(async (req: Request) => {
         vybe_plus_until: vybePlusUntil,
         spotlight_until: spotlightUntil,
       });
+    }
+
+    if (action === "star_catalog") {
+      const products = await db(
+        "star_products?active=eq.true&select=product_key,title_uk,title_en,description_uk,description_en,stars,grant_type,grant_amount,sort_order&order=sort_order.asc",
+      ) ?? [];
+      return json({ ok: true, currency: "XTR", products });
+    }
+
+    if (action === "star_invoice") {
+      const productKey = clean(body.product_key, 64);
+      const language = body.lang === "en" ? "en" : "uk";
+      if (!productKey) return json({ ok: false, error: "Product is required" }, 400);
+
+      const products = await db(
+        `star_products?product_key=eq.${encodeURIComponent(productKey)}&active=eq.true&select=product_key,title_uk,title_en,description_uk,description_en,stars,grant_type,grant_amount&limit=1`,
+      ) ?? [];
+      const product = products?.[0];
+      if (!product) return json({ ok: false, error: "Product not found" }, 404);
+
+      const orderId = crypto.randomUUID();
+      const invoicePayload = `vybe_star:${orderId}`;
+      const amount = Number(product.stars);
+      await db("star_orders", {
+        method: "POST",
+        body: JSON.stringify({
+          id: orderId,
+          user_id: user.id,
+          telegram_id: Number(user.telegram_id),
+          product_key: product.product_key,
+          invoice_payload: invoicePayload,
+          currency: "XTR",
+          total_amount: amount,
+          grant_type: product.grant_type,
+          grant_amount: Number(product.grant_amount),
+          status: "pending",
+        }),
+      });
+
+      const title = language === "en" ? product.title_en : product.title_uk;
+      const description = language === "en" ? product.description_en : product.description_uk;
+
+      try {
+        const invoiceUrl = await telegramApi(botToken, "createInvoiceLink", {
+          title: String(title).slice(0, 32),
+          description: String(description).slice(0, 255),
+          payload: invoicePayload,
+          currency: "XTR",
+          prices: [{ label: String(title).slice(0, 32), amount }],
+        });
+        return json({
+          ok: true,
+          order_id: orderId,
+          product_key: product.product_key,
+          currency: "XTR",
+          stars: amount,
+          invoice_url: invoiceUrl,
+          expires_in_seconds: 3600,
+        });
+      } catch (e) {
+        await db(`star_orders?id=eq.${encodeURIComponent(orderId)}`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: "failed" }),
+        });
+        throw e;
+      }
+    }
+
+    if (action === "star_order_status") {
+      const orderId = clean(body.order_id, 80);
+      if (!orderId) return json({ ok: false, error: "Order is required" }, 400);
+      const rows = await db(
+        `star_orders?id=eq.${encodeURIComponent(orderId)}&user_id=eq.${encodeURIComponent(user.id)}&select=id,product_key,status,currency,total_amount,created_at,expires_at,paid_at&limit=1`,
+      ) ?? [];
+      const order = rows?.[0];
+      if (!order) return json({ ok: false, error: "Order not found" }, 404);
+
+      if (order.status === "pending" && new Date(order.expires_at).getTime() < Date.now()) {
+        await db(`star_orders?id=eq.${encodeURIComponent(orderId)}&status=eq.pending`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: "expired" }),
+        });
+        order.status = "expired";
+      }
+
+      return json({ ok: true, order });
     }
 
     if (action === "spotlight_use") {
