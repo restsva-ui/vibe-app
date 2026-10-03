@@ -194,7 +194,10 @@ async function notifySupportAdmins(db: ReturnType<typeof dbClient>, botToken: st
           chat_id: chatId,
           text: `VYBE Support ⚑\nNew request / Нове звернення: ${label}\nID: ${ticketId}`,
           reply_markup: {
-            inline_keyboard: [[{ text: "Open VYBE / Відкрити VYBE", web_app: { url: "https://restsva-ui.github.io/vibe-app/" } }]],
+            inline_keyboard: [[{
+              text: "Open support / Відкрити підтримку",
+              web_app: { url: `https://restsva-ui.github.io/vibe-app/?admin=support&ticket=${encodeURIComponent(ticketId)}` },
+            }]],
           },
         });
       } catch (e) {
@@ -753,6 +756,12 @@ Deno.serve(async (req: Request) => {
         await telegramApi(botToken, "sendMessage", {
           chat_id: Number(ticket.telegram_id),
           text: `VYBE Support / Підтримка VYBE:\n\n${replyText}`,
+          reply_markup: {
+            inline_keyboard: [[{
+              text: "Open request / Відкрити звернення",
+              web_app: { url: `https://restsva-ui.github.io/vibe-app/?support=ticket&ticket=${encodeURIComponent(String(ticket.id))}` },
+            }]],
+          },
         });
       }
 
