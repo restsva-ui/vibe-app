@@ -66,3 +66,15 @@
 /* VYBE 0.9.3 — legal links */
 .ageLegalLinks{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:10px 0}
 .ageLegalLinks button{border:0;background:none;color:#d8b7ff;padding:5px 6px;text-decoration:underline;text-underline-offset:3px}
+
+
+/* VYBE 0.9.5 — Stars shop */
+.shopTitle{margin:22px 0 6px}
+.starShop{display:grid;gap:10px;margin-top:12px}
+.starProduct{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px;border:1px solid var(--line);border-radius:18px;background:#101019}
+.starProduct b,.starProduct small{display:block}
+.starProduct small{margin-top:4px;color:var(--muted);line-height:1.35}
+.starProduct .buyStarBtn{width:auto;white-space:nowrap;padding:10px 12px}
+.premiumFeatureBtn{width:100%;margin-top:10px}
+.likeBackBtn{width:auto;white-space:nowrap}
+@media (max-width:390px){.starProduct{grid-template-columns:1fr}.starProduct .buyStarBtn,.likeBackBtn{width:100%}}
