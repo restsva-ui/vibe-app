@@ -1,4 +1,24 @@
-const tg=window.Telegram?.WebApp;if(tg){tg.ready();tg.expand();tg.setHeaderColor("#0b0b12");tg.setBackgroundColor("#0b0b12")}const tuser=tg?.initDataUnsafe?.user;const $=id=>document.getElementById(id),store=(k,v)=>localStorage.setItem(k,JSON.stringify(v)),load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}};
+const tg=window.Telegram?.WebApp;
+function syncTelegramViewport(){
+  const root=document.documentElement;
+  const safe=tg?.safeAreaInset||{};
+  const content=tg?.contentSafeAreaInset||{};
+  const top=Math.max(Number(safe.top)||0,Number(content.top)||0);
+  const bottom=Math.max(Number(safe.bottom)||0,Number(content.bottom)||0);
+  const stable=Math.max(320,Number(tg?.viewportStableHeight)||window.innerHeight||document.documentElement.clientHeight||720);
+  root.style.setProperty("--tg-safe-top",top+"px");
+  root.style.setProperty("--tg-safe-bottom",bottom+"px");
+  root.style.setProperty("--tg-viewport-height",stable+"px");
+}
+if(tg){
+  tg.ready();tg.expand();tg.setHeaderColor("#0b0b12");tg.setBackgroundColor("#0b0b12");
+  syncTelegramViewport();
+  tg.onEvent?.("safeAreaChanged",syncTelegramViewport);
+  tg.onEvent?.("contentSafeAreaChanged",syncTelegramViewport);
+  tg.onEvent?.("viewportChanged",syncTelegramViewport);
+}
+window.addEventListener("resize",syncTelegramViewport);
+const tuser=tg?.initDataUnsafe?.user;const $=id=>document.getElementById(id),store=(k,v)=>localStorage.setItem(k,JSON.stringify(v)),load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}};
 
 
 const I18N_PAIRS=[
@@ -177,7 +197,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.7",
+      app_version:"0.9.8",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
