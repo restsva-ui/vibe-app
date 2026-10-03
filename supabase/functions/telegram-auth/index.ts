@@ -265,8 +265,22 @@ async function notifyReporterReviewed(
         inline_keyboard:[[{text:"Open VYBE / Відкрити VYBE",web_app:{url:"https://restsva-ui.github.io/vibe-app/"}}]],
       },
     });
+    await recordNotificationEvent(db,{
+      eventType:"system",
+      recipientUserId:reporterId,
+      sourceKey:`moderation_reviewed:${reportId}`,
+      payload:{kind:"moderation_reviewed",report_id:reportId},
+    });
     console.log("moderation:reporter_notified",{report_id:reportId,reporter_id:reporterId});
   } catch {
+    try {
+      await recordNotificationEvent(db,{
+        eventType:"system",
+        recipientUserId:reporterId,
+        sourceKey:`moderation_reviewed:${reportId}`,
+        payload:{kind:"moderation_reviewed",report_id:reportId},
+      });
+    } catch {}
     console.warn("moderation:reporter_notify_failed",{report_id:reportId,reporter_id:reporterId});
   }
 }
@@ -689,6 +703,7 @@ Deno.serve(async (req: Request) => {
       "notification_settings_get",
       "notification_settings_update",
       "notifications_list",
+      "notifications_count",
       "notifications_mark_seen",
     ]);
     if (user.account_status === "restricted" && !restrictedAllowed.has(String(action))) {
@@ -733,6 +748,13 @@ Deno.serve(async (req: Request) => {
           messages: preferences.messages_enabled,
         },
       });
+    }
+
+    if (action === "notifications_count") {
+      const rows = await db(
+        `notification_events?recipient_user_id=eq.${encodeURIComponent(user.id)}&seen_at=is.null&select=id&limit=100`,
+      ) ?? [];
+      return json({ ok: true, unread: rows.length });
     }
 
     if (action === "notifications_list") {
