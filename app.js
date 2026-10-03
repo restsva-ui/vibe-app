@@ -102,7 +102,7 @@ const I18N_PAIRS=[
   ["Для підтвердження введи ","To confirm, enter "],["Скасувати","Cancel"],
   ["Налаштування ⚙","Settings ⚙"],["🔐 Приватність","🔐 Privacy"],["🛡 Правила спільноти","🛡 Community rules"],["📄 Умови користування","📄 Terms of Use"],["Повна політика приватності","Full Privacy Policy"],["Повні правила спільноти","Full Community Rules"],["Умови","Terms"],["Правила","Rules"],["Приватність","Privacy"],["🗑 Видалити акаунт","🗑 Delete account"],
   ["Мова","Language"],["Аналітика продукту","Product analytics"],["Допомагає покращувати VYBE. Без текстів чатів, bio, імен чи міста.","Helps improve VYBE. No chat text, bio, names or city."],["Увімкнено","On"],["Вимкнено","Off"],["Українська","Українська"],["English","English"],
-  ["VYBE+ на 3 дні","VYBE+ for 3 days"],["Магазин Stars ⭐","Stars Store ⭐"],["Купити за ","Buy for "],["Оплата відкриється у Telegram.","Payment will open in Telegram."],["Не вдалося створити рахунок.","Could not create the invoice."],["Платежі доступні лише всередині Telegram.","Payments are available only inside Telegram."],["Оплата успішна ⭐ Покупку зараховано.","Payment successful ⭐ Your purchase was added."],["Платіж обробляється. Баланс оновиться автоматично.","Payment is processing. Your balance will update automatically."],["Оплату скасовано.","Payment cancelled."],["Оплата не пройшла.","Payment failed."],["Перевіряємо покупку…","Checking your purchase…"],["Хто лайкнув мене","Who liked me"],["VYBE+ відкриває список людей, які вже лайкнули тебе.","VYBE+ unlocks the list of people who already liked you."],["Поки немає нових лайків.","No new likes yet."],["Лайкнути у відповідь","Like back"],["Потрібен активний VYBE+.","Active VYBE+ is required."],["Завантажуємо магазин…","Loading store…"],["Покупка зарахована","Purchase added"],["Зірок","Stars"],["Я приймаю Умови користування для покупки цифрових товарів.","I accept the Terms of Use for digital purchases."],["Перед оплатою прийми Умови користування.","Accept the Terms of Use before paying."],["Очікуємо Telegram…","Waiting for Telegram…"],["Повернутися у VYBE","Return to VYBE"],["Тест успішний ✅ 1 Star повернуто.","Test successful ✅ 1 Star was refunded."],["Покупка успішна ⭐","Purchase successful ⭐"],["Фінанси VYBE ⭐","VYBE Finance ⭐"],["Баланс бота","Bot balance"],["24 години","24 hours"],["7 днів","7 days"],["30 днів","30 days"],["Весь час","All time"],["Валові","Gross"],["Повернення","Refunds"],["Чисті","Net"],["Оплачені","Paid"],["Звірка Telegram ↔ VYBE","Telegram ↔ VYBE reconciliation"],["Останні покупки","Recent purchases"],["Останні транзакції Telegram","Recent Telegram transactions"],["Оновити","Refresh"],["Повернути Stars","Refund Stars"],["Повернути ","Refund "],[" Stars користувачу?"," Stars to the user?"],["Повернення виконано ✅","Refund completed ✅"],["Не вдалося повернути Stars.","Could not refund Stars."],["Джерело істини для поточного балансу — Telegram.","Telegram is the source of truth for the current balance."],["Збігів","Matched"],["з","of"],["Немає транзакцій.","No transactions."],["Немає покупок.","No purchases."],["Продажі за продуктами","Sales by product"],["Статуси замовлень","Order statuses"],["Технічні спроби","Technical attempts"],["Історія повернень","Refund history"],["Автоматично","Automatic"],["Власник","Owner"],["Експорт продажів","Sales export"],["Завантажити CSV","Download CSV"],["Скопіювати CSV","Copy CSV"],["CSV скопійовано ✅","CSV copied ✅"],["Не вдалося експортувати дані.","Could not export data."],["Виведення Stars","Stars withdrawal"],["Виведення виконується власником через Telegram / Fragment. VYBE не зберігає 2FA і не запускає виведення від імені бота.","Withdrawal is performed by the owner through Telegram / Fragment. VYBE does not store 2FA and does not initiate withdrawals on behalf of the bot."],["Як вивести","How to withdraw"],["Спроб","Attempts"],["Успішних","Successful"],["Відкритих","Pending"],["Помилок","Failed"],["Прострочених","Expired"],["Скасованих","Cancelled"],["Останні замовлення","Recent orders"],["Оплата користувача","User payment"],["Повернення користувачу","Refund to user"],["Вхідна транзакція","Incoming transaction"],["Вихідна транзакція","Outgoing transaction"],["Модерація VYBE 🛡","VYBE Moderation 🛡"],["Нова скарга","New report"],["Скаржник","Reporter"],["Користувач зі скарги","Reported user"],["Фейковий профіль","Fake profile"],["Спам","Spam"],["Переслідування або домагання","Harassment"],["Підозра на неповнолітнього","Suspected minor"],["Сексуальні послуги","Sexual services"],["Незаконний або небезпечний контент","Illegal or dangerous content"],["Інша причина","Other reason"],["Відхилено","Dismissed"],["Відхилити скаргу","Dismiss report"],["Позначити вирішеною","Mark resolved"],["Обмежити акаунт","Restrict account"],["Відновити акаунт","Restore account"],["Акаунт обмежено","Account restricted"],["Активний акаунт","Active account"],["Причина обмеження","Restriction reason"],["Обмежити цього користувача у VYBE? Він зникне з пошуку, збігів і не зможе писати повідомлення.","Restrict this user in VYBE? They will disappear from discovery and matches and will not be able to send messages."],["Відновити доступ цього користувача до VYBE?","Restore this user's access to VYBE?"],["Модераційний статус оновлено ✅","Moderation status updated ✅"],["Не вдалося оновити модерацію.","Could not update moderation."],["Доступ обмежено ✅","Access restricted ✅"],["Доступ відновлено ✅","Access restored ✅"],["Твій акаунт тимчасово обмежено","Your account is temporarily restricted"],["Соціальні функції VYBE недоступні, поки обмеження активне. Ти можеш звернутися у підтримку або видалити акаунт.","VYBE social features are unavailable while the restriction is active. You can contact support or delete your account."],["Звернутися у підтримку","Contact support"],["Анкета користувача","User profile"],["Переглянути анкету","View profile"],["Назад до чату","Back to chat"],["Написати повідомлення","Send message"],["У вас вже взаємний VYBE 💜","You already have a mutual VYBE 💜"],["Цей користувач уже у твоїх збігах.","This user is already one of your matches."],["Профіль недоступний.","Profile is unavailable."],["Підтримка VYBE ⚑","VYBE Support ⚑"],["Нове звернення","New request"],["Загальне питання","General question"],["Проблема з оплатою","Payment issue"],["Опиши проблему","Describe the issue"],["Надіслати у підтримку","Send to support"],["Мої звернення","My requests"],["Звернення надіслано ✅","Request sent ✅"],["Не вдалося надіслати звернення.","Could not send the request."],["Зачекай трохи перед наступним зверненням.","Please wait before sending another request."],["Відкрите","Open"],["В роботі","In review"],["Вирішено","Resolved"],["Відповідь підтримки","Support reply"],["Це звернення вже вирішено.","This request is already resolved."],["Центр підтримки","Support Center"],["Відкриті","Open"],["В роботі","Reviewed"],["Вирішені","Resolved"],["Платіжні","Payment"],["Загальні","General"],["Остання покупка","Latest purchase"],["Відкрити звернення","Open request"],["Взяти в роботу","Mark reviewed"],["Відповісти й закрити","Reply & resolve"],["Закрити без відповіді","Resolve without reply"],["Повернути у відкриті","Reopen"],["Внутрішня нотатка","Internal note"],["Відповідь користувачу","Reply to user"],["Статус оновлено ✅","Status updated ✅"],["Не вдалося оновити звернення.","Could not update the request."],["Черга порожня.","Queue is empty."],["⚑ Підтримка VYBE","⚑ VYBE Support"],["«Взяти в роботу» змінює лише статус і не надсилає текст користувачу.","“Mark reviewed” only changes the status and does not send your reply to the user."],["Відповідь не буде втрачена.","Your draft reply will be preserved."],["Telegram-сповіщення","Telegram notifications"],["Лайки","Likes"],["Збіги","Matches"],["Повідомлення","Messages"],["Сповіщення не містять текстів приватних повідомлень.","Notifications never include private message text."],["Не вдалося оновити сповіщення.","Could not update notifications."],["Сповіщення оновлено ✅","Notifications updated ✅"],["owner","owner"],["admin","admin"]
+  ["VYBE+ на 3 дні","VYBE+ for 3 days"],["Магазин Stars ⭐","Stars Store ⭐"],["Купити за ","Buy for "],["Оплата відкриється у Telegram.","Payment will open in Telegram."],["Не вдалося створити рахунок.","Could not create the invoice."],["Платежі доступні лише всередині Telegram.","Payments are available only inside Telegram."],["Оплата успішна ⭐ Покупку зараховано.","Payment successful ⭐ Your purchase was added."],["Платіж обробляється. Баланс оновиться автоматично.","Payment is processing. Your balance will update automatically."],["Оплату скасовано.","Payment cancelled."],["Оплата не пройшла.","Payment failed."],["Перевіряємо покупку…","Checking your purchase…"],["Хто лайкнув мене","Who liked me"],["VYBE+ відкриває список людей, які вже лайкнули тебе.","VYBE+ unlocks the list of people who already liked you."],["Поки немає нових лайків.","No new likes yet."],["Лайкнути у відповідь","Like back"],["Потрібен активний VYBE+.","Active VYBE+ is required."],["Завантажуємо магазин…","Loading store…"],["Покупка зарахована","Purchase added"],["Зірок","Stars"],["Я приймаю Умови користування для покупки цифрових товарів.","I accept the Terms of Use for digital purchases."],["Перед оплатою прийми Умови користування.","Accept the Terms of Use before paying."],["Очікуємо Telegram…","Waiting for Telegram…"],["Повернутися у VYBE","Return to VYBE"],["Тест успішний ✅ 1 Star повернуто.","Test successful ✅ 1 Star was refunded."],["Покупка успішна ⭐","Purchase successful ⭐"],["Фінанси VYBE ⭐","VYBE Finance ⭐"],["Баланс бота","Bot balance"],["24 години","24 hours"],["7 днів","7 days"],["30 днів","30 days"],["Весь час","All time"],["Валові","Gross"],["Повернення","Refunds"],["Чисті","Net"],["Оплачені","Paid"],["Звірка Telegram ↔ VYBE","Telegram ↔ VYBE reconciliation"],["Останні покупки","Recent purchases"],["Останні транзакції Telegram","Recent Telegram transactions"],["Оновити","Refresh"],["Повернути Stars","Refund Stars"],["Повернути ","Refund "],[" Stars користувачу?"," Stars to the user?"],["Повернення виконано ✅","Refund completed ✅"],["Не вдалося повернути Stars.","Could not refund Stars."],["Джерело істини для поточного балансу — Telegram.","Telegram is the source of truth for the current balance."],["Збігів","Matched"],["з","of"],["Немає транзакцій.","No transactions."],["Немає покупок.","No purchases."],["Продажі за продуктами","Sales by product"],["Статуси замовлень","Order statuses"],["Технічні спроби","Technical attempts"],["Історія повернень","Refund history"],["Автоматично","Automatic"],["Власник","Owner"],["Експорт продажів","Sales export"],["Завантажити CSV","Download CSV"],["Скопіювати CSV","Copy CSV"],["CSV скопійовано ✅","CSV copied ✅"],["Не вдалося експортувати дані.","Could not export data."],["Виведення Stars","Stars withdrawal"],["Виведення виконується власником через Telegram / Fragment. VYBE не зберігає 2FA і не запускає виведення від імені бота.","Withdrawal is performed by the owner through Telegram / Fragment. VYBE does not store 2FA and does not initiate withdrawals on behalf of the bot."],["Як вивести","How to withdraw"],["Спроб","Attempts"],["Успішних","Successful"],["Відкритих","Pending"],["Помилок","Failed"],["Прострочених","Expired"],["Скасованих","Cancelled"],["Останні замовлення","Recent orders"],["Оплата користувача","User payment"],["Повернення користувачу","Refund to user"],["Вхідна транзакція","Incoming transaction"],["Вихідна транзакція","Outgoing transaction"],["Модерація VYBE 🛡","VYBE Moderation 🛡"],["Нова скарга","New report"],["Скаржник","Reporter"],["Користувач зі скарги","Reported user"],["Фейковий профіль","Fake profile"],["Спам","Spam"],["Переслідування або домагання","Harassment"],["Підозра на неповнолітнього","Suspected minor"],["Сексуальні послуги","Sexual services"],["Незаконний або небезпечний контент","Illegal or dangerous content"],["Інша причина","Other reason"],["Відхилено","Dismissed"],["Відхилити скаргу","Dismiss report"],["Позначити вирішеною","Mark resolved"],["Обмежити акаунт","Restrict account"],["Відновити акаунт","Restore account"],["Акаунт обмежено","Account restricted"],["Активний акаунт","Active account"],["Причина обмеження","Restriction reason"],["Обмежити цього користувача у VYBE? Він зникне з пошуку, збігів і не зможе писати повідомлення.","Restrict this user in VYBE? They will disappear from discovery and matches and will not be able to send messages."],["Відновити доступ цього користувача до VYBE?","Restore this user's access to VYBE?"],["Модераційний статус оновлено ✅","Moderation status updated ✅"],["Не вдалося оновити модерацію.","Could not update moderation."],["Доступ обмежено ✅","Access restricted ✅"],["Доступ відновлено ✅","Access restored ✅"],["Твій акаунт тимчасово обмежено","Your account is temporarily restricted"],["Соціальні функції VYBE недоступні, поки обмеження активне. Ти можеш звернутися у підтримку або видалити акаунт.","VYBE social features are unavailable while the restriction is active. You can contact support or delete your account."],["Звернутися у підтримку","Contact support"],["Анкета користувача","User profile"],["Переглянути анкету","View profile"],["Назад до чату","Back to chat"],["Написати повідомлення","Send message"],["У вас вже взаємний VYBE 💜","You already have a mutual VYBE 💜"],["Цей користувач уже у твоїх збігах.","This user is already one of your matches."],["Профіль недоступний.","Profile is unavailable."],["Підтримка VYBE ⚑","VYBE Support ⚑"],["Нове звернення","New request"],["Загальне питання","General question"],["Проблема з оплатою","Payment issue"],["Опиши проблему","Describe the issue"],["Надіслати у підтримку","Send to support"],["Мої звернення","My requests"],["Звернення надіслано ✅","Request sent ✅"],["Не вдалося надіслати звернення.","Could not send the request."],["Зачекай трохи перед наступним зверненням.","Please wait before sending another request."],["Відкрите","Open"],["В роботі","In review"],["Вирішено","Resolved"],["Відповідь підтримки","Support reply"],["Це звернення вже вирішено.","This request is already resolved."],["Центр підтримки","Support Center"],["Відкриті","Open"],["В роботі","Reviewed"],["Вирішені","Resolved"],["Платіжні","Payment"],["Загальні","General"],["Остання покупка","Latest purchase"],["Відкрити звернення","Open request"],["Взяти в роботу","Mark reviewed"],["Відповісти й закрити","Reply & resolve"],["Закрити без відповіді","Resolve without reply"],["Повернути у відкриті","Reopen"],["Внутрішня нотатка","Internal note"],["Відповідь користувачу","Reply to user"],["Статус оновлено ✅","Status updated ✅"],["Не вдалося оновити звернення.","Could not update the request."],["Черга порожня.","Queue is empty."],["⚑ Підтримка VYBE","⚑ VYBE Support"],["«Взяти в роботу» змінює лише статус і не надсилає текст користувачу.","“Mark reviewed” only changes the status and does not send your reply to the user."],["Відповідь не буде втрачена.","Your draft reply will be preserved."],["Telegram-сповіщення","Telegram notifications"],["Лайки","Likes"],["Збіги","Matches"],["Повідомлення","Messages"],["Сповіщення не містять текстів приватних повідомлень.","Notifications never include private message text."],["Не вдалося оновити сповіщення.","Could not update notifications."],["Сповіщення оновлено ✅","Notifications updated ✅"],["Сповіщення 🔔","Notifications 🔔"],["Усі","All"],["Система","System"],["Новий лайк","New like"],["Новий SuperVYBE","New SuperVYBE"],["Хтось вподобав твою анкету.","Someone liked your profile."],["Хтось надіслав тобі SuperVYBE.","Someone sent you a SuperVYBE."],["Взаємний VYBE 💜","Mutual VYBE 💜"],["У тебе нове повідомлення.","You have a new message."],["Підтримка відповіла на твоє звернення.","Support replied to your request."],["Доступ до акаунта обмежено.","Account access restricted."],["Доступ до VYBE відновлено.","VYBE access restored."],["Нових сповіщень немає.","No notifications yet."],["Чат недоступний.","Chat is unavailable."],["Відкрити","Open"],["owner","owner"],["admin","admin"]
 ];
 
 let currentLang=load("vybeLanguage",null)||(String(tuser?.language_code||"").toLowerCase().startsWith("en")?"en":"uk");
@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.24",
+      app_version:"0.9.25",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -326,13 +326,14 @@ function setupUserRealtime(topic){
   if(realtimeUserChannel)realtimeClient.removeChannel(realtimeUserChannel);
   realtimeUserChannelTopic=topic;
   realtimeUserChannel=realtimeClient.channel("vybe:user:"+topic,{config:{broadcast:{self:false}}})
-    .on("broadcast",{event:"match_created"},()=>scheduleSocialRefresh(80))
+    .on("broadcast",{event:"match_created"},()=>{scheduleSocialRefresh(80);scheduleSupportCountRefresh()})
     .on("broadcast",{event:"chat_changed"},payload=>{
       const changedMatch=String(payload?.payload?.match_id||"");
       if(activeChat?.matchId===changedMatch&&String(payload?.payload?.sender_id||"")!==String(profile?.user_id)){
         scheduleActiveChatRefresh(50);
       }
       scheduleSocialRefresh(80);
+      scheduleSupportCountRefresh();
     })
     .on("broadcast",{event:"relationship_changed"},()=>{
       if(activeChat){activeChat=null;sheet?.classList?.add("hidden");syncMatchRealtimeChannels()}
@@ -512,7 +513,7 @@ async function openBlockedUsers(){
   });
 }
 
-let profile=load("vybeProfile",null),now=load("vybeNow",null),matches=[],index=0,filter="Усе",remotePeople=[],discoverMatchedFallback=false,entitlements={balances:{supervybe:0,spotlight:0},vybe_plus_until:null,spotlight_until:null},starCatalog=[],adminRole=null,supportUnread=0,adminSupportUnread=0,moderationUnread=0,accountStatus="active",restrictionReason=null,notificationPrefs={likes:true,matches:true,messages:true};
+let profile=load("vybeProfile",null),now=load("vybeNow",null),matches=[],index=0,filter="Усе",remotePeople=[],discoverMatchedFallback=false,entitlements={balances:{supervybe:0,spotlight:0},vybe_plus_until:null,spotlight_until:null},starCatalog=[],adminRole=null,supportUnread=0,adminSupportUnread=0,moderationUnread=0,notificationUnread=0,accountStatus="active",restrictionReason=null,notificationPrefs={likes:true,matches:true,messages:true};
 let discoverFilters=load("vybeDiscoverFilters",{minAge:18,maxAge:99,city:"",onlineOnly:false,verifiedOnly:false});
 localStorage.removeItem("vybeMatches");
 async function loadEntitlements(){const r=await secureApi("entitlements");if(r.ok)entitlements=r;return r}
@@ -546,6 +547,94 @@ function notificationToggleMarkup(id,label,key,icon){
   return '<button id="'+id+'" class="choice safetyChoice notificationToggle '+(enabled?"selected":"")+'"><span>'+icon+' '+uiText(label)+'</span><b>'+uiText(enabled?"Увімкнено":"Вимкнено")+'</b></button>';
 }
 
+function renderNotificationBadge(){
+  const badge=$("notificationBadge");
+  if(!badge)return;
+  badge.textContent=notificationUnread>99?"99+":String(notificationUnread||0);
+  badge.classList.toggle("hidden",!notificationUnread);
+}
+function notificationCenterTime(iso){
+  if(!iso)return "";
+  const d=new Date(iso);if(Number.isNaN(d.getTime()))return "";
+  const now=new Date();
+  if(d.toDateString()===now.toDateString())return d.toLocaleTimeString(uiLocale(),{hour:"2-digit",minute:"2-digit"});
+  return d.toLocaleDateString(uiLocale(),{day:"2-digit",month:"2-digit"})+" "+d.toLocaleTimeString(uiLocale(),{hour:"2-digit",minute:"2-digit"});
+}
+function notificationPresentation(n){
+  const payload=n.payload||{};
+  if(n.event_type==="like"){
+    const superV=payload.variant==="super";
+    return {
+      icon:superV?"✦":"💜",
+      title:uiText(superV?"Новий SuperVYBE":"Новий лайк"),
+      subtitle:uiText(superV?"Хтось надіслав тобі SuperVYBE.":"Хтось вподобав твою анкету."),
+      action:"likes",
+    };
+  }
+  if(n.event_type==="match"){
+    return {icon:"✨",title:uiText("Взаємний VYBE 💜"),subtitle:n.actor?.name||"VYBE",action:"chat"};
+  }
+  if(n.event_type==="message"){
+    return {icon:"💬",title:uiText("Нове повідомлення"),subtitle:n.actor?.name||uiText("У тебе нове повідомлення."),action:"chat"};
+  }
+  const kind=payload.kind||"system";
+  if(kind==="support_reply")return {icon:"⚑",title:uiText("Відповідь підтримки"),subtitle:uiText("Підтримка відповіла на твоє звернення."),action:"support"};
+  if(kind==="account_restricted")return {icon:"🛡",title:uiText("Система"),subtitle:uiText("Доступ до акаунта обмежено."),action:"restriction"};
+  if(kind==="account_restored")return {icon:"✅",title:uiText("Система"),subtitle:uiText("Доступ до VYBE відновлено."),action:null};
+  return {icon:"🔔",title:uiText("Система"),subtitle:"VYBE",action:null};
+}
+async function openNotificationTarget(n){
+  const p=notificationPresentation(n);
+  if(p.action==="chat"&&n.match_id){
+    await loadMatches();
+    const target=matches.find(x=>String(x.match_id)===String(n.match_id));
+    if(target){await openChat(target.match_id,target.name,target.id);return}
+    showAlert("Чат недоступний.");return;
+  }
+  if(p.action==="likes"){
+    if(plusActive())await openWhoLikedMe();
+    else openSheet("premium");
+    return;
+  }
+  if(p.action==="support"){await openSupportInfo();return}
+  if(p.action==="restriction"){openRestrictionNotice();return}
+}
+async function openNotificationCenter(initialFilter="all"){
+  content.innerHTML='<h2>'+uiText("Сповіщення 🔔")+'</h2><div class="empty">'+uiText("Завантаження…")+'</div>';
+  sheet.classList.remove("hidden");tg?.BackButton?.show?.();
+  const r=await secureApi("notifications_list");
+  if(!r.ok){
+    content.innerHTML='<h2>'+uiText("Сповіщення 🔔")+'</h2><div class="empty">'+escapeHtml(r.error||"Error")+'</div>';
+    return;
+  }
+  const rows=r.notifications||[];
+  let activeFilter=initialFilter;
+  const render=()=>{
+    const filtered=activeFilter==="all"?rows:rows.filter(x=>x.event_type===activeFilter);
+    const filters=[
+      ["all","Усі"],["like","Лайки"],["match","Збіги"],["message","Повідомлення"],["system","Система"]
+    ].map(([key,label])=>'<button class="notificationFilter '+(activeFilter===key?"selected":"")+'" data-filter="'+key+'">'+uiText(label)+'</button>').join("");
+    const list=filtered.length?filtered.map((n,i)=>{
+      const p=notificationPresentation(n);
+      const actor=n.actor&&n.event_type!=="like"?'<span class="notificationActor userNameNoI18n">'+escapeHtml(p.subtitle)+'</span>':'<span>'+escapeHtml(p.subtitle)+'</span>';
+      const media=n.actor?.photo_url&&n.event_type!=="like"
+        ? avatarMarkup(n.actor.photo_url,n.actor.name,'notificationAvatar')
+        : '<span class="notificationEmoji">'+p.icon+'</span>';
+      return '<button class="notificationItem '+(n.unread?"unread":"")+'" data-index="'+i+'">'+media+'<span class="notificationText"><b>'+escapeHtml(p.title)+'</b>'+actor+'<small>'+escapeHtml(notificationCenterTime(n.created_at))+'</small></span><span class="notificationChevron">'+(p.action?"›":"")+'</span></button>';
+    }).join(""):'<div class="empty">'+uiText("Нових сповіщень немає.")+'</div>';
+    content.innerHTML='<div class="notificationHead"><h2>'+uiText("Сповіщення 🔔")+'</h2><span class="notificationCount">'+rows.length+'</span></div><div class="notificationFilters">'+filters+'</div><div class="notificationList">'+list+'</div>';
+    bindAvatarFallbacks(content);
+    content.querySelectorAll(".notificationFilter").forEach(btn=>btn.onclick=()=>{activeFilter=btn.dataset.filter||"all";render()});
+    content.querySelectorAll(".notificationItem").forEach(btn=>btn.onclick=()=>{const n=filtered[Number(btn.dataset.index)];if(n)openNotificationTarget(n)});
+  };
+  render();
+  analyticsCapture("notification_center_opened",{count:rows.length,unread:Number(r.unread||0)});
+  if(Number(r.unread||0)>0){
+    const seen=await secureApi("notifications_mark_seen");
+    if(seen.ok){notificationUnread=0;renderNotificationBadge()}
+  }
+}
+
 function setMenuBadge(buttonId,count){
   const btn=$(buttonId);if(!btn)return;
   let badge=btn.querySelector(".menuBadge");
@@ -564,6 +653,8 @@ async function loadSupportCounts(){
     supportUnread=Number(r.user_unread||0);
     adminSupportUnread=Number(r.admin_unread||0);
     moderationUnread=Number(r.moderation_unread||0);
+    notificationUnread=Number(r.notification_unread||0);
+    renderNotificationBadge();
     if(r.admin_role&&!adminRole)adminRole=r.admin_role;
     const nextStatus=r.account_status||accountStatus||"active";
     restrictionReason=r.restriction_reason||null;
@@ -957,7 +1048,7 @@ if(hour<8){target.setHours(8,0,0,0);smart.textContent="До ранку";}
 else if(hour<18){target.setHours(20,0,0,0);smart.textContent="До вечора";}
 else{target.setDate(target.getDate()+1);target.setHours(8,0,0,0);smart.textContent="До ранку";}
 smart.dataset.until=String(target.getTime());}content.querySelectorAll(".choice[data-intent]").forEach(b=>b.onclick=()=>{content.querySelectorAll(".choice[data-intent]").forEach(x=>x.classList.remove("selected"));b.classList.add("selected");chosen={intent:b.dataset.intent,icon:b.dataset.icon}});content.querySelectorAll(".duration").forEach(b=>b.onclick=()=>{content.querySelectorAll(".duration").forEach(x=>x.classList.remove("selected"));b.classList.add("selected");hours=b.dataset.smart?Math.max(1,(Number(b.dataset.until)-Date.now())/3600000):+b.dataset.hours});$("saveNow").onclick=async()=>{if(!chosen){showAlert("Спочатку обери свій вайб.");return}now={...chosen,expires:Date.now()+hours*3600000};store("vybeNow",now);renderNow();const saved=await syncNow(hours);if(saved)analyticsCapture("vybe_now_set");sheet.classList.add("hidden");tg?.HapticFeedback?.notificationOccurred("success")}}}
-$("setNow").onclick=()=>openSheet("now");$("premiumBtn").onclick=()=>openSheet("premium");$("filterBtn").onclick=openDiscoverFilters;$("safetyBtn").onclick=()=>openSheet("safety");
+$("setNow").onclick=()=>openSheet("now");$("premiumBtn").onclick=()=>openSheet("premium");$("notificationBtn").onclick=()=>openNotificationCenter();$("filterBtn").onclick=openDiscoverFilters;$("safetyBtn").onclick=()=>openSheet("safety");
 function people(){return remotePeople}
 function filtered(){
   const arr=people();
