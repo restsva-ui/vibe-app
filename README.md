@@ -1,37 +1,85 @@
-# VYBE — Telegram Mini App MVP
+# VYBE — Telegram Mini App
 
-VYBE is an 18+ social/dating Mini App concept focused on current intent instead of endless swiping.
+VYBE is an 18+ Telegram Mini App for social discovery, dating, friendship and virtual communication. The core UX is based on a user's current intent ("vybe") rather than endless generic swiping.
 
-## Core concept
-Users set a current "vybe": talk, flirt, virtual intimacy, friendship, voice, night chat.
+## Current beta — 0.9.18
 
-## MVP included
-- Telegram WebApp SDK integration
-- 18+ gate and community-rule acknowledgment
-- discovery card stack and intent filters
-- matches and chat mock screens
-- profile/safety section
-- VYBE+ / Spotlight / SuperVYBE monetization UI placeholders
-- responsive mobile-first UI
+Implemented and wired to production Supabase:
 
-## Safety requirements before production
-Server-side age assurance where required, report/block, moderation, CSAM escalation procedures, NCII prohibition, anti-harassment/blackmail policy, no compensated sexual services, privacy/terms/deletion controls.
+- Telegram Mini App authentication with server-side initData validation
+- 18+ entry gate and legal/community pages
+- profiles, profile photos, discovery filters and VYBE NOW intents
+- likes, SuperVYBE, mutual matches and realtime chat
+- unread chat counters and read state
+- block/report flows enforced server-side
+- VYBE+ "Who liked me", Spotlight and SuperVYBE entitlements
+- Telegram Stars checkout, pre-checkout validation, successful-payment handling and refunds
+- owner-only Stars finance dashboard using Telegram balance/transaction APIs
+- referrals and reward milestones
+- user support tickets plus owner/admin support center
+- support deep links, unread badges, audit log and duplicate-reply protection
+- moderation center with report workflow, admin alerts and owner-only account restriction/restore
+- restricted accounts are removed from discovery/matches/VYBE+ likes and cannot use social actions
+- privacy, community rules, terms and account deletion
 
-## Telegram payments
-Digital goods/services inside Telegram must use Telegram Stars (XTR). Implement via Bot API sendInvoice / pre_checkout_query / successful_payment.
+## Safety model
 
-## Suggested production stack
-Frontend: React + TypeScript + Vite. Backend: Cloudflare Workers or Supabase Edge Functions. DB: Supabase Postgres / Neon. Realtime: Supabase Realtime/WebSocket. Storage: Cloudflare R2/Supabase Storage. Analytics: PostHog.
+VYBE is intended only for adults 18+.
 
-## Local preview
-Open index.html in a browser. Telegram-specific APIs degrade gracefully outside Telegram.
+User safety controls include:
+- block
+- report
+- server-side block enforcement across discovery, matches and chat
+- report reasons for fake profiles, spam, harassment, suspected minors, sexual services, illegal/dangerous content and other issues
+- moderation queue with reviewed/resolved/dismissed states
+- urgent handling visibility for suspected-minor and illegal-content reports
+- owner-only account restriction and restore
+- restricted users retain access to support and account deletion
 
-## Next milestones
-1. Validate Telegram initData server-side
-2. Profiles + onboarding
-3. Matching algorithm
-4. Realtime chat
-5. Moderation/report/block
-6. Stars billing
-7. Admin console
-8. Referrals/growth loops
+Before any public production launch, jurisdiction-specific age-assurance requirements, abuse-response procedures, CSAM escalation/reporting obligations, NCII handling, and store/platform review requirements must still be verified operationally.
+
+## Telegram Stars
+
+Digital goods/services are sold using Telegram Stars (XTR).
+
+Production flow:
+1. VYBE creates a server-side order.
+2. Telegram opens the native Stars invoice.
+3. The bot validates `pre_checkout_query`.
+4. Entitlements are granted only after `successful_payment`.
+5. Telegram payment charge IDs are stored for reconciliation/refunds.
+6. Owner finance uses Telegram as the source of truth for the live Stars balance.
+
+## Backend
+
+- Supabase Postgres
+- Supabase Edge Functions: `telegram-auth`, `telegram-bot`
+- Supabase Realtime
+- Supabase Storage for profile photos
+- PostHog product analytics
+- GitHub Pages frontend deployment
+
+Sensitive database operations use service-role server functions; browser clients do not receive the service-role key or bot token.
+
+## Admin areas
+
+Owner/admin accounts can access:
+- Finance
+- Support
+- Moderation
+
+High-impact actions are restricted further:
+- Telegram Stars refunds: owner only
+- Account restriction/restore: owner only
+
+Administrative actions are written to `admin_audit_log`.
+
+## Repository notes
+
+Database changes are mirrored in `supabase/migrations/`.
+
+The production Edge Function source is mirrored in:
+- `supabase/functions/telegram-auth/index.ts`
+- `supabase/functions/telegram-bot/index.ts`
+
+The Mini App frontend currently uses the lightweight `index.html` / `app.js` / `styles.css` stack for fast beta iteration.
