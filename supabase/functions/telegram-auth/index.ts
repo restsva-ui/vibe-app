@@ -173,6 +173,53 @@ async function getProfile(db: ReturnType<typeof dbClient>, userId: string) {
   return rows?.[0] ?? null;
 }
 
+async function getAdminRole(db: ReturnType<typeof dbClient>, userId: string): Promise<"owner" | "admin" | null> {
+  const rows = await db(`admin_users?user_id=eq.${encodeURIComponent(userId)}&select=role&limit=1`) ?? [];
+  const role = rows?.[0]?.role;
+  return role === "owner" || role === "admin" ? role : null;
+}
+
+function summarizeStarOrders(orders: any[]) {
+  const now = Date.now();
+  const calc = (days: number | null) => {
+    const since = days == null ? 0 : now - days * 86400000;
+    const paid = orders.filter((o: any) => {
+      const t = o.paid_at ? new Date(o.paid_at).getTime() : 0;
+      return t >= since && (o.status === "paid" || o.status === "refunded");
+    });
+    const refunded = orders.filter((o: any) => {
+      const t = o.refunded_at ? new Date(o.refunded_at).getTime() : 0;
+      return t >= since && o.status === "refunded";
+    });
+    const gross = paid.reduce((n: number, o: any) => n + Number(o.total_amount || 0), 0);
+    const refunds = refunded.reduce((n: number, o: any) => n + Number(o.total_amount || 0), 0);
+    return {
+      gross_stars: gross,
+      refunded_stars: refunds,
+      net_stars: gross - refunds,
+      paid_orders: paid.length,
+      refund_orders: refunded.length,
+    };
+  };
+  return {
+    today: calc(1),
+    days_7: calc(7),
+    days_30: calc(30),
+    all_time: calc(null),
+  };
+}
+
+function safeTelegramStarTransaction(tx: any) {
+  return {
+    id: String(tx?.id ?? ""),
+    amount: Number(tx?.amount ?? 0),
+    nanostar_amount: Number(tx?.nanostar_amount ?? 0),
+    date: Number(tx?.date ?? 0),
+    source_type: tx?.source?.type ?? null,
+    receiver_type: tx?.receiver?.type ?? null,
+  };
+}
+
 const PROFILE_BUCKET = "profile-photos";
 const PROFILE_MAX_BYTES = 2 * 1024 * 1024;
 
@@ -355,10 +402,12 @@ Deno.serve(async (req: Request) => {
     const user = await ensureUser(db, telegram.user);
 
     if (action === "profile_get") {
+      const adminRole = await getAdminRole(db, user.id);
       return json({
         ok: true,
         user_id: user.id,
         realtime_topic: user.realtime_topic ?? null,
+        admin_role: adminRole,
         profile: await getProfile(db, user.id),
       });
     }
@@ -554,6 +603,140 @@ Deno.serve(async (req: Request) => {
         vybe_plus_until: vybePlusUntil,
         spotlight_until: spotlightUntil,
       });
+    }
+
+    if (action === "admin_finance_summary") {
+      const adminRole = await getAdminRole(db, user.id);
+      if (!adminRole) return json({ ok: false, error: "Admin access required" }, 403);
+
+      const [botBalance, telegramTransactions, orders, products] = await Promise.all([
+        telegramApi(botToken, "getMyStarBalance", {}),
+        telegramApi(botToken, "getStarTransactions", { offset: 0, limit: 100 }),
+        db("star_orders?select=id,product_key,status,total_amount,created_at,paid_at,refunded_at,telegram_payment_charge_id&order=created_at.desc&limit=1000") ?? [],
+        db("star_products?select=product_key,title_uk,title_en,stars&order=sort_order.asc") ?? [],
+      ]);
+
+      const productByKey = new Map((products ?? []).map((p: any) => [String(p.product_key), p]));
+      const rawTransactions = Array.isArray(telegramTransactions?.transactions)
+        ? telegramTransactions.transactions
+        : [];
+      const transactions = rawTransactions.map(safeTelegramStarTransaction);
+      const transactionIds = new Set(transactions.map((x: any) => x.id).filter(Boolean));
+      const recentChargeOrders = (orders ?? [])
+        .filter((o: any) => (o.status === "paid" || o.status === "refunded") && o.telegram_payment_charge_id)
+        .slice(0, 100);
+
+      const reconciliation = {
+        scope: "latest_100_telegram_transactions",
+        checked_orders: recentChargeOrders.length,
+        matched_orders: recentChargeOrders.filter((o: any) => transactionIds.has(String(o.telegram_payment_charge_id))).length,
+        unmatched_order_ids: recentChargeOrders
+          .filter((o: any) => !transactionIds.has(String(o.telegram_payment_charge_id)))
+          .slice(0, 20)
+          .map((o: any) => String(o.id)),
+      };
+
+      const recentOrders = (orders ?? []).slice(0, 40).map((o: any) => {
+        const p = productByKey.get(String(o.product_key));
+        return {
+          id: o.id,
+          product_key: o.product_key,
+          title_uk: p?.title_uk ?? o.product_key,
+          title_en: p?.title_en ?? o.product_key,
+          stars: Number(o.total_amount || 0),
+          status: o.status,
+          created_at: o.created_at,
+          paid_at: o.paid_at,
+          refunded_at: o.refunded_at,
+        };
+      });
+
+      return json({
+        ok: true,
+        admin_role: adminRole,
+        telegram_balance: {
+          amount: Number(botBalance?.amount ?? 0),
+          nanostar_amount: Number(botBalance?.nanostar_amount ?? 0),
+        },
+        sales: summarizeStarOrders(orders ?? []),
+        recent_orders: recentOrders,
+        telegram_transactions: transactions.slice(0, 50),
+        reconciliation,
+      });
+    }
+
+    if (action === "admin_refund_star_order") {
+      const adminRole = await getAdminRole(db, user.id);
+      if (!adminRole) return json({ ok: false, error: "Admin access required" }, 403);
+
+      const orderId = clean(body.order_id, 80);
+      const confirmation = clean(body.confirmation, 40);
+      if (!orderId || confirmation !== "REFUND") {
+        return json({ ok: false, error: "Refund confirmation required" }, 400);
+      }
+
+      const rows = await db(
+        `star_orders?id=eq.${encodeURIComponent(orderId)}&status=eq.paid&select=id,user_id,telegram_id,product_key,total_amount,grant_type,grant_amount,telegram_payment_charge_id,paid_at&limit=1`,
+      ) ?? [];
+      const order = rows?.[0];
+      if (!order?.telegram_payment_charge_id) {
+        return json({ ok: false, error: "Paid order not found" }, 404);
+      }
+
+      await telegramApi(botToken, "refundStarPayment", {
+        user_id: Number(order.telegram_id),
+        telegram_payment_charge_id: String(order.telegram_payment_charge_id),
+      });
+
+      if (order.grant_type === "supervybe" || order.grant_type === "spotlight") {
+        await db(
+          `paid_rewards?source_order_id=eq.${encodeURIComponent(order.id)}`,
+          { method: "DELETE" },
+        );
+      } else if (order.grant_type === "vybe_plus_days") {
+        const entRows = await db(
+          `user_entitlements?user_id=eq.${encodeURIComponent(order.user_id)}&select=vybe_plus_until&limit=1`,
+        ) ?? [];
+        const current = entRows?.[0]?.vybe_plus_until ? new Date(entRows[0].vybe_plus_until).getTime() : 0;
+        const reduced = new Date(Math.max(Date.now(), current - Number(order.grant_amount || 0) * 86400000)).toISOString();
+        if (entRows?.length) {
+          await db(
+            `user_entitlements?user_id=eq.${encodeURIComponent(order.user_id)}`,
+            { method: "PATCH", body: JSON.stringify({ vybe_plus_until: reduced, updated_at: new Date().toISOString() }) },
+          );
+        }
+      }
+
+      await db(
+        `star_orders?id=eq.${encodeURIComponent(order.id)}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ status: "refunded", refunded_at: new Date().toISOString() }),
+        },
+      );
+
+      await db("admin_audit_log", {
+        method: "POST",
+        body: JSON.stringify({
+          actor_user_id: user.id,
+          action: "refund_star_order",
+          target_order_id: order.id,
+          metadata: {
+            product_key: order.product_key,
+            stars: Number(order.total_amount || 0),
+            admin_role: adminRole,
+          },
+        }),
+      });
+
+      console.log("admin:refund_star_order", {
+        actor_user_id: user.id,
+        order_id: order.id,
+        product_key: order.product_key,
+        stars: Number(order.total_amount || 0),
+      });
+
+      return json({ ok: true, refunded: true, order_id: order.id, stars: Number(order.total_amount || 0) });
     }
 
     if (action === "star_catalog") {
