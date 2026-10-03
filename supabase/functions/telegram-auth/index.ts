@@ -722,12 +722,9 @@ Deno.serve(async (req: Request) => {
       if (!ticket) return json({ ok: false, error: "Ticket not found" }, 404);
 
       if (replyText) {
-        const prefix = telegram.user.language_code?.toLowerCase().startsWith("en")
-          ? "VYBE Support"
-          : "Підтримка VYBE";
         await telegramApi(botToken, "sendMessage", {
           chat_id: Number(ticket.telegram_id),
-          text: `${prefix}:\n\n${replyText}`,
+          text: `VYBE Support / Підтримка VYBE:\n\n${replyText}`,
         });
       }
 
