@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.15",
+      app_version:"0.9.16",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -444,10 +444,34 @@ async function openBlockedUsers(){
   });
 }
 
-let profile=load("vybeProfile",null),now=load("vybeNow",null),matches=[],index=0,filter="Усе",remotePeople=[],entitlements={balances:{supervybe:0,spotlight:0},vybe_plus_until:null,spotlight_until:null},starCatalog=[],adminRole=null;
+let profile=load("vybeProfile",null),now=load("vybeNow",null),matches=[],index=0,filter="Усе",remotePeople=[],entitlements={balances:{supervybe:0,spotlight:0},vybe_plus_until:null,spotlight_until:null},starCatalog=[],adminRole=null,supportUnread=0,adminSupportUnread=0;
 let discoverFilters=load("vybeDiscoverFilters",{minAge:18,maxAge:99,city:"",onlineOnly:false,verifiedOnly:false});
 localStorage.removeItem("vybeMatches");
 async function loadEntitlements(){const r=await secureApi("entitlements");if(r.ok)entitlements=r;return r}
+function setMenuBadge(buttonId,count){
+  const btn=$(buttonId);if(!btn)return;
+  let badge=btn.querySelector(".menuBadge");
+  if(!badge){badge=document.createElement("b");badge.className="menuBadge";btn.appendChild(badge)}
+  badge.textContent=Number(count)>99?"99+":String(Number(count)||0);
+  badge.classList.toggle("hidden",!Number(count));
+}
+function renderSupportBadges(){
+  setMenuBadge("supportBtn",supportUnread);
+  setMenuBadge("adminSupportBtn",adminSupportUnread);
+}
+async function loadSupportCounts(){
+  const r=await secureApi("support_counts");
+  if(r.ok){
+    supportUnread=Number(r.user_unread||0);
+    adminSupportUnread=Number(r.admin_unread||0);
+    if(r.admin_role&&!adminRole)adminRole=r.admin_role;
+    renderSupportBadges();
+    const adminBtn=$("adminFinanceBtn");if(adminBtn)adminBtn.classList.toggle("hidden",!adminRole);
+    const adminSupport=$("adminSupportBtn");if(adminSupport)adminSupport.classList.toggle("hidden",!adminRole);
+  }
+  return r;
+}
+
 function spotlightStatus(){const until=entitlements?.spotlight_until?new Date(entitlements.spotlight_until):null;if(!until||until<=new Date())return uiText("не активний");const min=Math.max(1,Math.ceil((until-Date.now())/60000));return uiText("🔦 активний ще ")+min+uiText(" хв.")}
 function entitlementText(){const plus=entitlements?.vybe_plus_until&&new Date(entitlements.vybe_plus_until)>new Date()?new Date(entitlements.vybe_plus_until).toLocaleDateString(uiLocale()):"—";return "SuperVYBE: "+(entitlements?.balances?.supervybe||0)+" • Spotlight: "+(entitlements?.balances?.spotlight||0)+" • "+spotlightStatus()+uiText(" • VYBE+ до: ")+plus}
 async function useSpotlight(){const r=await secureApi("spotlight_use");if(!r.ok){showAlert("Spotlight не списано. Перевір баланс і спробуй ще раз.");return}await loadEntitlements();analyticsCapture("spotlight_used");tg?.HapticFeedback?.notificationOccurred("success");showAlert("Spotlight активовано на 30 хвилин ✨");openSheet("premium")}
@@ -638,7 +662,7 @@ async function begin(){
   await recoverTestRefund();
   analyticsCapture("app_open");
   if(!profile)showOnboarding();else{renderProfile();await syncProfile();await loadPeople()}
-  await loadEntitlements();await loadMatches();renderNow();renderCard();renderMatches();renderChats();
+  await loadEntitlements();await loadMatches();await loadSupportCounts();renderNow();renderCard();renderMatches();renderChats();
   const launchParams=new URL(location.href).searchParams;
   const launchTicket=launchParams.get("ticket");
   if(adminRole&&launchParams.get("admin")==="support"){
@@ -684,6 +708,7 @@ function renderProfile(){
   const remove=$("removePhotoBtn");if(remove)remove.classList.toggle("hidden",!profile.photo_url);
   const adminBtn=$("adminFinanceBtn");if(adminBtn)adminBtn.classList.toggle("hidden",!adminRole);
   const adminSupport=$("adminSupportBtn");if(adminSupport)adminSupport.classList.toggle("hidden",!adminRole);
+  renderSupportBadges();
 }
 
 function readImageAsDataUrl(file){
@@ -949,7 +974,12 @@ async function openSupportInfo(){
   const mine=await secureApi("support_my");
   if(mine.ok){
     const rows=mine.tickets||[];
-    list.innerHTML=rows.length?rows.map(t=>'<div class="myTicket"><div class="myTicketHead"><b>'+escapeHtml(t.category==="payment"?uiText("Проблема з оплатою"):uiText("Загальне питання"))+'</b><span class="supportStatus '+escapeHtml(t.status)+'">'+escapeHtml(supportStatusLabel(t.status))+'</span></div><p>'+escapeHtml(t.message)+'</p><small>'+escapeHtml(adminDate(t.created_at))+'</small>'+(t.reply_text?'<div class="supportReply"><b>'+uiText("Відповідь підтримки")+'</b><p>'+escapeHtml(t.reply_text)+'</p></div>':'')+'</div>').join(""):'<div class="empty">'+uiText("Черга порожня.")+'</div>';
+    list.innerHTML=rows.length?rows.map(t=>'<div class="myTicket '+(t.unread_reply?"unread":"")+'"><div class="myTicketHead"><b>'+escapeHtml(t.category==="payment"?uiText("Проблема з оплатою"):uiText("Загальне питання"))+(t.unread_reply?' <span class="ticketUnread">●</span>':'')+'</b><span class="supportStatus '+escapeHtml(t.status)+'">'+escapeHtml(supportStatusLabel(t.status))+'</span></div><p>'+escapeHtml(t.message)+'</p><small>'+escapeHtml(adminDate(t.created_at))+'</small>'+(t.reply_text?'<div class="supportReply"><b>'+uiText("Відповідь підтримки")+'</b><p>'+escapeHtml(t.reply_text)+'</p></div>':'')+'</div>').join(""):'<div class="empty">'+uiText("Черга порожня.")+'</div>';
+    const unreadIds=rows.filter(t=>t.unread_reply).map(t=>t.id);
+    if(unreadIds.length){
+      await secureApi("support_mark_seen",{ticket_ids:unreadIds});
+      await loadSupportCounts();
+    }
   }
   $("supportSubmitBtn").onclick=async()=>{
     const btn=$("supportSubmitBtn");
@@ -963,6 +993,7 @@ async function openSupportInfo(){
       return;
     }
     analyticsCapture("support_request_created",{category:$("supportCategory").value});
+    await loadSupportCounts();
     tg?.HapticFeedback?.notificationOccurred("success");
     showAlert("Звернення надіслано ✅");
     await openSupportInfo();
@@ -1150,9 +1181,14 @@ function adminSupportTicketTitle(t){
   return name+" • "+category;
 }
 async function updateAdminSupport(ticketId,status,replyText="",adminNote=""){
-  const r=await secureApi("admin_support_update",{ticket_id:ticketId,status,reply_text:replyText,admin_note:adminNote});
-  if(!r.ok){showAlert("Не вдалося оновити звернення.");return false}
-  analyticsCapture("admin_support_updated",{status,replied:!!replyText});
+  const operationId=crypto.randomUUID?.()||String(Date.now())+"-"+Math.random().toString(36).slice(2);
+  const r=await secureApi("admin_support_update",{ticket_id:ticketId,status,reply_text:replyText,admin_note:adminNote,operation_id:operationId});
+  if(!r.ok){
+    showAlert(r.status===409?"Відповідь уже обробляється. Онови звернення.":"Не вдалося оновити звернення.");
+    return false
+  }
+  analyticsCapture("admin_support_updated",{status,replied:!!replyText,duplicate_prevented:r.duplicate_prevented===true});
+  await loadSupportCounts();
   tg?.HapticFeedback?.notificationOccurred("success");
   showAlert("Статус оновлено ✅");
   return true;
@@ -1162,6 +1198,8 @@ async function loadAdminSupportData(){
   return secureApi("admin_support_list");
 }
 async function openAdminSupportTicket(ticket,draft={}){
+  await secureApi("admin_support_mark_seen",{ticket_id:ticket.id});
+  await loadSupportCounts();
   const order=ticket.latest_order;
   const noteDraft=String(draft.note??ticket.admin_note??"");
   const replyDraft=String(draft.reply??"");
@@ -1183,9 +1221,13 @@ async function openAdminSupportTicket(ticket,draft={}){
   };
   if(replyBtn)replyBtn.onclick=async()=>{
     const text=reply();if(text.length<2){showAlert("Відповідь користувачу");return}
-    if(await updateAdminSupport(ticket.id,"resolved",text,note()))await openAdminSupport();
+    replyBtn.disabled=true;
+    const ok=await updateAdminSupport(ticket.id,"resolved",text,note());
+    if(ok)await openAdminSupport();
+    else{replyBtn.disabled=false;syncReplyButton()}
   };
-  $("resolveNoReplyBtn").onclick=async()=>{if(await updateAdminSupport(ticket.id,"resolved","",note()))await openAdminSupport()};
+  const resolveNoReply=$("resolveNoReplyBtn");
+  resolveNoReply.onclick=async()=>{resolveNoReply.disabled=true;const ok=await updateAdminSupport(ticket.id,"resolved","",note());if(ok)await openAdminSupport();else resolveNoReply.disabled=false};
   const reopen=$("reopenTicketBtn");if(reopen)reopen.onclick=async()=>{if(await updateAdminSupport(ticket.id,"open","",note()))await openAdminSupport(ticket.id,{note:note(),reply:reply()})};
 }
 async function openAdminSupport(ticketId=null,draft=null){
@@ -1203,7 +1245,7 @@ async function openAdminSupport(ticketId=null,draft=null){
     const target=tickets.find(t=>String(t.id)===String(ticketId));
     if(target){await openAdminSupportTicket(target,draft||{});return}
   }
-  const rows=tickets.length?tickets.map((t,i)=>'<button class="supportQueueItem" data-index="'+i+'"><div class="myTicketHead"><b>'+escapeHtml(t.user?.name||"VYBE")+'</b><span class="supportStatus '+escapeHtml(t.status)+'">'+escapeHtml(supportStatusLabel(t.status))+'</span></div><p>'+escapeHtml(t.message)+'</p><small>'+escapeHtml(t.category==="payment"?uiText("Проблема з оплатою"):uiText("Загальне питання"))+' • '+escapeHtml(adminDate(t.created_at))+'</small></button>').join(""):'<div class="empty">'+uiText("Черга порожня.")+'</div>';
+  const rows=tickets.length?tickets.map((t,i)=>'<button class="supportQueueItem '+(!t.admin_seen_at&&(t.status==="open"||t.status==="reviewed")?"unread":"")+'" data-index="'+i+'"><div class="myTicketHead"><b>'+escapeHtml(t.user?.name||"VYBE")+(!t.admin_seen_at&&(t.status==="open"||t.status==="reviewed")?' <span class="ticketUnread">●</span>':'')+'</b><span class="supportStatus '+escapeHtml(t.status)+'">'+escapeHtml(supportStatusLabel(t.status))+'</span></div><p>'+escapeHtml(t.message)+'</p><small>'+escapeHtml(t.category==="payment"?uiText("Проблема з оплатою"):uiText("Загальне питання"))+' • '+escapeHtml(adminDate(t.created_at))+'</small></button>').join(""):'<div class="empty">'+uiText("Черга порожня.")+'</div>';
   content.innerHTML='<div class="adminHead"><div><h2>'+uiText("Центр підтримки")+'</h2><small>'+escapeHtml(String(r.admin_role||adminRole))+'</small></div><button id="supportRefreshBtn" class="choice">'+uiText("Оновити")+'</button></div><div class="supportStats"><div><b>'+Number(c.open||0)+'</b><span>'+uiText("Відкриті")+'</span></div><div><b>'+Number(c.reviewed||0)+'</b><span>'+uiText("В роботі")+'</span></div><div><b>'+Number(c.resolved||0)+'</b><span>'+uiText("Вирішені")+'</span></div><div><b>'+Number(c.payment||0)+'</b><span>'+uiText("Платіжні")+'</span></div><div><b>'+Number(c.general||0)+'</b><span>'+uiText("Загальні")+'</span></div></div><div class="supportQueue">'+rows+'</div>';
   $("supportRefreshBtn").onclick=()=>openAdminSupport();
   content.querySelectorAll(".supportQueueItem").forEach(btn=>btn.onclick=()=>{const t=tickets[Number(btn.dataset.index)];if(t)openAdminSupportTicket(t)});
