@@ -1810,6 +1810,38 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    if (action === "profile_public") {
+      const targetId = clean(body.target_user_id, 80);
+      if (!targetId || targetId === String(user.id)) return json({ ok: false, error: "Invalid profile target" }, 400);
+      if (await isBlockedBetween(db, user.id, targetId)) return json({ ok: false, error: "User blocked" }, 403);
+
+      const [targetRows, profileRows, intentRows, matchRows] = await Promise.all([
+        db(`users?id=eq.${encodeURIComponent(targetId)}&select=id,last_seen,account_status&limit=1`) ?? [],
+        db(`profiles?user_id=eq.${encodeURIComponent(targetId)}&select=user_id,name,age,city,gender,looking_for,bio,photo_url,verified&limit=1`) ?? [],
+        db(`intents?user_id=eq.${encodeURIComponent(targetId)}&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&select=intent,expires_at&limit=1`) ?? [],
+        db(`matches?or=(and(user_a_id.eq.${encodeURIComponent(user.id)},user_b_id.eq.${encodeURIComponent(targetId)}),and(user_a_id.eq.${encodeURIComponent(targetId)},user_b_id.eq.${encodeURIComponent(user.id)}))&select=id,realtime_topic&limit=1`) ?? [],
+      ]);
+      const target = targetRows?.[0];
+      const profile = profileRows?.[0];
+      if (!target || target.account_status === "restricted" || !profile) {
+        return json({ ok: false, error: "User unavailable" }, 404);
+      }
+      const lastSeen = target.last_seen ? new Date(target.last_seen).getTime() : 0;
+      return json({
+        ok: true,
+        user_id: targetId,
+        profile: {
+          ...profile,
+          online: !!lastSeen && lastSeen >= Date.now() - 3 * 60 * 1000,
+          intent: intentRows?.[0]?.intent ?? null,
+          intent_expires_at: intentRows?.[0]?.expires_at ?? null,
+        },
+        matched: !!matchRows?.[0],
+        match_id: matchRows?.[0]?.id ?? null,
+        realtime_topic: matchRows?.[0]?.realtime_topic ?? null,
+      });
+    }
+
     if (action === "set_intent") {
       const allowed = new Set(["Поговорити", "Флірт", "Вірт", "Дружба", "Голос", "Зустріч"]);
       const intent = clean(body.intent, 30);
@@ -1857,59 +1889,76 @@ Deno.serve(async (req: Request) => {
       const byUser = new Map(intents.map((x: any) => [String(x.user_id), x]));
       const spotlightByUser = new Map(spotlightRows.map((x: any) => [String(x.user_id), x.spotlight_until]));
 
-      const people = profiles
-        .filter((p: any) => {
-          const id = String(p.user_id);
-          if (blockedIds.has(id) || sentLikeIds.has(id) || matchedIds.has(id)) return false;
-          const age = Number(p.age || 0);
-          if (age < minAge || age > maxAge) return false;
-          if (cityFilter && !String(p.city || "").toLocaleLowerCase("uk-UA").includes(cityFilter)) return false;
-          if (verifiedOnly && p.verified !== true) return false;
-          const userStatus = statusByUser.get(id);
-          if (!userStatus || userStatus.account_status === "restricted") return false;
-          const lastSeen = lastSeenByUser.get(id);
-          const online = !!lastSeen && new Date(lastSeen).getTime() >= onlineCutoff;
-          if (onlineOnly && !online) return false;
-          return true;
-        })
-        .map((p: any) => {
-          const id = String(p.user_id);
-          const lastSeen = lastSeenByUser.get(id) ?? null;
-          const online = !!lastSeen && new Date(lastSeen).getTime() >= onlineCutoff;
-          return {
-            user_id: p.user_id,
-            name: p.name,
-            age: p.age,
-            city: p.city,
-            bio: p.bio,
-            photo_url: p.photo_url ?? null,
-            verified: p.verified === true,
-            online,
-            intent: byUser.get(id)?.intent ?? "Поговорити",
-            intent_match: !!ownIntent && byUser.get(id)?.intent === ownIntent,
-            expires_at: byUser.get(id)?.expires_at ?? null,
-            spotlight_until: spotlightByUser.get(id) ?? null,
-            spotlight_active: spotlightByUser.has(id),
-          };
-        })
-        .sort((a: any, b: any) => {
-          const aSpot = a.spotlight_active ? 1 : 0;
-          const bSpot = b.spotlight_active ? 1 : 0;
-          if (aSpot !== bSpot) return bSpot - aSpot;
-          if (aSpot && bSpot) {
-            const diff = new Date(b.spotlight_until).getTime() - new Date(a.spotlight_until).getTime();
-            if (diff) return diff;
-          }
-          if (a.intent_match !== b.intent_match) return Number(b.intent_match) - Number(a.intent_match);
-          if (a.online !== b.online) return Number(b.online) - Number(a.online);
-          if (a.verified !== b.verified) return Number(b.verified) - Number(a.verified);
-          return 0;
-        });
+      const eligibleProfile = (p: any, matchedFallback = false) => {
+        const id = String(p.user_id);
+        if (blockedIds.has(id)) return false;
+        const isMatched = matchedIds.has(id);
+        if (matchedFallback) {
+          if (!isMatched) return false;
+        } else if (sentLikeIds.has(id) || isMatched) {
+          return false;
+        }
+        const age = Number(p.age || 0);
+        if (age < minAge || age > maxAge) return false;
+        if (cityFilter && !String(p.city || "").toLocaleLowerCase("uk-UA").includes(cityFilter)) return false;
+        if (verifiedOnly && p.verified !== true) return false;
+        const userStatus = statusByUser.get(id);
+        if (!userStatus || userStatus.account_status === "restricted") return false;
+        const lastSeen = lastSeenByUser.get(id);
+        const online = !!lastSeen && new Date(lastSeen).getTime() >= onlineCutoff;
+        if (onlineOnly && !online) return false;
+        return true;
+      };
+      const decorateProfile = (p: any) => {
+        const id = String(p.user_id);
+        const lastSeen = lastSeenByUser.get(id) ?? null;
+        const online = !!lastSeen && new Date(lastSeen).getTime() >= onlineCutoff;
+        return {
+          user_id: p.user_id,
+          name: p.name,
+          age: p.age,
+          city: p.city,
+          bio: p.bio,
+          photo_url: p.photo_url ?? null,
+          verified: p.verified === true,
+          online,
+          intent: byUser.get(id)?.intent ?? "Поговорити",
+          intent_match: !!ownIntent && byUser.get(id)?.intent === ownIntent,
+          expires_at: byUser.get(id)?.expires_at ?? null,
+          spotlight_until: spotlightByUser.get(id) ?? null,
+          spotlight_active: spotlightByUser.has(id),
+          already_matched: matchedIds.has(id),
+        };
+      };
+      const sortPeople = (rows: any[]) => rows.sort((a: any, b: any) => {
+        const aSpot = a.spotlight_active ? 1 : 0;
+        const bSpot = b.spotlight_active ? 1 : 0;
+        if (aSpot !== bSpot) return bSpot - aSpot;
+        if (aSpot && bSpot) {
+          const diff = new Date(b.spotlight_until).getTime() - new Date(a.spotlight_until).getTime();
+          if (diff) return diff;
+        }
+        if (a.intent_match !== b.intent_match) return Number(b.intent_match) - Number(a.intent_match);
+        if (a.online !== b.online) return Number(b.online) - Number(a.online);
+        if (a.verified !== b.verified) return Number(b.verified) - Number(a.verified);
+        return 0;
+      });
+
+      let people = sortPeople(profiles.filter((p: any) => eligibleProfile(p, false)).map(decorateProfile));
+      let matched_fallback = false;
+      if (!people.length) {
+        const matchedPeople = profiles.filter((p: any) => eligibleProfile(p, true)).map(decorateProfile);
+        if (matchedPeople.length) {
+          people = sortPeople(matchedPeople);
+          matched_fallback = true;
+        }
+      }
 
       return json({
         ok: true,
         filters: { min_age: minAge, max_age: maxAge, city: clean(body.city, 40), online_only: onlineOnly, verified_only: verifiedOnly },
         people,
+        matched_fallback,
       });
     }
 
