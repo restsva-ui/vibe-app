@@ -667,7 +667,7 @@ Deno.serve(async (req: Request) => {
 
     if (action === "admin_refund_star_order") {
       const adminRole = await getAdminRole(db, user.id);
-      if (!adminRole) return json({ ok: false, error: "Admin access required" }, 403);
+      if (adminRole !== "owner") return json({ ok: false, error: "Owner access required" }, 403);
 
       const orderId = clean(body.order_id, 80);
       const confirmation = clean(body.confirmation, 40);
