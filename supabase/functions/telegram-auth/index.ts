@@ -297,6 +297,48 @@ async function getNotificationPreferences(db: ReturnType<typeof dbClient>, userI
   };
 }
 
+async function recordNotificationEvent(
+  db: ReturnType<typeof dbClient>,
+  input: {
+    eventType: "like" | "match" | "message";
+    recipientUserId: string;
+    actorUserId?: string | null;
+    matchId?: string | null;
+    sourceKey?: string | null;
+    variant?: "like" | "super";
+  },
+) {
+  if (input.sourceKey) {
+    const existing = await db(
+      `notification_events?source_key=eq.${encodeURIComponent(input.sourceKey)}&select=id,recipient_user_id,event_type,match_id,source_key,created_at,seen_at&limit=1`,
+    ) ?? [];
+    if (existing?.[0]) return { event: existing[0], created: false };
+  }
+
+  try {
+    const rows = await db("notification_events", {
+      method: "POST",
+      body: JSON.stringify({
+        recipient_user_id: input.recipientUserId,
+        actor_user_id: input.actorUserId ?? null,
+        event_type: input.eventType,
+        match_id: input.matchId ?? null,
+        source_key: input.sourceKey ?? null,
+        payload: input.variant ? { variant: input.variant } : {},
+      }),
+    }) ?? [];
+    return { event: rows?.[0] ?? null, created: true };
+  } catch (e) {
+    if (input.sourceKey) {
+      const existing = await db(
+        `notification_events?source_key=eq.${encodeURIComponent(input.sourceKey)}&select=id,recipient_user_id,event_type,match_id,source_key,created_at,seen_at&limit=1`,
+      ) ?? [];
+      if (existing?.[0]) return { event: existing[0], created: false };
+    }
+    throw e;
+  }
+}
+
 async function sendSocialNotification(
   db: ReturnType<typeof dbClient>,
   botToken: string,
@@ -312,16 +354,19 @@ async function sendSocialNotification(
   try {
     if (input.actorUserId && await isBlockedBetween(db, input.actorUserId, input.recipientUserId)) return false;
 
-    const prefs = await getNotificationPreferences(db, input.recipientUserId);
-    if (input.eventType === "like" && prefs.likes_enabled !== true) return false;
-    if (input.eventType === "match" && prefs.matches_enabled !== true) return false;
-    if (input.eventType === "message" && prefs.messages_enabled !== true) return false;
-
     const recipientRows = await db(
       `users?id=eq.${encodeURIComponent(input.recipientUserId)}&select=id,telegram_id,last_seen,account_status&limit=1`,
     ) ?? [];
     const recipient = recipientRows?.[0];
     if (!recipient || recipient.account_status === "restricted") return false;
+
+    const recorded = await recordNotificationEvent(db,input);
+    if (!recorded.created) return false;
+
+    const prefs = await getNotificationPreferences(db, input.recipientUserId);
+    if (input.eventType === "like" && prefs.likes_enabled !== true) return false;
+    if (input.eventType === "match" && prefs.matches_enabled !== true) return false;
+    if (input.eventType === "message" && prefs.messages_enabled !== true) return false;
 
     if (input.sourceKey) {
       const duplicate = await db(
@@ -642,6 +687,8 @@ Deno.serve(async (req: Request) => {
       "unblock_user",
       "notification_settings_get",
       "notification_settings_update",
+      "notifications_list",
+      "notifications_mark_seen",
     ]);
     if (user.account_status === "restricted" && !restrictedAllowed.has(String(action))) {
       return json({
@@ -685,6 +732,58 @@ Deno.serve(async (req: Request) => {
           messages: preferences.messages_enabled,
         },
       });
+    }
+
+    if (action === "notifications_list") {
+      const rows = await db(
+        `notification_events?recipient_user_id=eq.${encodeURIComponent(user.id)}&select=id,event_type,actor_user_id,match_id,payload,created_at,seen_at&order=created_at.desc&limit=100`,
+      ) ?? [];
+      const actorIds = [...new Set((rows ?? [])
+        .filter((x: any) => x.event_type !== "like" && x.actor_user_id)
+        .map((x: any) => String(x.actor_user_id)))];
+
+      const profiles = actorIds.length
+        ? await db(
+            `profiles?user_id=in.(${actorIds.map((x) => encodeURIComponent(x)).join(",")})&select=user_id,name,photo_url,verified`,
+          ) ?? []
+        : [];
+      const profileById = new Map((profiles ?? []).map((p: any) => [String(p.user_id), p]));
+
+      const notifications = (rows ?? []).map((x: any) => ({
+        id: x.id,
+        event_type: x.event_type,
+        match_id: x.match_id ?? null,
+        payload: x.payload ?? {},
+        created_at: x.created_at,
+        seen_at: x.seen_at ?? null,
+        unread: !x.seen_at,
+        actor: x.event_type === "like" || !x.actor_user_id
+          ? null
+          : (() => {
+              const p = profileById.get(String(x.actor_user_id));
+              return p ? {
+                user_id: p.user_id,
+                name: p.name || "VYBE",
+                photo_url: p.photo_url ?? null,
+                verified: p.verified === true,
+              } : null;
+            })(),
+      }));
+
+      return json({
+        ok: true,
+        unread: notifications.filter((x: any) => x.unread).length,
+        notifications,
+      });
+    }
+
+    if (action === "notifications_mark_seen") {
+      const now = new Date().toISOString();
+      const rows = await db(
+        `notification_events?recipient_user_id=eq.${encodeURIComponent(user.id)}&seen_at=is.null`,
+        { method: "PATCH", body: JSON.stringify({ seen_at: now }) },
+      ) ?? [];
+      return json({ ok: true, marked: rows.length, seen_at: now });
     }
 
     if (action === "profile_get") {
@@ -925,12 +1024,18 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "support_counts") {
-      const mine = await db(
-        `support_tickets?user_id=eq.${encodeURIComponent(user.id)}&select=id,reply_sent_at,user_seen_at,status,created_at&order=created_at.desc&limit=100`,
-      ) ?? [];
+      const [mine, notificationRows] = await Promise.all([
+        db(
+          `support_tickets?user_id=eq.${encodeURIComponent(user.id)}&select=id,reply_sent_at,user_seen_at,status,created_at&order=created_at.desc&limit=100`,
+        ) ?? [],
+        db(
+          `notification_events?recipient_user_id=eq.${encodeURIComponent(user.id)}&seen_at=is.null&select=id&limit=100`,
+        ) ?? [],
+      ]);
       const userUnread = (mine ?? []).filter((t: any) =>
         !!t.reply_sent_at && (!t.user_seen_at || new Date(t.user_seen_at).getTime() < new Date(t.reply_sent_at).getTime())
       ).length;
+      const notificationUnread = (notificationRows ?? []).length;
 
       const adminRole = await getAdminRole(db, user.id);
       let adminUnread = 0;
@@ -953,6 +1058,7 @@ Deno.serve(async (req: Request) => {
         user_unread: userUnread,
         admin_unread: adminUnread,
         moderation_unread: moderationUnread,
+        notification_unread: notificationUnread,
         admin_role: adminRole,
         account_status: user.account_status ?? "active",
         restriction_reason: user.restriction_reason ?? null,
@@ -2466,6 +2572,7 @@ Deno.serve(async (req: Request) => {
         recipientUserId:owned.id,
         actorUserId:String(user.id),
         matchId,
+        sourceKey:created?.[0]?.id ? `message:${created[0].id}` : null,
       });
 
       return json({ ok: true, message: created?.[0] ?? null });
