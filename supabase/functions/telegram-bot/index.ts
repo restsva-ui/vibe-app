@@ -243,7 +243,10 @@ async function createSupportTicket(msg: any, category: "general" | "payment", te
             chat_id: chatId,
             text: `VYBE Support ⚑\nNew request / Нове звернення: ${category === "payment" ? "payment / оплата" : "general / загальне"}\nID: ${ticket.id}`,
             reply_markup: {
-              inline_keyboard: [[{ text: "Open VYBE / Відкрити VYBE", web_app: { url: APP_URL } }]],
+              inline_keyboard: [[{
+                text: "Open support / Відкрити підтримку",
+                web_app: { url: `${APP_URL}?admin=support&ticket=${encodeURIComponent(String(ticket.id))}` },
+              }]],
             },
           });
         } catch {
