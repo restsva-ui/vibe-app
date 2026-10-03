@@ -210,11 +210,19 @@ function summarizeStarOrders(orders: any[]) {
 }
 
 function safeTelegramStarTransaction(tx: any) {
+  const incoming = !!tx?.source;
+  const outgoing = !!tx?.receiver;
+  const amount = Number(tx?.amount ?? 0);
+  const partner = incoming ? tx.source : outgoing ? tx.receiver : null;
   return {
     id: String(tx?.id ?? ""),
-    amount: Number(tx?.amount ?? 0),
+    amount,
+    signed_amount: outgoing ? -Math.abs(amount) : incoming ? Math.abs(amount) : amount,
     nanostar_amount: Number(tx?.nanostar_amount ?? 0),
     date: Number(tx?.date ?? 0),
+    direction: incoming ? "incoming" : outgoing ? "outgoing" : "unknown",
+    partner_type: partner?.type ?? null,
+    transaction_type: partner?.transaction_type ?? null,
     source_type: tx?.source?.type ?? null,
     receiver_type: tx?.receiver?.type ?? null,
   };
