@@ -98,7 +98,7 @@ const I18N_PAIRS=[
   ["Технічні помилки зараз фіксуємо під час beta-тестування. Не надсилай у скаргах паролі, банківські дані чи інші секрети.","We are logging technical issues during beta testing. Do not include passwords, banking details or other secrets in reports."],
   ["ВИДАЛИТИ","DELETE"],["Для підтвердження введи слово «ВИДАЛИТИ».","To confirm, enter the word DELETE."],["Видаляємо…","Deleting…"],["Видалити акаунт назавжди","Delete account permanently"],
   ["Не вдалося видалити акаунт. Спробуй ще раз.","Could not delete the account. Try again."],["Акаунт VYBE та пов’язані дані видалено.","Your VYBE account and related data were deleted."],
-  ["Видалити акаунт","Delete account"],["Ця дія незворотна. Будуть видалені анкета, фото, VYBE NOW, лайки, збіги, повідомлення, блокування, скарги, реферальні дані та бонуси, пов’язані з цим акаунтом.","This cannot be undone. Your profile, photo, VYBE NOW, likes, matches, messages, blocks, reports, referral data and rewards linked to this account will be deleted."],
+  ["Видалити акаунт","Delete account"],["Ця дія незворотна. Будуть видалені анкета, фото, VYBE NOW, лайки, збіги, повідомлення, блокування, скарги, звернення в підтримку, реферальні дані та бонуси. Мінімальні записи про завершені платежі можуть зберігатися окремо для повернення Stars і фінансової звірки.","This cannot be undone. Your profile, photo, VYBE NOW, likes, matches, messages, blocks, reports, support requests, referral data and rewards will be deleted. Minimal records of completed payments may be retained separately for Stars refunds and financial reconciliation."],
   ["Для підтвердження введи ","To confirm, enter "],["Скасувати","Cancel"],
   ["Налаштування ⚙","Settings ⚙"],["🔐 Приватність","🔐 Privacy"],["🛡 Правила спільноти","🛡 Community rules"],["📄 Умови користування","📄 Terms of Use"],["Повна політика приватності","Full Privacy Policy"],["Повні правила спільноти","Full Community Rules"],["Умови","Terms"],["Правила","Rules"],["Приватність","Privacy"],["🗑 Видалити акаунт","🗑 Delete account"],
   ["Мова","Language"],["Аналітика продукту","Product analytics"],["Допомагає покращувати VYBE. Без текстів чатів, bio, імен чи міста.","Helps improve VYBE. No chat text, bio, names or city."],["Увімкнено","On"],["Вимкнено","Off"],["Українська","Українська"],["English","English"],
@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.44",
+      app_version:"0.9.45",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -1469,7 +1469,7 @@ function openLegalPage(page){
 }
 
 function openPrivacyInfo(){
-  content.innerHTML='<h2>Приватність 🔐</h2><p>VYBE використовує Telegram-авторизацію та зберігає лише дані, потрібні для роботи сервісу: Telegram ID, анкету, фото, VYBE NOW, лайки, збіги, приватні повідомлення, блокування, скарги та бонуси.</p><p>Фото зберігаються у Supabase Storage. Тексти приватних повідомлень не передаються в Realtime Broadcast — через realtime передаються лише технічні сигнали про зміни.</p><p>Ти можеш видалити акаунт у Налаштуваннях. Після підтвердження профіль і пов’язані дані видаляються з активної бази.</p><button id="fullPrivacyBtn" class="choice safetyChoice">'+uiText("Повна політика приватності")+'</button>';
+  content.innerHTML='<h2>Приватність 🔐</h2><p>VYBE використовує Telegram-авторизацію та зберігає лише дані, потрібні для роботи сервісу: Telegram ID, анкету, фото, VYBE NOW, лайки, збіги, приватні повідомлення, блокування, скарги та бонуси.</p><p>Фото зберігаються у Supabase Storage. Тексти приватних повідомлень не передаються в Realtime Broadcast — через realtime передаються лише технічні сигнали про зміни.</p><p>Ти можеш видалити акаунт у Налаштуваннях. Соціальні дані та звернення в підтримку видаляються; мінімальні записи про завершені платежі можуть зберігатися окремо для повернення Stars і фінансової звірки.</p><button id="fullPrivacyBtn" class="choice safetyChoice">'+uiText("Повна політика приватності")+'</button>';
   sheet.classList.remove("hidden");
   $("fullPrivacyBtn").onclick=()=>openLegalPage("privacy.html");
 }
@@ -1973,7 +1973,7 @@ function openSettings(){
   const ownerTestTools=adminRole==="owner"
     ? '<p class="settingsLabel">'+uiText("Beta test tools")+'</p><button id="ownerResetTestMatchBtn" class="choice safetyChoice testResetChoice">'+uiText("🧪 Скинути тестовий match")+'</button><p class="safetyHint">'+uiText("Тимчасово: видаляє лише один owner-test match, взаємні лайки, чат і пов’язані сповіщення.")+'</p>'
     : "";
-  content.innerHTML='<h2>'+uiText("Налаштування ⚙")+'</h2><p class="settingsLabel">'+uiText("Мова")+'</p><div class="languageGrid"><button id="langUkBtn" class="choice '+(currentLang==="uk"?"selected":"")+'">🇺🇦 Українська</button><button id="langEnBtn" class="choice '+(currentLang==="en"?"selected":"")+'">🇬🇧 English</button></div><p class="settingsLabel">'+uiText("Telegram-сповіщення")+'</p><div class="notificationSettings">'+notificationToggleMarkup("notifLikesBtn","Лайки","likes","💜")+notificationToggleMarkup("notifMatchesBtn","Збіги","matches","✨")+notificationToggleMarkup("notifMessagesBtn","Повідомлення","messages","💬")+'</div><p class="safetyHint">'+uiText("Сповіщення не містять текстів приватних повідомлень.")+'</p><p class="settingsLabel">'+uiText("Аналітика продукту")+'</p><button id="analyticsToggleBtn" class="choice safetyChoice">'+uiText("Аналітика продукту")+': <b>'+uiText(analyticsEnabled?"Увімкнено":"Вимкнено")+'</b></button><p class="safetyHint">'+uiText("Допомагає покращувати VYBE. Без текстів чатів, bio, імен чи міста.")+'</p><button id="privacyInfoBtn" class="choice safetyChoice">'+uiText("🔐 Приватність")+'</button><button id="communityRulesBtn" class="choice safetyChoice">'+uiText("🛡 Правила спільноти")+'</button><button id="termsBtn" class="choice safetyChoice">'+uiText("📄 Умови користування")+'</button><button id="settingsBlockedBtn" class="choice safetyChoice">'+uiText("🚫 Заблоковані користувачі")+'</button>'+ownerTestTools+'<button id="deleteAccountBtn" class="choice safetyChoice dangerChoice">'+uiText("🗑 Видалити акаунт")+'</button>';
+  content.innerHTML='<h2>'+uiText("Налаштування ⚙")+'</h2><p class="settingsLabel">'+uiText("Мова")+'</p><div class="languageGrid"><button id="langUkBtn" class="choice '+(currentLang==="uk"?"selected":"")+'">🇺🇦 Українська</button><button id="langEnBtn" class="choice '+(currentLang==="en"?"selected":"")+'">🇬🇧 English</button></div><p class="settingsLabel">'+uiText("Telegram-сповіщення")+'</p><div class="notificationSettings">'+notificationToggleMarkup("notifLikesBtn","Лайки","likes","💜")+notificationToggleMarkup("notifMatchesBtn","Збіги","matches","✨")+notificationToggleMarkup("notifMessagesBtn","Повідомлення","messages","💬")+'</div><p class="safetyHint">'+uiText("Сповіщення не містять текстів приватних повідомлень.")+'</p><p class="settingsLabel">'+uiText("Аналітика продукту")+'</p><button id="analyticsToggleBtn" class="choice safetyChoice">'+uiText("Аналітика продукту")+': <b>'+uiText(analyticsEnabled?"Увімкнено":"Вимкнено")+'</b></button><p class="safetyHint">'+uiText("Допомагає покращувати VYBE. Без текстів чатів, bio, імен чи міста.")+'</p><button id="privacyInfoBtn" class="choice safetyChoice">'+uiText("🔐 Приватність")+'</button><button id="communityRulesBtn" class="choice safetyChoice">'+uiText("🛡 Правила спільноти")+'</button><button id="termsBtn" class="choice safetyChoice">'+uiText("📄 Умови користування")+'</button><button id="settingsBlockedBtn" class="choice safetyChoice">'+uiText("🚫 Заблоковані користувачі")+'</button>'+ownerTestTools+(adminRole?'<p class="safetyHint">'+(currentLang==="en"?"Admin/owner accounts must remove their admin role before account deletion.":"Admin/owner акаунт спочатку має передати або зняти адміністративну роль.")+'</p>':'<button id="deleteAccountBtn" class="choice safetyChoice dangerChoice">'+uiText("🗑 Видалити акаунт")+'</button>');
   sheet.classList.remove("hidden");
   $("langUkBtn").onclick=()=>setLanguage("uk");
   $("langEnBtn").onclick=()=>setLanguage("en");
@@ -2007,7 +2007,7 @@ function openSettings(){
     sheet.classList.add("hidden");
     showAppNotice(r.blocked_between?"Тестовий match скинуто ✅ • перевір блокування":"Тестовий match скинуто ✅");
   };
-  $("deleteAccountBtn").onclick=openDeleteAccount;
+  const deleteAccountBtn=$("deleteAccountBtn");if(deleteAccountBtn)deleteAccountBtn.onclick=openDeleteAccount;
 }
 
 const ageTermsBtn=document.getElementById("ageTermsBtn"),agePrivacyBtn=document.getElementById("agePrivacyBtn"),ageRulesBtn=document.getElementById("ageRulesBtn");
