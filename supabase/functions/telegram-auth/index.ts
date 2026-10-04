@@ -2150,6 +2150,81 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    if (action === "admin_finance_reconcile") {
+      const adminRole = await getAdminRole(db, user.id);
+      if (adminRole !== "owner") return json({ ok: false, error: "Owner access required" }, 403);
+
+      const repairRequested = body.repair_refunds === true;
+      const confirmation = clean(body.confirmation, 80);
+      if (repairRequested && confirmation !== "RECONCILE_REFUNDS") {
+        return json({ ok: false, error: "Reconciliation confirmation required" }, 400);
+      }
+
+      const [telegramScan, orders, paidRewards] = await Promise.all([
+        fetchTelegramStarTransactions(botToken, 1000),
+        db(
+          "star_orders?select=id,user_id,telegram_id,product_key,invoice_payload,status,total_amount,grant_type,grant_amount,telegram_payment_charge_id,created_at,paid_at,refunded_at,refund_requested_at&order=created_at.desc&limit=5000",
+        ) ?? [],
+        db("paid_rewards?select=source_order_id,reward_type,reward_amount,granted_at&limit=10000") ?? [],
+      ]);
+
+      let report = buildFinanceReconciliation(orders ?? [], telegramScan, paidRewards ?? []);
+      const repaired: string[] = [];
+      const repairErrors: any[] = [];
+
+      if (repairRequested && report.repairable_orders.length) {
+        for (const order of report.repairable_orders) {
+          try {
+            await rpc("apply_star_refund", {
+              p_payload: String(order.invoice_payload || ""),
+              p_telegram_id: Number(order.telegram_id),
+              p_currency: "XTR",
+              p_total_amount: Number(order.total_amount || 0),
+              p_charge_id: String(order.telegram_payment_charge_id || ""),
+            });
+            repaired.push(String(order.id));
+          } catch (e) {
+            repairErrors.push({
+              order_id: String(order.id),
+              error: String(e instanceof Error ? e.message : e).slice(0, 180),
+            });
+          }
+        }
+
+        const [freshOrders, freshPaidRewards] = await Promise.all([
+          db(
+            "star_orders?select=id,user_id,telegram_id,product_key,invoice_payload,status,total_amount,grant_type,grant_amount,telegram_payment_charge_id,created_at,paid_at,refunded_at,refund_requested_at&order=created_at.desc&limit=5000",
+          ) ?? [],
+          db("paid_rewards?select=source_order_id,reward_type,reward_amount,granted_at&limit=10000") ?? [],
+        ]);
+        report = buildFinanceReconciliation(freshOrders ?? [], telegramScan, freshPaidRewards ?? []);
+
+        await db("admin_audit_log", {
+          method: "POST",
+          body: JSON.stringify({
+            actor_user_id: user.id,
+            action: "finance_reconcile",
+            metadata: {
+              repaired_order_ids: repaired,
+              repair_errors: repairErrors,
+              telegram_transactions_fetched: telegramScan.fetched,
+              telegram_history_complete: telegramScan.complete,
+              issue_count_after: report.summary.issue_count,
+              critical_count_after: report.summary.critical_count,
+            },
+          }),
+        });
+      }
+
+      return json({
+        ok: true,
+        admin_role: adminRole,
+        repaired_order_ids: repaired,
+        repair_errors: repairErrors,
+        ...report,
+      });
+    }
+
     if (action === "admin_finance_export") {
       const adminRole = await getAdminRole(db, user.id);
       if (!adminRole) return json({ ok: false, error: "Admin access required" }, 403);
