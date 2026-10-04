@@ -2,7 +2,7 @@
 
 VYBE is an 18+ Telegram Mini App for social discovery, dating, friendship and virtual communication. The core UX is based on a user's current intent ("vybe") rather than endless generic swiping.
 
-## Current beta — 0.9.35
+## Current beta — 0.9.36
 
 Implemented and wired to production Supabase:
 
@@ -17,6 +17,7 @@ Implemented and wired to production Supabase:
 - chat loads the latest 200 messages in chronological order, clears chat unread immediately, and marks related in-app notifications seen when opened
 - new matches sort by match creation time before the first message, typing auto-expires, read receipts are clearer, and a mutual VYBE opens a dedicated chat CTA
 - temporary owner-only beta reset can clear exactly one owner test match, pair likes, chat/read state, discovery passes and related social notifications
+- match deletion broadcasts `relationship_changed` to both users, and foreground resume immediately refreshes matches/discovery to prevent stale mutual-match UI
 - likes, SuperVYBE, mutual matches and realtime chat
 - unread chat counters and read state
 - block/report flows enforced server-side
