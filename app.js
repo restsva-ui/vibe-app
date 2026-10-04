@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.37",
+      app_version:"0.9.38",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -1174,6 +1174,14 @@ function openMatchSuccess(target){
     : '<div class="matchSuccessFallback">'+escapeHtml((match.name||"V").trim().charAt(0).toUpperCase())+'</div>';
   content.innerHTML='<div class="matchSuccess"><div class="matchSuccessGlow"></div>'+visual+'<div class="matchSuccessMark">♡</div><h2>'+uiText("Взаємний VYBE 💜")+'</h2><p>'+escapeHtml(match.name||"VYBE")+'</p><button id="matchChatNow" class="primary">'+uiText("Написати зараз")+'</button><button id="matchKeepBrowsing" class="choice">'+uiText("Продовжити перегляд")+'</button></div>';
   sheet.classList.remove("hidden");tg?.BackButton?.show?.();
+  secureApi("notifications_mark_seen",{match_id:match.match_id}).then(async seen=>{
+    if(seen?.ok){
+      const marked=Number(seen.marked||0);
+      if(marked>0)notificationUnread=Math.max(0,Number(notificationUnread||0)-marked);
+      renderNotificationBadge();
+      await loadSupportCounts();
+    }
+  }).catch(()=>{});
   const chat=$("matchChatNow");if(chat)chat.onclick=()=>openChat(match.match_id,match.name,match.id);
   const keep=$("matchKeepBrowsing");if(keep)keep.onclick=()=>{sheet.classList.add("hidden");tg?.BackButton?.hide?.()};
 }
