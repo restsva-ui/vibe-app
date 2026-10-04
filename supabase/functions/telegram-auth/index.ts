@@ -125,6 +125,7 @@ const ACTION_RATE_LIMITS: Record<string, RateLimitPolicy> = {
   admin_support_update: { windowSeconds: 60, maxHits: 60 },
   admin_test_reset_match: { windowSeconds: 3600, maxHits: 10 },
   admin_refund_star_order: { windowSeconds: 3600, maxHits: 20 },
+  admin_finance_reconcile: { windowSeconds: 600, maxHits: 6 },
   star_invoice: { windowSeconds: 600, maxHits: 10 },
   star_test_refund: { windowSeconds: 3600, maxHits: 5 },
   star_order_close: { windowSeconds: 600, maxHits: 30 },
@@ -660,6 +661,39 @@ function safeTelegramStarTransaction(tx: any) {
     transaction_type: partner?.transaction_type ?? null,
     source_type: tx?.source?.type ?? null,
     receiver_type: tx?.receiver?.type ?? null,
+    partner_user_id: partner?.type === "user" ? Number(partner?.user?.id ?? 0) || null : null,
+    invoice_payload: partner?.type === "user" && typeof partner?.invoice_payload === "string"
+      ? String(partner.invoice_payload).slice(0, 180)
+      : null,
+  };
+}
+
+async function fetchTelegramStarTransactions(botToken: string, maxTransactions = 1000) {
+  const limit = 100;
+  const max = Math.max(limit, Math.min(1000, Math.floor(maxTransactions || 1000)));
+  const all: any[] = [];
+  let offset = 0;
+  let complete = false;
+
+  while (all.length < max) {
+    const page = await telegramApi(botToken, "getStarTransactions", {
+      offset,
+      limit: Math.min(limit, max - all.length),
+    });
+    const rows = Array.isArray(page?.transactions) ? page.transactions : [];
+    all.push(...rows);
+    offset += rows.length;
+    if (rows.length < limit) {
+      complete = true;
+      break;
+    }
+  }
+
+  return {
+    transactions: all.map(safeTelegramStarTransaction),
+    complete,
+    fetched: all.length,
+    max_transactions: max,
   };
 }
 
