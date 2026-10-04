@@ -1071,7 +1071,7 @@ async function storageRequest(path: string, options: RequestInit = {}) {
   });
 }
 
-const PROFILE_SIGNED_URL_TTL_SECONDS = 3600;
+const PROFILE_SIGNED_URL_TTL_SECONDS = 7200;
 const PROFILE_OBJECT_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:webp|jpg)$/i;
 
 function profilePhotoObjectPath(value: string | null | undefined): string | null {
