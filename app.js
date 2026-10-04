@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.39",
+      app_version:"0.9.40",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -548,6 +548,8 @@ async function openBlockedUsers(){
 }
 
 let profile=load("vybeProfile",null),now=load("vybeNow",null),matches=[],index=0,filter="Усе",remotePeople=[],entitlements={balances:{supervybe:0,spotlight:0},vybe_plus_until:null,spotlight_until:null},starCatalog=[],adminRole=null,supportUnread=0,adminSupportUnread=0,moderationUnread=0,notificationUnread=0,accountStatus="active",restrictionReason=null,notificationPrefs={likes:true,matches:true,messages:true};
+const DISCOVER_PAGE_SIZE=20;
+let discoverCursor=null,discoverSnapshot=null,discoverHasMore=false,discoverLoading=false,discoverGeneration=0;
 let discoverFilters=load("vybeDiscoverFilters",{minAge:18,maxAge:99,city:"",onlineOnly:false,verifiedOnly:false});
 localStorage.removeItem("vybeMatches");
 async function loadEntitlements(){const r=await secureApi("entitlements");if(r.ok)entitlements=r;return r}
@@ -876,16 +878,20 @@ async function syncNow(hours=1){
   if(r.expires_at){now.expires=new Date(r.expires_at).getTime();store("vybeNow",now);renderNow()}
   return true;
 }
-async function loadPeople(){
-  const r=await secureApi("discover",{
+function discoveryRequestPayload(extra={}){
+  return {
     min_age:Number(discoverFilters.minAge)||18,
     max_age:Number(discoverFilters.maxAge)||99,
     city:String(discoverFilters.city||""),
     online_only:discoverFilters.onlineOnly===true,
     verified_only:discoverFilters.verifiedOnly===true,
     intent:filter==="Усе"?"":filter,
-  });if(!r.ok)return;
-  remotePeople=(r.people||[]).map(p=>({
+    page_size:DISCOVER_PAGE_SIZE,
+    ...extra,
+  };
+}
+function mapDiscoveryPeople(rows){
+  return (rows||[]).map(p=>({
     id:p.user_id,
     name:p.name||"VYBE",
     age:p.age||18,
@@ -901,7 +907,66 @@ async function loadPeople(){
     spotlight_active:p.spotlight_active===true,
     already_matched:p.already_matched===true,
   }));
-  index=0;renderCard();
+}
+function applyDiscoveryPagination(r){
+  const pg=r?.pagination||{};
+  discoverCursor=pg.next_cursor||null;
+  discoverSnapshot=pg.snapshot_at||null;
+  discoverHasMore=pg.has_more===true&&!!discoverCursor;
+}
+async function loadPeople(){
+  const generation=++discoverGeneration;
+  discoverLoading=true;
+  discoverHasMore=false;
+  discoverCursor=null;
+  discoverSnapshot=null;
+  try{
+    const r=await secureApi("discover",discoveryRequestPayload());
+    if(generation!==discoverGeneration)return false;
+    if(!r.ok)return false;
+    remotePeople=mapDiscoveryPeople(r.people);
+    applyDiscoveryPagination(r);
+    index=0;
+    return true;
+  }finally{
+    if(generation===discoverGeneration){
+      discoverLoading=false;
+      renderCard();
+    }
+  }
+}
+async function loadMorePeople(){
+  if(discoverLoading||!discoverHasMore||!discoverCursor||!discoverSnapshot)return false;
+  const generation=discoverGeneration;
+  discoverLoading=true;
+  try{
+    const r=await secureApi("discover",discoveryRequestPayload({
+      cursor:discoverCursor,
+      snapshot_at:discoverSnapshot,
+    }));
+    if(generation!==discoverGeneration)return false;
+    if(!r.ok)return false;
+    const incoming=mapDiscoveryPeople(r.people);
+    if(r.pagination?.reset===true){
+      remotePeople=incoming;
+      index=0;
+    }else{
+      const seen=new Set(remotePeople.map(p=>String(p.id)));
+      for(const p of incoming){
+        if(!seen.has(String(p.id))){
+          seen.add(String(p.id));
+          remotePeople.push(p);
+        }
+      }
+    }
+    applyDiscoveryPagination(r);
+    return true;
+  }finally{
+    if(generation===discoverGeneration){
+      discoverLoading=false;
+      renderCard();
+    }
+  }
 }
 async function hydrateProfile(){
   const r=await secureApi("profile_get");if(!r.ok)return;
@@ -1148,6 +1213,13 @@ function renderCard(){
   const arr=filtered();
   const stack=$("cardStack"),actions=$("discoverActions");
   if(!arr.length||index>=arr.length){
+    if(discoverHasMore){
+      if(actions)actions.classList.add("hidden");
+      stack.classList.add("emptyStack");
+      stack.innerHTML='<div class="discoverEmpty"><div class="discoverEmptyIcon">⚡</div><h3>'+uiText("Завантаження…")+'</h3></div>';
+      if(!discoverLoading)void loadMorePeople();
+      return
+    }
     if(actions)actions.classList.add("hidden");
     stack.classList.add("emptyStack");
     const hasFilters=discoveryFiltersActive();
@@ -1170,6 +1242,7 @@ function renderCard(){
   $("cardStack").innerHTML='<article class="personCard '+(p.spotlight_active?"spotlightCard":"")+'">'+visual+liveBadges+'<button id="cardSafetyBtn" class="cardSafety" aria-label="Безпека">⋯</button><div class="gradient"></div><div class="personMeta"><div class="nameRow"><h2>'+escapeHtml(p.name)+", "+escapeHtml(p.age)+'</h2></div>'+vibeLive+'<p class="bio">'+escapeHtml(p.bio)+'</p>'+facts+'<button id="cardProfileBtn" class="profilePeek">'+uiText("Переглянути анкету")+'</button></div></article>';
   const safety=$("cardSafetyBtn");if(safety)safety.onclick=e=>{e.stopPropagation();openUserSafety(p.id,p.name)};
   const profileBtn=$("cardProfileBtn");if(profileBtn)profileBtn.onclick=e=>{e.stopPropagation();openPublicProfile(p.id)};
+  if(discoverHasMore&&!discoverLoading&&arr.length-index<=3)void loadMorePeople();
 }
 function updateUnreadBadge(total){const nav=[...document.querySelectorAll(".navItem")].find(x=>x.dataset.target==="chatView");if(!nav)return;let badge=nav.querySelector(".navUnread");if(!badge){badge=document.createElement("b");badge.className="navUnread";nav.appendChild(badge)}badge.textContent=total>99?"99+":String(total);badge.classList.toggle("hidden",!total)}
 async function loadMatches(){
