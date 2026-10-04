@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.38",
+      app_version:"0.9.39",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -218,13 +218,14 @@ const realtimeClient=window.supabase?.createClient?.(SUPABASE_URL,SUPABASE_KEY,{
 });
 let realtimeUserTopic=null,realtimeUserChannel=null,realtimeUserChannelTopic=null,realtimeConnected=false;
 const realtimeMatchChannels=new Map();
-let activeChat=null,chatRefreshTimer=null,socialRefreshTimer=null,typingStopTimer=null,incomingTypingTimer=null,lastTypingSentAt=0;
+let activeChat=null,chatRefreshTimer=null,socialRefreshTimer=null,typingStopTimer=null,incomingTypingTimer=null,lastTypingSentAt=0,localTypingActive=false;
 
 function teardownSocialRealtime(){
   clearTimeout(chatRefreshTimer);
   clearTimeout(socialRefreshTimer);
   clearTimeout(typingStopTimer);
   clearTimeout(incomingTypingTimer);
+  localTypingActive=false;
   activeChat=null;
   if(realtimeUserChannel&&realtimeClient){
     realtimeClient.removeChannel(realtimeUserChannel);
@@ -302,7 +303,16 @@ function getMatchChannel(matchId){return realtimeMatchChannels.get(String(matchI
 function sendTyping(matchId,typing){
   if(accountStatus!=="active")return;
   const channel=getMatchChannel(matchId);if(!channel)return;
-  channel.send({type:"broadcast",event:"typing",payload:{typing:typing===true}}).catch?.(()=>{});
+  const next=typing===true;
+  channel.send({type:"broadcast",event:"typing",payload:{typing:next}}).catch?.(()=>{});
+  if(localTypingActive!==next){
+    localTypingActive=next;
+    channel.track?.({
+      user_id:String(profile?.user_id||""),
+      typing:next,
+      updated_at:new Date().toISOString(),
+    }).catch?.(()=>{});
+  }
 }
 function bindTyping(matchId){
   const field=$("chatMessage");if(!field)return;
@@ -347,12 +357,24 @@ function syncMatchRealtimeChannels(){
   if(!realtimeClient)return;
   const wantedId=activeChat?.matchId||null;
   for(const [matchId,entry] of realtimeMatchChannels){
-    if(matchId!==wantedId){realtimeClient.removeChannel(entry.channel);realtimeMatchChannels.delete(matchId)}
+    if(matchId!==wantedId){
+      localTypingActive=false;
+      realtimeClient.removeChannel(entry.channel);
+      realtimeMatchChannels.delete(matchId)
+    }
   }
   if(!wantedId||realtimeMatchChannels.has(wantedId))return;
   const m=matches.find(x=>String(x.match_id)===wantedId);
   if(!m?.realtime_topic)return;
   const channel=realtimeClient.channel("vybe:match:"+m.realtime_topic,{config:{broadcast:{self:false}}})
+    .on("presence",{event:"sync"},()=>{
+      if(activeChat?.matchId!==wantedId)return;
+      const state=channel.presenceState?.()||{};
+      const peerTyping=Object.values(state).some(items=>Array.isArray(items)&&items.some(p=>
+        String(p?.user_id||"")!==String(profile?.user_id||"")&&p?.typing===true
+      ));
+      setTypingLabel(peerTyping);
+    })
     .on("broadcast",{event:"message_created"},payload=>{
       const senderId=String(payload?.payload?.sender_id||"");
       if(activeChat?.matchId===wantedId&&senderId!==String(profile?.user_id))scheduleActiveChatRefresh(50);
@@ -368,7 +390,14 @@ function syncMatchRealtimeChannels(){
       setTypingLabel(isTyping);
       if(isTyping)incomingTypingTimer=setTimeout(()=>setTypingLabel(false),2600);
     })
-    .subscribe();
+    .subscribe(status=>{
+      if(status!=="SUBSCRIBED")return;
+      channel.track?.({
+        user_id:String(profile?.user_id||""),
+        typing:localTypingActive,
+        updated_at:new Date().toISOString(),
+      }).catch?.(()=>{});
+    });
   realtimeMatchChannels.set(wantedId,{channel,topic:m.realtime_topic});
 }
 setInterval(()=>{
