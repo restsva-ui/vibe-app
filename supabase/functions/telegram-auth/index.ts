@@ -953,6 +953,107 @@ function detectedImageType(bytes: Uint8Array): "image/webp" | "image/jpeg" | "im
   return null;
 }
 
+const readU32LE = (bytes: Uint8Array, offset: number) =>
+  (bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24)) >>> 0;
+
+function profileImageDimensions(bytes: Uint8Array, mime: string): { width: number; height: number } | null {
+  if (mime === "image/jpeg") {
+    if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
+    const sof = new Set([0xc0,0xc1,0xc2,0xc3,0xc5,0xc6,0xc7,0xc9,0xca,0xcb,0xcd,0xce,0xcf]);
+    let pos = 2;
+    while (pos + 8 < bytes.length) {
+      if (bytes[pos] !== 0xff) { pos += 1; continue; }
+      while (pos < bytes.length && bytes[pos] === 0xff) pos += 1;
+      if (pos >= bytes.length) break;
+      const marker = bytes[pos++];
+      if (marker === 0xd9 || marker === 0xda) break;
+      if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) continue;
+      if (pos + 1 >= bytes.length) return null;
+      const len = (bytes[pos] << 8) | bytes[pos + 1];
+      if (len < 2 || pos + len > bytes.length) return null;
+      if (sof.has(marker) && len >= 7) {
+        const height = (bytes[pos + 3] << 8) | bytes[pos + 4];
+        const width = (bytes[pos + 5] << 8) | bytes[pos + 6];
+        return width > 0 && height > 0 ? { width, height } : null;
+      }
+      pos += len;
+    }
+    return null;
+  }
+
+  if (mime === "image/webp") {
+    if (bytes.length < 30 || String.fromCharCode(...bytes.slice(0,4)) !== "RIFF" || String.fromCharCode(...bytes.slice(8,12)) !== "WEBP") {
+      return null;
+    }
+    if (readU32LE(bytes, 4) + 8 !== bytes.length) return null;
+    let pos = 12;
+    while (pos + 8 <= bytes.length) {
+      const type = String.fromCharCode(...bytes.slice(pos, pos + 4));
+      const size = readU32LE(bytes, pos + 4);
+      const data = pos + 8;
+      if (data + size > bytes.length) return null;
+
+      if (type === "VP8X" && size >= 10) {
+        const width = 1 + bytes[data + 4] + (bytes[data + 5] << 8) + (bytes[data + 6] << 16);
+        const height = 1 + bytes[data + 7] + (bytes[data + 8] << 8) + (bytes[data + 9] << 16);
+        return { width, height };
+      }
+      if (type === "VP8 " && size >= 10 &&
+          bytes[data + 3] === 0x9d && bytes[data + 4] === 0x01 && bytes[data + 5] === 0x2a) {
+        const width = ((bytes[data + 7] << 8) | bytes[data + 6]) & 0x3fff;
+        const height = ((bytes[data + 9] << 8) | bytes[data + 8]) & 0x3fff;
+        return width > 0 && height > 0 ? { width, height } : null;
+      }
+      if (type === "VP8L" && size >= 5 && bytes[data] === 0x2f) {
+        const b1 = bytes[data + 1], b2 = bytes[data + 2], b3 = bytes[data + 3], b4 = bytes[data + 4];
+        const width = 1 + (((b2 & 0x3f) << 8) | b1);
+        const height = 1 + (((b4 & 0x0f) << 10) | (b3 << 2) | ((b2 & 0xc0) >> 6));
+        return { width, height };
+      }
+      pos = data + size + (size % 2);
+    }
+  }
+
+  return null;
+}
+
+function hasUnsafeProfileMetadata(bytes: Uint8Array, mime: string): boolean {
+  if (mime === "image/jpeg") {
+    if (bytes.length < 4 || bytes[bytes.length - 2] !== 0xff || bytes[bytes.length - 1] !== 0xd9) return true;
+    let pos = 2;
+    while (pos + 3 < bytes.length) {
+      if (bytes[pos] !== 0xff) { pos += 1; continue; }
+      while (pos < bytes.length && bytes[pos] === 0xff) pos += 1;
+      if (pos >= bytes.length) return true;
+      const marker = bytes[pos++];
+      if (marker === 0xd9 || marker === 0xda) break;
+      if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) continue;
+      if (pos + 1 >= bytes.length) return true;
+      const len = (bytes[pos] << 8) | bytes[pos + 1];
+      if (len < 2 || pos + len > bytes.length) return true;
+      if (marker === 0xe1 || marker === 0xed || marker === 0xfe) return true;
+      pos += len;
+    }
+    return false;
+  }
+
+  if (mime === "image/webp") {
+    if (bytes.length < 20 || readU32LE(bytes, 4) + 8 !== bytes.length) return true;
+    let pos = 12;
+    while (pos + 8 <= bytes.length) {
+      const type = String.fromCharCode(...bytes.slice(pos, pos + 4));
+      const size = readU32LE(bytes, pos + 4);
+      const data = pos + 8;
+      if (data + size > bytes.length) return true;
+      if (type === "EXIF" || type === "XMP " || type === "ANIM" || type === "ANMF") return true;
+      pos = data + size + (size % 2);
+    }
+    return pos !== bytes.length;
+  }
+
+  return true;
+}
+
 const encodeStoragePath = (path: string) =>
   path.split("/").map((part) => encodeURIComponent(part)).join("/");
 
@@ -1021,6 +1122,53 @@ async function deleteProfilePhotoWithRetry(photoUrl: string | null | undefined) 
     if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 180 * attempt));
   }
   return false;
+}
+
+async function deleteProfilePhotoObjectPath(objectPath: string): Promise<boolean> {
+  if (!objectPath) return true;
+  const response = await storageRequest(
+    `object/${PROFILE_BUCKET}/${encodeStoragePath(objectPath)}`,
+    { method: "DELETE" },
+  );
+  if (!response.ok && response.status !== 404) {
+    console.warn("profile_photo:object_delete_failed", { status: response.status });
+    return false;
+  }
+  return true;
+}
+
+async function deleteProfilePhotoObjectWithRetry(objectPath: string) {
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    if (await deleteProfilePhotoObjectPath(objectPath)) return true;
+    if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 180 * attempt));
+  }
+  return false;
+}
+
+async function cleanupProfilePhotoFolder(userId: string, keepObjectPath: string | null = null) {
+  let names: string[] = [];
+  try {
+    const result = await rpc("vybe_profile_photo_objects", { p_user_id: userId });
+    names = Array.isArray(result) ? result.map((x: any) => String(x || "")).filter(Boolean) : [];
+  } catch (e) {
+    console.error("profile_photo:list_failed", {
+      user_id: userId,
+      error: String(e instanceof Error ? e.message : e).slice(0, 180),
+    });
+    return false;
+  }
+
+  let ok = true;
+  const prefix = `${userId}/`;
+  for (const name of names) {
+    if (name === keepObjectPath) continue;
+    if (!name.startsWith(prefix)) {
+      ok = false;
+      continue;
+    }
+    if (!await deleteProfilePhotoObjectWithRetry(name)) ok = false;
+  }
+  return ok;
 }
 
 async function getBlockedUserIds(db: ReturnType<typeof dbClient>, userId: string): Promise<Set<string>> {
@@ -1265,16 +1413,35 @@ Deno.serve(async (req: Request) => {
       if (!bytes.length || bytes.length > PROFILE_MAX_BYTES) return json({ ok: false, error: "Image is too large" }, 413);
 
       const detected = detectedImageType(bytes);
-      if (!detected || detected !== declaredMime) return json({ ok: false, error: "Unsupported image" }, 400);
+      if (!detected || detected !== declaredMime || !["image/webp","image/jpeg"].includes(detected)) {
+        return json({ ok: false, error: "Unsupported image" }, 400);
+      }
+
+      const dimensions = profileImageDimensions(bytes, detected);
+      if (!dimensions || dimensions.width !== 900 || dimensions.height !== 900) {
+        return json({ ok: false, error: "Profile image must be normalized to 900x900" }, 400);
+      }
+      if (hasUnsafeProfileMetadata(bytes, detected)) {
+        return json({ ok: false, error: "Image metadata is not allowed" }, 400);
+      }
 
       const uploaded = await uploadProfilePhoto(user.id, bytes, detected);
-      await db(`profiles?user_id=eq.${encodeURIComponent(user.id)}`, {
-        method: "PATCH",
-        body: JSON.stringify({ photo_url: uploaded.publicUrl, updated_at: new Date().toISOString() }),
-      });
-      await deleteProfilePhotoByUrl(profile.photo_url);
+      try {
+        await db(`profiles?user_id=eq.${encodeURIComponent(user.id)}`, {
+          method: "PATCH",
+          body: JSON.stringify({ photo_url: uploaded.publicUrl, updated_at: new Date().toISOString() }),
+        });
+      } catch (e) {
+        await deleteProfilePhotoObjectWithRetry(uploaded.objectPath);
+        throw e;
+      }
 
-      return json({ ok: true, photo_url: uploaded.publicUrl });
+      const cleanupOk = await cleanupProfilePhotoFolder(user.id, uploaded.objectPath);
+      if (!cleanupOk) {
+        console.warn("profile_photo:cleanup_pending", { user_id: user.id });
+      }
+
+      return json({ ok: true, photo_url: uploaded.publicUrl, cleanup_ok: cleanupOk });
     }
 
     if (action === "photo_remove") {
@@ -1284,8 +1451,8 @@ Deno.serve(async (req: Request) => {
         method: "PATCH",
         body: JSON.stringify({ photo_url: null, updated_at: new Date().toISOString() }),
       });
-      await deleteProfilePhotoByUrl(profile.photo_url);
-      return json({ ok: true, photo_url: null });
+      const cleanupOk = await cleanupProfilePhotoFolder(user.id, null);
+      return json({ ok: true, photo_url: null, cleanup_ok: cleanupOk });
     }
 
     if (action === "save_profile") {
@@ -2659,7 +2826,10 @@ Deno.serve(async (req: Request) => {
 
       try {
         const result = await rpc("vybe_delete_account", { p_user_id: user.id });
-        const photoCleanupOk = await deleteProfilePhotoWithRetry(result?.photo_url ?? null);
+        let photoCleanupOk = await cleanupProfilePhotoFolder(user.id, null);
+        if (!photoCleanupOk && result?.photo_url) {
+          photoCleanupOk = await deleteProfilePhotoWithRetry(result.photo_url);
+        }
         if (!photoCleanupOk) {
           console.error("account_delete:photo_cleanup_pending", { user_id: user.id });
         }
