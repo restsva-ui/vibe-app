@@ -6,6 +6,9 @@ create unique index if not exists intents_user_id_key
 create index if not exists intents_intent_expires_user_idx
   on public.intents(intent, expires_at desc, user_id);
 
+-- The unique user_id index supersedes the older non-unique lookup index.
+drop index if exists public.idx_intents_user;
+
 create or replace function public.vybe_discover_page(
   p_user_id uuid,
   p_min_age integer,
