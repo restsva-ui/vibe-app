@@ -93,3 +93,5 @@ The production Edge Function source is mirrored in:
 - `supabase/functions/telegram-bot/index.ts`
 
 The Mini App frontend currently uses the lightweight `index.html` / `app.js` / `styles.css` stack for fast beta iteration.
+
+- Telegram message notification is no longer suppressed by a coarse 90-second last-seen rule; the per-chat 3-minute delivery cooldown remains to prevent notification spam.
