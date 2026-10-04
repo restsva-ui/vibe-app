@@ -789,13 +789,20 @@ function buildFinanceReconciliation(
     if (order.status === "paid") {
       if (outgoing) {
         const refundAmountMatches = Number(outgoing.amount || 0) === amount;
-        if (refundAmountMatches) {
+        const refundUserMatches = !outgoing.partner_user_id || Number(outgoing.partner_user_id) === Number(order.telegram_id);
+        const refundPayloadMatches = !outgoing.invoice_payload || String(outgoing.invoice_payload) === String(order.invoice_payload || "");
+        const repairable = refundAmountMatches && refundUserMatches && refundPayloadMatches;
+        if (repairable) {
           addIssue(order, "telegram_refunded_local_paid", "critical", {}, true);
           repairableOrders.push(order);
         } else {
-          addIssue(order, "refund_amount_mismatch", "critical", {
+          addIssue(order, "telegram_refund_mismatch", "critical", {
             telegram_amount: Number(outgoing.amount || 0),
             local_amount: amount,
+            telegram_user_id: outgoing.partner_user_id ?? null,
+            local_telegram_id: Number(order.telegram_id),
+            telegram_payload: outgoing.invoice_payload ?? null,
+            local_payload: order.invoice_payload ?? null,
           });
         }
         orderClean = false;
@@ -807,9 +814,22 @@ function buildFinanceReconciliation(
     }
 
     if (order.status === "refunding") {
-      if (outgoing && Number(outgoing.amount || 0) === amount) {
+      const refundMatches = !!outgoing
+        && Number(outgoing.amount || 0) === amount
+        && (!outgoing.partner_user_id || Number(outgoing.partner_user_id) === Number(order.telegram_id))
+        && (!outgoing.invoice_payload || String(outgoing.invoice_payload) === String(order.invoice_payload || ""));
+      if (refundMatches) {
         addIssue(order, "telegram_refunded_local_refunding", "high", {}, true);
         repairableOrders.push(order);
+      } else if (outgoing) {
+        addIssue(order, "telegram_refund_mismatch", "critical", {
+          telegram_amount: Number(outgoing.amount || 0),
+          local_amount: amount,
+          telegram_user_id: outgoing.partner_user_id ?? null,
+          local_telegram_id: Number(order.telegram_id),
+          telegram_payload: outgoing.invoice_payload ?? null,
+          local_payload: order.invoice_payload ?? null,
+        });
       } else {
         const requestedAt = order.refund_requested_at ? new Date(order.refund_requested_at).getTime() : 0;
         const stuck = requestedAt > 0 && Date.now() - requestedAt > 10 * 60 * 1000;
