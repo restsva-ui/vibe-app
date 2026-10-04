@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.42",
+      app_version:"0.9.43",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
