@@ -802,11 +802,13 @@ Deno.serve(async (req: Request) => {
 
     if (action === "notifications_mark_seen") {
       const now = new Date().toISOString();
+      const matchId = clean(body.match_id, 80);
+      const matchFilter = matchId ? `&match_id=eq.${encodeURIComponent(matchId)}` : "";
       const rows = await db(
-        `notification_events?recipient_user_id=eq.${encodeURIComponent(user.id)}&seen_at=is.null`,
+        `notification_events?recipient_user_id=eq.${encodeURIComponent(user.id)}&seen_at=is.null${matchFilter}`,
         { method: "PATCH", body: JSON.stringify({ seen_at: now }) },
       ) ?? [];
-      return json({ ok: true, marked: rows.length, seen_at: now });
+      return json({ ok: true, marked: rows.length, seen_at: now, match_id: matchId || null });
     }
 
     if (action === "profile_get") {
@@ -2603,7 +2605,8 @@ Deno.serve(async (req: Request) => {
       if (await isRestrictedUser(db,owned.id)) return json({ok:false,error:"User unavailable"},403);
       if (await isBlockedBetween(db, user.id, owned.id)) return json({ ok: false, error: "User blocked" }, 403);
 
-      const messages = await db(`messages?match_id=eq.${encodeURIComponent(matchId)}&select=id,match_id,sender_id,body,created_at&order=created_at.asc&limit=200`) ?? [];
+      const newestMessages = await db(`messages?match_id=eq.${encodeURIComponent(matchId)}&select=id,match_id,sender_id,body,created_at&order=created_at.desc&limit=200`) ?? [];
+      const messages = [...newestMessages].reverse();
       const [myReads, peerReads] = await Promise.all([
         db(`match_reads?user_id=eq.${encodeURIComponent(user.id)}&match_id=eq.${encodeURIComponent(matchId)}&select=last_read_at&limit=1`),
         db(`match_reads?user_id=eq.${encodeURIComponent(owned.id)}&match_id=eq.${encodeURIComponent(matchId)}&select=last_read_at&limit=1`),
@@ -2630,6 +2633,7 @@ Deno.serve(async (req: Request) => {
       return json({
         ok: true,
         messages,
+        has_older: newestMessages.length >= 200,
         peer_last_read_at: peerReads?.[0]?.last_read_at ?? null,
       });
     }
