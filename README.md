@@ -101,3 +101,5 @@ The Mini App frontend currently uses the lightweight `index.html` / `app.js` / `
 - Discovery is now DB-side and keyset-paginated: 20 cards per page with a 3-card prefetch buffer, exact filters/ranking/exclusions in one backend-only RPC, and no arbitrary first-100-profile cap.
 
 - Like and SuperVYBE writes now use one atomic like/match RPC with pair locking, idempotent match creation, idempotent SuperVYBE charging, and server-side prevention of the old `like(kind=super)` bypass.
+
+- Notification pipeline uses backend-only RPCs for unread/list/mark-seen, FK-covering indexes for actor/match cleanup, and an atomic Telegram notification delivery claim so concurrent messages cannot bypass the per-chat cooldown.
