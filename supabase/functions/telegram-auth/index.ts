@@ -391,9 +391,6 @@ async function sendSocialNotification(
     }
 
     if (input.eventType === "message" && input.matchId) {
-      const lastSeenMs = recipient.last_seen ? new Date(recipient.last_seen).getTime() : 0;
-      if (lastSeenMs && Date.now() - lastSeenMs < 90000) return false;
-
       const cooldownFrom = new Date(Date.now() - 3 * 60 * 1000).toISOString();
       const recent = await db(
         `notification_deliveries?recipient_user_id=eq.${encodeURIComponent(input.recipientUserId)}&event_type=eq.message&match_id=eq.${encodeURIComponent(input.matchId)}&created_at=gte.${encodeURIComponent(cooldownFrom)}&select=id&limit=1`,
