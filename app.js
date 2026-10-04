@@ -81,7 +81,7 @@ const I18N_PAIRS=[
   ["Мої бонуси ✨","My bonuses ✨"],["Активувати Spotlight на 30 хв","Activate Spotlight for 30 min"],["SuperVYBE витрачається кнопкою ✦ на реальній анкеті.","Use SuperVYBE with the ✦ button on a real profile."],
   ["VYBE працює тільки для 18+. Блокування та скарги вже захищені серверною перевіркою: заблоковані користувачі не бачать одне одного у пошуку, збігах і чатах.","VYBE is for adults 18+ only. Blocks and reports are enforced server-side: blocked users cannot see each other in discovery, matches or chats."],
   ["🚫 Мої блокування","🚫 My blocked users"],["Якщо бачиш погрози, шантаж, неповнолітнього користувача, незаконний контент або пропозиції сексуальних послуг — надішли скаргу з профілю/чату.","If you see threats, blackmail, a minor, illegal content or offers of sexual services, report it from the profile or chat."],
-  ["Спочатку обери свій вайб.","Choose your vibe first."],["Анкет за цим вайбом поки немає.","No profiles match this vibe yet."],["Спробуй інший фільтр.","Try another filter."],
+  ["Спочатку обери свій вайб.","Choose your vibe first."],["Анкет за цим вайбом поки немає.","No profiles match this vibe yet."],["Спробуй інший фільтр.","Try another filter."],["Зараз немає активних VYBE NOW за цими умовами.","No active VYBE NOW profiles match these filters right now."],["Спробуй інший вайб або фільтр.","Try another vibe or filter."],
   ["Це демо-анкета. Реальна дія працює тільки для реальних користувачів.","This is a demo profile. Real actions work only with real users."],
   ["SuperVYBE не списано. Спробуй ще раз.","SuperVYBE was not used. Try again."],["Не вдалося надіслати VYBE. Спробуй ще раз.","Could not send VYBE. Try again."],
   ["У вас взаємний VYBE 💜","You have a mutual VYBE 💜"],["SuperVYBE надіслано ✦","SuperVYBE sent ✦"],
@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.25",
+      app_version:"0.9.26",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -1058,7 +1058,7 @@ function filtered(){
 function renderCard(){
   const arr=filtered();
   if(!arr.length||index>=arr.length){
-    $("cardStack").innerHTML='<div class="empty">Анкет за цим вайбом поки немає.<br>Спробуй інший фільтр.</div>';
+    $("cardStack").innerHTML='<div class="empty">'+uiText("Зараз немає активних VYBE NOW за цими умовами.")+'<br>'+uiText("Спробуй інший вайб або фільтр.")+'</div>';
     return
   }
   const p=arr[index];
@@ -1093,6 +1093,13 @@ async function loadMatches(){
 }
 async function next(kind){
   const arr=filtered(),p=arr[index];
+  if(kind==="skip"&&p&&!p.already_matched&&!String(p.id).startsWith("demo")){
+    const passRequest=secureApi("pass",{target_user_id:p.id});
+    analyticsCapture("profile_passed");
+    index++;renderCard();tg?.HapticFeedback?.impactOccurred("light");
+    await passRequest;
+    return
+  }
   if(p?.already_matched&&(kind==="like"||kind==="super")){
     await openPublicProfile(p.id);
     return
