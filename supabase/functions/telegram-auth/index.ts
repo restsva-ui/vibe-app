@@ -1794,6 +1794,92 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    if (action === "admin_test_reset_match") {
+      const adminRole = await getAdminRole(db, user.id);
+      if (adminRole !== "owner") return json({ ok:false,error:"Owner access required" },403);
+
+      const matchId = clean(body.match_id,80);
+      const confirmation = clean(body.confirmation,40);
+      if (!matchId || confirmation !== "RESET_TEST_MATCH") {
+        return json({ok:false,error:"Reset confirmation required"},400);
+      }
+
+      const matchRows = await db(
+        `matches?id=eq.${encodeURIComponent(matchId)}&or=(user_a_id.eq.${encodeURIComponent(user.id)},user_b_id.eq.${encodeURIComponent(user.id)})&select=id,user_a_id,user_b_id&limit=1`,
+      ) ?? [];
+      const match = matchRows?.[0];
+      if (!match) return json({ok:false,error:"Owner test match not found"},404);
+
+      const otherUserId = String(match.user_a_id) === String(user.id)
+        ? String(match.user_b_id)
+        : String(match.user_a_id);
+
+      const removed: Record<string,number> = {};
+      const remove = async (key:string,path:string) => {
+        const rows = await db(path,{method:"DELETE"}) ?? [];
+        removed[key] = Array.isArray(rows) ? rows.length : 0;
+      };
+
+      await remove("notification_deliveries",`notification_deliveries?match_id=eq.${encodeURIComponent(matchId)}`);
+      await remove("notification_events",`notification_events?match_id=eq.${encodeURIComponent(matchId)}`);
+
+      await remove(
+        "like_deliveries_owner_to_peer",
+        `notification_deliveries?event_type=eq.like&actor_user_id=eq.${encodeURIComponent(user.id)}&recipient_user_id=eq.${encodeURIComponent(otherUserId)}`,
+      );
+      await remove(
+        "like_deliveries_peer_to_owner",
+        `notification_deliveries?event_type=eq.like&actor_user_id=eq.${encodeURIComponent(otherUserId)}&recipient_user_id=eq.${encodeURIComponent(user.id)}`,
+      );
+      await remove(
+        "like_events_owner_to_peer",
+        `notification_events?event_type=eq.like&actor_user_id=eq.${encodeURIComponent(user.id)}&recipient_user_id=eq.${encodeURIComponent(otherUserId)}`,
+      );
+      await remove(
+        "like_events_peer_to_owner",
+        `notification_events?event_type=eq.like&actor_user_id=eq.${encodeURIComponent(otherUserId)}&recipient_user_id=eq.${encodeURIComponent(user.id)}`,
+      );
+
+      await remove("match_reads",`match_reads?match_id=eq.${encodeURIComponent(matchId)}`);
+      await remove("messages",`messages?match_id=eq.${encodeURIComponent(matchId)}`);
+      await remove(
+        "likes_owner_to_peer",
+        `likes?from_user_id=eq.${encodeURIComponent(user.id)}&to_user_id=eq.${encodeURIComponent(otherUserId)}`,
+      );
+      await remove(
+        "likes_peer_to_owner",
+        `likes?from_user_id=eq.${encodeURIComponent(otherUserId)}&to_user_id=eq.${encodeURIComponent(user.id)}`,
+      );
+      await remove(
+        "passes_owner_to_peer",
+        `discovery_passes?user_id=eq.${encodeURIComponent(user.id)}&target_user_id=eq.${encodeURIComponent(otherUserId)}`,
+      );
+      await remove(
+        "passes_peer_to_owner",
+        `discovery_passes?user_id=eq.${encodeURIComponent(otherUserId)}&target_user_id=eq.${encodeURIComponent(user.id)}`,
+      );
+      await remove("match",`matches?id=eq.${encodeURIComponent(matchId)}`);
+
+      await db("admin_audit_log", {
+        method:"POST",
+        body:JSON.stringify({
+          actor_user_id:user.id,
+          action:"test_match_reset",
+          target_user_id:otherUserId,
+          metadata:{match_id:matchId,removed,admin_role:adminRole},
+        }),
+      });
+
+      return json({
+        ok:true,
+        reset:true,
+        match_id:matchId,
+        target_user_id:otherUserId,
+        removed,
+        blocked_between:await isBlockedBetween(db,String(user.id),otherUserId),
+      });
+    }
+
     if (action === "admin_refund_star_order") {
       const adminRole = await getAdminRole(db, user.id);
       if (adminRole !== "owner") return json({ ok: false, error: "Owner access required" }, 403);
