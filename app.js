@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.43",
+      app_version:"0.9.44",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -1680,12 +1680,22 @@ function renderFinanceDeepReconciliation(r){
   const repairBtn=Number(s.repairable_count||0)>0
     ? '<button id="financeRepairBtn" class="choice">'+(currentLang==="en"?"Repair confirmed refunds":"Виправити підтверджені refund-и")+' ('+Number(s.repairable_count||0)+')</button>'
     :"";
-  root.innerHTML='<div><b>'+(currentLang==="en"?"Deep reconciliation":"Глибока звірка")+'</b>'+
-    '<span>'+scope+' • '+Number(scan.telegram_transactions_fetched||0)+' tx</span>'+
-    '<span>'+(currentLang==="en"?"Checked":"Перевірено")+': '+Number(s.checked_orders||0)+' • '+
-    (currentLang==="en"?"Critical":"Критичних")+': '+Number(s.critical_count||0)+' • '+
-    (currentLang==="en"?"High":"Важливих")+': '+Number(s.high_count||0)+'</span></div>'+
-    '<div>'+repairBtn+'</div><div class="adminAttemptList">'+issueHtml+'</div>';
+  const okState=!issues.length;
+  root.classList.add("financeDeepRecon");
+  root.innerHTML=
+    '<div class="financeDeepHead"><div><b>'+(currentLang==="en"?"Deep reconciliation":"Глибока звірка")+'</b>'+
+    '<span>'+scope+'</span></div>'+
+    '<div class="financeDeepState '+(okState?"ok":"warn")+'">'+
+    (okState?(currentLang==="en"?"✓ No discrepancies":"✓ Розбіжностей немає"):(currentLang==="en"?"Needs review":"Потрібна перевірка"))+
+    '</div></div>'+
+    '<div class="financeDeepMetrics">'+
+      '<div><strong>'+Number(scan.telegram_transactions_fetched||0)+'</strong><span>Telegram tx</span></div>'+
+      '<div><strong>'+Number(s.checked_orders||0)+'</strong><span>'+(currentLang==="en"?"Checked":"Перевірено")+'</span></div>'+
+      '<div><strong>'+Number(s.critical_count||0)+'</strong><span>'+(currentLang==="en"?"Critical":"Критичних")+'</span></div>'+
+      '<div><strong>'+Number(s.high_count||0)+'</strong><span>'+(currentLang==="en"?"High":"Важливих")+'</span></div>'+
+    '</div>'+
+    (repairBtn?'<div class="financeDeepActions">'+repairBtn+'</div>':'')+
+    '<div class="financeDeepIssues">'+issueHtml+'</div>';
   const repair=$("financeRepairBtn");
   if(repair)repair.onclick=async()=>{
     const ok=await confirmAction(currentLang==="en"
@@ -1787,7 +1797,7 @@ async function openAdminFinance(){
     '<div class="adminBalance"><small>'+uiText("Баланс бота")+'</small><strong>⭐ '+Number(bal.amount||0)+'</strong><span>'+uiText("Джерело істини для поточного балансу — Telegram.")+'</span></div>'+
     '<div class="adminMetrics">'+adminMetricCard("24 години",sales.today)+adminMetricCard("7 днів",sales.days_7)+adminMetricCard("30 днів",sales.days_30)+adminMetricCard("Весь час",sales.all_time)+'</div>'+
     '<div class="adminRecon"><b>'+uiText("Звірка Telegram ↔ VYBE")+'</b><span>'+uiText("Збігів")+': '+Number(rec.matched_orders||0)+' '+uiText("з")+' '+Number(rec.checked_orders||0)+'</span></div>'+
-    (r.admin_role==="owner"?'<div id="financeDeepRecon" class="adminRecon"><div><b>'+(currentLang==="en"?"Deep reconciliation":"Глибока звірка")+'</b><span>'+(currentLang==="en"?"Owner-only scan up to 1000 Telegram transactions":"Owner-only scan до 1000 Telegram transactions")+'</span></div><button id="financeReconcileBtn" class="choice">'+(currentLang==="en"?"Deep check":"Глибока перевірка")+'</button></div>':"")+
+    (r.admin_role==="owner"?'<div id="financeDeepRecon" class="adminRecon financeDeepRecon financeDeepLaunch"><div><b>'+(currentLang==="en"?"Deep reconciliation":"Глибока звірка")+'</b><span>'+(currentLang==="en"?"Owner-only scan up to 1000 Telegram transactions":"Owner-only scan до 1000 Telegram transactions")+'</span></div><button id="financeReconcileBtn" class="choice">'+(currentLang==="en"?"Deep check":"Глибока перевірка")+'</button></div>':"")+
     '<h3>'+uiText("Продажі за продуктами")+'</h3><div class="adminProducts">'+productHtml+'</div>'+
     '<h3>'+uiText("Статуси замовлень")+'</h3><div class="adminStatusGrid"><div><b>'+Number(status.paid||0)+'</b><span>'+uiText("Успішних")+'</span></div><div><b>'+Number(status.refunded||0)+'</b><span>'+uiText("Повернення")+'</span></div><div><b>'+Number(status.pending||0)+'</b><span>'+uiText("Відкритих")+'</span></div><div><b>'+Number(status.failed||0)+'</b><span>'+uiText("Помилок")+'</span></div><div><b>'+Number(status.expired||0)+'</b><span>'+uiText("Прострочених")+'</span></div><div><b>'+Number(status.cancelled||0)+'</b><span>'+uiText("Скасованих")+'</span></div></div>'+
     '<div class="adminWithdraw"><div><b>'+uiText("Виведення Stars")+'</b><span>'+uiText("Виведення виконується власником через Telegram / Fragment. VYBE не зберігає 2FA і не запускає виведення від імені бота.")+'</span></div><button id="withdrawHelpBtn" class="choice">'+uiText("Як вивести")+'</button></div>'+
