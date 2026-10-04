@@ -342,3 +342,9 @@
 .discoverEmptyActions{display:grid;gap:9px}
 .discoverEmptyActions .choice{width:100%;font-weight:750}
 .discoverEmptyActions button:disabled{opacity:.55}
+
+
+/* VYBE 0.9.31 — simplified empty state */
+.discoverEmpty{padding:24px 22px 20px}
+.discoverEmptyActions{grid-template-columns:1fr}
+.discoverEmptyActions .primary{min-height:50px}
