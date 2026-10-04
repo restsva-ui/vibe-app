@@ -2330,6 +2330,9 @@ Deno.serve(async (req: Request) => {
       const minAge = Number.isFinite(minAgeRaw) ? Math.max(18, Math.min(99, Math.floor(minAgeRaw))) : 18;
       const maxAge = Number.isFinite(maxAgeRaw) ? Math.max(minAge, Math.min(99, Math.floor(maxAgeRaw))) : 99;
       const cityFilter = clean(body.city, 40).toLocaleLowerCase("uk-UA");
+      const requestedIntent = clean(body.intent, 30);
+      const allowedIntents = new Set(["Поговорити", "Флірт", "Вірт", "Дружба", "Голос", "Зустріч"]);
+      const intentFilter = allowedIntents.has(requestedIntent) ? requestedIntent : "";
       const onlineOnly = body.online_only === true;
       const verifiedOnly = body.verified_only === true;
       const onlineCutoff = Date.now() - 3 * 60 * 1000;
@@ -2359,16 +2362,14 @@ Deno.serve(async (req: Request) => {
       const byUser = new Map(intents.map((x: any) => [String(x.user_id), x]));
       const spotlightByUser = new Map(spotlightRows.map((x: any) => [String(x.user_id), x.spotlight_until]));
 
-      const eligibleProfile = (p: any, matchedFallback = false) => {
+      const eligibleProfile = (p: any) => {
         const id = String(p.user_id);
         if (blockedIds.has(id)) return false;
-        if (!byUser.has(id)) return false;
+        const activeIntent = byUser.get(id);
+        if (!activeIntent) return false;
+        if (intentFilter && activeIntent.intent !== intentFilter) return false;
         const isMatched = matchedIds.has(id);
-        if (matchedFallback) {
-          if (!isMatched) return false;
-        } else if (sentLikeIds.has(id) || isMatched || passedIds.has(id)) {
-          return false;
-        }
+        if (sentLikeIds.has(id) || isMatched || passedIds.has(id)) return false;
         const age = Number(p.age || 0);
         if (age < minAge || age > maxAge) return false;
         if (cityFilter && !String(p.city || "").toLocaleLowerCase("uk-UA").includes(cityFilter)) return false;
@@ -2415,21 +2416,19 @@ Deno.serve(async (req: Request) => {
         return 0;
       });
 
-      let people = sortPeople(profiles.filter((p: any) => eligibleProfile(p, false)).map(decorateProfile));
-      let matched_fallback = false;
-      if (!people.length) {
-        const matchedPeople = profiles.filter((p: any) => eligibleProfile(p, true)).map(decorateProfile);
-        if (matchedPeople.length) {
-          people = sortPeople(matchedPeople);
-          matched_fallback = true;
-        }
-      }
+      const people = sortPeople(profiles.filter((p: any) => eligibleProfile(p)).map(decorateProfile));
 
       return json({
         ok: true,
-        filters: { min_age: minAge, max_age: maxAge, city: clean(body.city, 40), online_only: onlineOnly, verified_only: verifiedOnly },
+        filters: {
+          min_age: minAge,
+          max_age: maxAge,
+          city: clean(body.city, 40),
+          intent: intentFilter || null,
+          online_only: onlineOnly,
+          verified_only: verifiedOnly,
+        },
         people,
-        matched_fallback,
       });
     }
 
