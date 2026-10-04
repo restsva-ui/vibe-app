@@ -1557,8 +1557,14 @@ async function deleteAccount(){
   if(button){button.disabled=true;button.textContent="Видаляємо…"}
   const r=await secureApi("account_delete",{confirmation:"ВИДАЛИТИ"});
   if(!r.ok){
-    if(button){button.disabled=false;button.textContent="Видалити акаунт назавжди"}
-    showAlert("Не вдалося видалити акаунт. Спробуй ще раз.");
+    if(button){button.disabled=false;button.textContent=uiText("Видалити акаунт назавжди")}
+    if(r.error==="ADMIN_ACCOUNT_DELETE_BLOCKED"){
+      showAlert(currentLang==="en"
+        ?"Admin/owner accounts must remove or transfer their admin role before deletion."
+        :"Admin/owner акаунт спочатку має передати або зняти адміністративну роль.");
+    }else{
+      showAlert(uiText("Не вдалося видалити акаунт. Спробуй ще раз."));
+    }
     return;
   }
   if(realtimeUserChannel&&realtimeClient){try{realtimeClient.removeChannel(realtimeUserChannel)}catch{}}
