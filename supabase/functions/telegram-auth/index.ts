@@ -765,17 +765,30 @@ Deno.serve(async (req: Request) => {
         .filter((x: any) => x.event_type !== "like" && x.actor_user_id)
         .map((x: any) => String(x.actor_user_id)))];
 
-      const profiles = actorIds.length
-        ? await db(
-            `profiles?user_id=in.(${actorIds.map((x) => encodeURIComponent(x)).join(",")})&select=user_id,name,photo_url,verified`,
-          ) ?? []
-        : [];
+      const [profiles,currentMatches] = await Promise.all([
+        actorIds.length
+          ? db(
+              `profiles?user_id=in.(${actorIds.map((x) => encodeURIComponent(x)).join(",")})&select=user_id,name,photo_url,verified`,
+            ) ?? []
+          : Promise.resolve([]),
+        db(
+          `matches?or=(user_a_id.eq.${encodeURIComponent(user.id)},user_b_id.eq.${encodeURIComponent(user.id)})&select=id,user_a_id,user_b_id&limit=500`,
+        ) ?? [],
+      ]);
       const profileById = new Map((profiles ?? []).map((p: any) => [String(p.user_id), p]));
+      const matchByOtherId = new Map((currentMatches ?? []).map((m: any) => [
+        String(m.user_a_id) === String(user.id) ? String(m.user_b_id) : String(m.user_a_id),
+        String(m.id),
+      ]));
 
       const notifications = (rows ?? []).map((x: any) => ({
         id: x.id,
         event_type: x.event_type,
-        match_id: x.match_id ?? null,
+        match_id: x.match_id ?? (
+          x.event_type === "like" && x.actor_user_id
+            ? matchByOtherId.get(String(x.actor_user_id)) ?? null
+            : null
+        ),
         payload: x.payload ?? {},
         created_at: x.created_at,
         seen_at: x.seen_at ?? null,
