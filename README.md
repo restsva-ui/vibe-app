@@ -95,3 +95,5 @@ The production Edge Function source is mirrored in:
 The Mini App frontend currently uses the lightweight `index.html` / `app.js` / `styles.css` stack for fast beta iteration.
 
 - Telegram message notification is no longer suppressed by a coarse 90-second last-seen rule; the per-chat 3-minute delivery cooldown remains to prevent notification spam.
+
+- The `matches` endpoint now uses a single backend-only RPC for match/profile/online/unread/latest-message data instead of per-match N+1 queries.
