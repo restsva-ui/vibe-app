@@ -1113,43 +1113,55 @@ async function signProfilePhotoUrls(values: Array<string | null | undefined>) {
   const uniquePaths = [...new Set(pathByRaw.values())];
   const signedByPath = new Map<string,string>();
   if (uniquePaths.length) {
-    const response = await storageRequest(
-      `object/sign/${PROFILE_BUCKET}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          expiresIn: PROFILE_SIGNED_URL_TTL_SECONDS,
-          paths: uniquePaths,
-        }),
-      },
-    );
-    const text = await response.text();
-    if (!response.ok) {
-      throw new Error(`Storage sign error ${response.status}: ${text.slice(0,240)}`);
-    }
-
-    let rows: any[] = [];
-    try { rows = JSON.parse(text); } catch { throw new Error("Storage sign response invalid"); }
-    const base = Deno.env.get("SUPABASE_URL");
-    if (!base) throw new Error("Storage configuration missing");
-
-    for (let i = 0; i < rows.length; i += 1) {
-      const row = rows[i] ?? {};
-      const path = String(row.path || uniquePaths[i] || "");
-      const signedPart = String(row.signedURL || row.signedUrl || "");
-      if (!path || !signedPart) continue;
-      const signedUrl = /^https?:\/\//i.test(signedPart)
-        ? signedPart
-        : `${base}/storage/v1${signedPart.startsWith("/") ? signedPart : `/${signedPart}`}`;
-      signedByPath.set(path, signedUrl);
+    try {
+      const response = await storageRequest(
+        `object/sign/${PROFILE_BUCKET}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            expiresIn: PROFILE_SIGNED_URL_TTL_SECONDS,
+            paths: uniquePaths,
+          }),
+        },
+      );
+      const text = await response.text();
+      if (!response.ok) {
+        console.error("profile_photo:sign_failed", {
+          status: response.status,
+          detail: text.slice(0, 180),
+        });
+      } else {
+        let rows: any[] = [];
+        try { rows = JSON.parse(text); } catch {
+          console.error("profile_photo:sign_invalid_response");
+        }
+        const base = Deno.env.get("SUPABASE_URL");
+        if (base) {
+          for (let i = 0; i < rows.length; i += 1) {
+            const row = rows[i] ?? {};
+            const path = String(row.path || uniquePaths[i] || "");
+            const signedPart = String(row.signedURL || row.signedUrl || "");
+            if (!path || !signedPart) continue;
+            const signedUrl = /^https?:\/\//i.test(signedPart)
+              ? signedPart
+              : `${base}/storage/v1${signedPart.startsWith("/") ? signedPart : `/${signedPart}`}`;
+            signedByPath.set(path, signedUrl);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("profile_photo:sign_exception", {
+        error: String(e instanceof Error ? e.message : e).slice(0, 180),
+      });
     }
   }
 
   const result = new Map<string,string|null>();
   for (const raw of rawValues) {
     const path = pathByRaw.get(raw);
-    result.set(raw, path ? (signedByPath.get(path) ?? null) : null);
+    const fallbackPublic = raw.includes(`/storage/v1/object/public/${PROFILE_BUCKET}/`) ? raw : null;
+    result.set(raw, path ? (signedByPath.get(path) ?? fallbackPublic) : null);
   }
   return result;
 }
