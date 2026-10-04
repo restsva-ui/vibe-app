@@ -107,3 +107,6 @@ The Mini App frontend currently uses the lightweight `index.html` / `app.js` / `
 - The notification pipeline now has a dedicated partial index for per-chat unread `mark_seen`, while delivery dedup/cooldown remain atomic and the remaining unindexed foreign keys are covered.
 
 - Retention cleanup runs daily at 03:17 UTC via pg_cron: notification deliveries 30d, seen notification events 90d, unseen notification events 180d, expired intents +24h, expired discovery passes +7d, cron run history 14d. Chat messages are intentionally retained.
+
+- Server-side anti-abuse rate limiting is enforced atomically after Telegram authentication: message_send 120/min, like 120/min, pass 180/min, SuperVYBE 60/min, reports 20/hour, support_create 6/hour, Stars invoice 10/10min, plus conservative limits for profile/admin/payment mutations. Rate-limit counters are private and expire after 7 days.
+- Fixed a support runtime bug where `support_create` incorrectly referenced a report-only `block_requested` field/variable.
