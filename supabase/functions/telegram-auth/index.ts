@@ -1071,10 +1071,97 @@ async function storageRequest(path: string, options: RequestInit = {}) {
   });
 }
 
+const PROFILE_SIGNED_URL_TTL_SECONDS = 3600;
+const PROFILE_OBJECT_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:webp|jpg)$/i;
+
+function profilePhotoObjectPath(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const raw = String(value).trim();
+  const markers = [
+    `/storage/v1/object/public/${PROFILE_BUCKET}/`,
+    `/storage/v1/object/sign/${PROFILE_BUCKET}/`,
+    `/storage/v1/object/authenticated/${PROFILE_BUCKET}/`,
+  ];
+
+  let path = raw;
+  for (const marker of markers) {
+    const idx = raw.indexOf(marker);
+    if (idx >= 0) {
+      path = raw.slice(idx + marker.length).split("?")[0];
+      break;
+    }
+  }
+
+  if (path.includes("://")) return null;
+  path = path.split("?")[0];
+  try {
+    path = path.split("/").map((part) => decodeURIComponent(part)).join("/");
+  } catch {
+    return null;
+  }
+  return PROFILE_OBJECT_RE.test(path) ? path : null;
+}
+
+async function signProfilePhotoUrls(values: Array<string | null | undefined>) {
+  const rawValues = [...new Set(values.map((x) => String(x || "").trim()).filter(Boolean))];
+  const pathByRaw = new Map<string,string>();
+  for (const raw of rawValues) {
+    const path = profilePhotoObjectPath(raw);
+    if (path) pathByRaw.set(raw, path);
+  }
+
+  const uniquePaths = [...new Set(pathByRaw.values())];
+  const signedByPath = new Map<string,string>();
+  if (uniquePaths.length) {
+    const response = await storageRequest(
+      `object/sign/${PROFILE_BUCKET}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          expiresIn: PROFILE_SIGNED_URL_TTL_SECONDS,
+          paths: uniquePaths,
+        }),
+      },
+    );
+    const text = await response.text();
+    if (!response.ok) {
+      throw new Error(`Storage sign error ${response.status}: ${text.slice(0,240)}`);
+    }
+
+    let rows: any[] = [];
+    try { rows = JSON.parse(text); } catch { throw new Error("Storage sign response invalid"); }
+    const base = Deno.env.get("SUPABASE_URL");
+    if (!base) throw new Error("Storage configuration missing");
+
+    for (let i = 0; i < rows.length; i += 1) {
+      const row = rows[i] ?? {};
+      const path = String(row.path || uniquePaths[i] || "");
+      const signedPart = String(row.signedURL || row.signedUrl || "");
+      if (!path || !signedPart) continue;
+      const signedUrl = /^https?:\/\//i.test(signedPart)
+        ? signedPart
+        : `${base}/storage/v1${signedPart.startsWith("/") ? signedPart : `/${signedPart}`}`;
+      signedByPath.set(path, signedUrl);
+    }
+  }
+
+  const result = new Map<string,string|null>();
+  for (const raw of rawValues) {
+    const path = pathByRaw.get(raw);
+    result.set(raw, path ? (signedByPath.get(path) ?? null) : null);
+  }
+  return result;
+}
+
+function withSignedProfilePhoto<T extends Record<string,any>>(row: T | null | undefined, signed: Map<string,string|null>) {
+  if (!row) return row ?? null;
+  const raw = String(row.photo_url || "").trim();
+  return { ...row, photo_url: raw ? (signed.get(raw) ?? null) : null };
+}
+
 async function uploadProfilePhoto(userId: string, bytes: Uint8Array, mime: string) {
-  const url = Deno.env.get("SUPABASE_URL");
-  if (!url) throw new Error("Storage configuration missing");
-  const ext = mime === "image/png" ? "png" : mime === "image/jpeg" ? "jpg" : "webp";
+  const ext = mime === "image/jpeg" ? "jpg" : "webp";
   const objectPath = `${userId}/${crypto.randomUUID()}.${ext}`;
   const response = await storageRequest(
     `object/${PROFILE_BUCKET}/${encodeStoragePath(objectPath)}`,
@@ -1082,7 +1169,7 @@ async function uploadProfilePhoto(userId: string, bytes: Uint8Array, mime: strin
       method: "POST",
       headers: {
         "Content-Type": mime,
-        "Cache-Control": "3600",
+        "Cache-Control": "900",
         "x-upsert": "false",
       },
       body: bytes,
@@ -1090,20 +1177,12 @@ async function uploadProfilePhoto(userId: string, bytes: Uint8Array, mime: strin
   );
   const text = await response.text();
   if (!response.ok) throw new Error(`Storage upload error ${response.status}: ${text.slice(0, 240)}`);
-  const publicUrl = `${url}/storage/v1/object/public/${PROFILE_BUCKET}/${encodeStoragePath(objectPath)}`;
-  return { objectPath, publicUrl };
+  return { objectPath };
 }
 
 async function deleteProfilePhotoByUrl(photoUrl: string | null | undefined): Promise<boolean> {
-  if (!photoUrl) return true;
-  const marker = `/storage/v1/object/public/${PROFILE_BUCKET}/`;
-  const idx = photoUrl.indexOf(marker);
-  if (idx < 0) return true;
-  const encoded = photoUrl.slice(idx + marker.length);
-  let objectPath = encoded;
-  try {
-    objectPath = encoded.split("/").map((part) => decodeURIComponent(part)).join("/");
-  } catch {}
+  const objectPath = profilePhotoObjectPath(photoUrl);
+  if (!objectPath) return !photoUrl;
   const response = await storageRequest(
     `object/${PROFILE_BUCKET}/${encodeStoragePath(objectPath)}`,
     { method: "DELETE" },
@@ -1386,6 +1465,8 @@ Deno.serve(async (req: Request) => {
 
     if (action === "profile_get") {
       const adminRole = await getAdminRole(db, user.id);
+      const rawProfile = await getProfile(db, user.id);
+      const signedPhotos = await signProfilePhotoUrls([rawProfile?.photo_url]);
       return json({
         ok: true,
         user_id: user.id,
@@ -1394,7 +1475,7 @@ Deno.serve(async (req: Request) => {
         account_status: user.account_status ?? "active",
         restriction_reason: user.restriction_reason ?? null,
         restricted_at: user.restricted_at ?? null,
-        profile: await getProfile(db, user.id),
+        profile: withSignedProfilePhoto(rawProfile, signedPhotos),
       });
     }
 
@@ -1429,7 +1510,7 @@ Deno.serve(async (req: Request) => {
       try {
         await db(`profiles?user_id=eq.${encodeURIComponent(user.id)}`, {
           method: "PATCH",
-          body: JSON.stringify({ photo_url: uploaded.publicUrl, updated_at: new Date().toISOString() }),
+          body: JSON.stringify({ photo_url: uploaded.objectPath, updated_at: new Date().toISOString() }),
         });
       } catch (e) {
         await deleteProfilePhotoObjectWithRetry(uploaded.objectPath);
@@ -1440,8 +1521,13 @@ Deno.serve(async (req: Request) => {
       if (!cleanupOk) {
         console.warn("profile_photo:cleanup_pending", { user_id: user.id });
       }
+      const signed = await signProfilePhotoUrls([uploaded.objectPath]);
 
-      return json({ ok: true, photo_url: uploaded.publicUrl, cleanup_ok: cleanupOk });
+      return json({
+        ok: true,
+        photo_url: signed.get(uploaded.objectPath) ?? null,
+        cleanup_ok: cleanupOk,
+      });
     }
 
     if (action === "photo_remove") {
