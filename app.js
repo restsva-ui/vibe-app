@@ -81,7 +81,7 @@ const I18N_PAIRS=[
   ["Мої бонуси ✨","My bonuses ✨"],["Активувати Spotlight на 30 хв","Activate Spotlight for 30 min"],["SuperVYBE витрачається кнопкою ✦ на реальній анкеті.","Use SuperVYBE with the ✦ button on a real profile."],
   ["VYBE працює тільки для 18+. Блокування та скарги вже захищені серверною перевіркою: заблоковані користувачі не бачать одне одного у пошуку, збігах і чатах.","VYBE is for adults 18+ only. Blocks and reports are enforced server-side: blocked users cannot see each other in discovery, matches or chats."],
   ["🚫 Мої блокування","🚫 My blocked users"],["Якщо бачиш погрози, шантаж, неповнолітнього користувача, незаконний контент або пропозиції сексуальних послуг — надішли скаргу з профілю/чату.","If you see threats, blackmail, a minor, illegal content or offers of sexual services, report it from the profile or chat."],
-  ["Спочатку обери свій вайб.","Choose your vibe first."],["Анкет за цим вайбом поки немає.","No profiles match this vibe yet."],["Спробуй інший фільтр.","Try another filter."],["Зараз немає активних VYBE NOW за цими умовами.","No active VYBE NOW profiles match these filters right now."],["Спробуй інший вайб або фільтр.","Try another vibe or filter."],
+  ["Спочатку обери свій вайб.","Choose your vibe first."],["Анкет за цим вайбом поки немає.","No profiles match this vibe yet."],["Спробуй інший фільтр.","Try another filter."],["Зараз немає активних VYBE NOW за цими умовами.","No active VYBE NOW profiles match these filters right now."],["Спробуй інший вайб або фільтр.","Try another vibe or filter."],["активний ще","active for"],["хв.","min"],["онлайн","online"],["Верифіковано","Verified"],["Пропустити","Skip"],["Звичайний VYBE","VYBE"],
   ["Це демо-анкета. Реальна дія працює тільки для реальних користувачів.","This is a demo profile. Real actions work only with real users."],
   ["SuperVYBE не списано. Спробуй ще раз.","SuperVYBE was not used. Try again."],["Не вдалося надіслати VYBE. Спробуй ще раз.","Could not send VYBE. Try again."],
   ["У вас взаємний VYBE 💜","You have a mutual VYBE 💜"],["SuperVYBE надіслано ✦","SuperVYBE sent ✦"],
@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.27",
+      app_version:"0.9.28",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -846,10 +846,13 @@ async function loadPeople(){
     intent:p.intent||"Поговорити",
     icon:intentIcon(p.intent),
     bio:p.bio||"Новий користувач VYBE",
+    city:p.city||"",
     meta:[p.city||"VYBE",p.online?uiText("● онлайн"):uiText("нещодавно"),p.verified?uiText("✓ верифіковано"):""].filter(Boolean).join(" • "),
     img:p.photo_url||null,
     verified:p.verified===true,
     online:p.online===true,
+    expires_at:p.expires_at||null,
+    spotlight_active:p.spotlight_active===true,
     already_matched:p.already_matched===true,
   }));
   index=0;renderCard();
@@ -1051,8 +1054,20 @@ smart.dataset.until=String(target.getTime());}content.querySelectorAll(".choice[
 $("setNow").onclick=()=>openSheet("now");$("premiumBtn").onclick=()=>openSheet("premium");$("notificationBtn").onclick=()=>openNotificationCenter();$("filterBtn").onclick=openDiscoverFilters;$("safetyBtn").onclick=()=>openSheet("safety");
 function people(){return remotePeople}
 function filtered(){
-  const arr=people();
+  const nowMs=Date.now();
+  const arr=people().filter(p=>!p.expires_at||new Date(p.expires_at).getTime()>nowMs);
   return filter==="Усе"?arr:arr.filter(p=>p.intent===filter);
+}
+function vibeTimeLeft(expiresAt){
+  if(!expiresAt)return "";
+  const ms=new Date(expiresAt).getTime()-Date.now();
+  if(!Number.isFinite(ms)||ms<=0)return "";
+  const min=Math.max(1,Math.ceil(ms/60000));
+  if(min<60)return uiText("активний ще")+" "+min+" "+uiText("хв.");
+  const hours=Math.floor(min/60),rest=min%60;
+  return currentLang==="en"
+    ? "active for "+hours+"h"+(rest?" "+rest+"m":"")
+    : "активний ще "+hours+" год."+(rest?" "+rest+" хв.":"");
 }
 function renderCard(){
   const arr=filtered();
@@ -1062,8 +1077,11 @@ function renderCard(){
   }
   const p=arr[index];
   const visual=p.img?'<img src="'+escapeHtml(p.img)+'" alt="'+escapeHtml(p.name)+'">':'<div class="generatedAvatar">'+escapeHtml(p.name?.[0]||"V")+'</div>';
-  const matched=p.already_matched?'<div class="matchedCardBadge">♡ '+uiText("У вас вже взаємний VYBE 💜")+'</div>':"";
-  $("cardStack").innerHTML='<article class="personCard">'+visual+'<button id="cardSafetyBtn" class="cardSafety" aria-label="Безпека">⋯</button><div class="gradient"></div><div class="personMeta">'+matched+'<div class="nameRow"><h2>'+escapeHtml(p.name)+", "+escapeHtml(p.age)+(p.verified?' <span class="verifiedMark">✓</span>':'')+'</h2></div><div class="intent">'+escapeHtml(p.icon)+" "+escapeHtml(p.intent)+'</div><p class="bio">'+escapeHtml(p.bio)+'</p><div class="meta">'+escapeHtml(p.meta)+'</div><button id="cardProfileBtn" class="profilePeek">'+uiText("Переглянути анкету")+'</button></div></article>';
+  const liveBadges='<div class="discoveryBadges">'+(p.spotlight_active?'<span class="discoveryBadge spotlightBadge">✦ Spotlight</span>':'')+(p.online?'<span class="discoveryBadge onlineBadge">● '+uiText("онлайн")+'</span>':'')+'</div>';
+  const timeLeft=vibeTimeLeft(p.expires_at);
+  const vibeLive='<div class="vibeNowLive"><span><b>VYBE NOW</b> '+escapeHtml(p.icon)+" "+escapeHtml(p.intent)+'</span>'+(timeLeft?'<small>'+escapeHtml(timeLeft)+'</small>':'')+'</div>';
+  const facts='<div class="profileFacts">'+(p.city?'<span>📍 '+escapeHtml(p.city)+'</span>':'')+(p.verified?'<span class="verifiedFact">✓ '+uiText("Верифіковано")+'</span>':'')+'</div>';
+  $("cardStack").innerHTML='<article class="personCard '+(p.spotlight_active?"spotlightCard":"")+'">'+visual+liveBadges+'<button id="cardSafetyBtn" class="cardSafety" aria-label="Безпека">⋯</button><div class="gradient"></div><div class="personMeta"><div class="nameRow"><h2>'+escapeHtml(p.name)+", "+escapeHtml(p.age)+'</h2></div>'+vibeLive+'<p class="bio">'+escapeHtml(p.bio)+'</p>'+facts+'<button id="cardProfileBtn" class="profilePeek">'+uiText("Переглянути анкету")+'</button></div></article>';
   const safety=$("cardSafetyBtn");if(safety)safety.onclick=e=>{e.stopPropagation();openUserSafety(p.id,p.name)};
   const profileBtn=$("cardProfileBtn");if(profileBtn)profileBtn.onclick=e=>{e.stopPropagation();openPublicProfile(p.id)};
 }
@@ -1237,7 +1255,7 @@ async function openChat(matchId,name,userId,options={}){
   };
 }
 function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-document.querySelectorAll(".navItem").forEach(b=>b.onclick=()=>{document.querySelectorAll(".navItem").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));$(b.dataset.target).classList.add("active")});setInterval(renderNow,60000);
+document.querySelectorAll(".navItem").forEach(b=>b.onclick=()=>{document.querySelectorAll(".navItem").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));$(b.dataset.target).classList.add("active")});setInterval(()=>{renderNow();if($("discoverView")?.classList.contains("active"))renderCard()},60000);
 
 function openLegalPage(page){
   const safe=["privacy.html","terms.html","community.html"].includes(page)?page:"privacy.html";
