@@ -403,3 +403,10 @@
   right:16px;
   z-index:3;
 }
+
+.sheet.sheetFullscreen .shopFooter{
+  position:static;
+  margin:22px 0 0;
+  padding:0 0 calc(8px + max(env(safe-area-inset-bottom),var(--tg-safe-bottom,0px)));
+  background:none;
+}
