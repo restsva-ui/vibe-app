@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.26",
+      app_version:"0.9.27",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -239,7 +239,7 @@ function teardownSocialRealtime(){
 function enterRestrictedMode(reason=null,{showNotice=true}={}){
   accountStatus="restricted";
   restrictionReason=reason||restrictionReason||null;
-  remotePeople=[];matches=[];discoverMatchedFallback=false;
+  remotePeople=[];matches=[];
   teardownSocialRealtime();
   try{renderCard();renderMatches();renderChats()}catch{}
   if(showNotice&&document.visibilityState==="visible"){
@@ -513,7 +513,7 @@ async function openBlockedUsers(){
   });
 }
 
-let profile=load("vybeProfile",null),now=load("vybeNow",null),matches=[],index=0,filter="Усе",remotePeople=[],discoverMatchedFallback=false,entitlements={balances:{supervybe:0,spotlight:0},vybe_plus_until:null,spotlight_until:null},starCatalog=[],adminRole=null,supportUnread=0,adminSupportUnread=0,moderationUnread=0,notificationUnread=0,accountStatus="active",restrictionReason=null,notificationPrefs={likes:true,matches:true,messages:true};
+let profile=load("vybeProfile",null),now=load("vybeNow",null),matches=[],index=0,filter="Усе",remotePeople=[],entitlements={balances:{supervybe:0,spotlight:0},vybe_plus_until:null,spotlight_until:null},starCatalog=[],adminRole=null,supportUnread=0,adminSupportUnread=0,moderationUnread=0,notificationUnread=0,accountStatus="active",restrictionReason=null,notificationPrefs={likes:true,matches:true,messages:true};
 let discoverFilters=load("vybeDiscoverFilters",{minAge:18,maxAge:99,city:"",onlineOnly:false,verifiedOnly:false});
 localStorage.removeItem("vybeMatches");
 async function loadEntitlements(){const r=await secureApi("entitlements");if(r.ok)entitlements=r;return r}
@@ -837,8 +837,8 @@ async function loadPeople(){
     city:String(discoverFilters.city||""),
     online_only:discoverFilters.onlineOnly===true,
     verified_only:discoverFilters.verifiedOnly===true,
+    intent:filter==="Усе"?"":filter,
   });if(!r.ok)return;
-  discoverMatchedFallback=r.matched_fallback===true;
   remotePeople=(r.people||[]).map(p=>({
     id:p.user_id,
     name:p.name||"VYBE",
@@ -1047,12 +1047,11 @@ if(smart){const d=new Date(),hour=d.getHours();let target=new Date(d);
 if(hour<8){target.setHours(8,0,0,0);smart.textContent="До ранку";}
 else if(hour<18){target.setHours(20,0,0,0);smart.textContent="До вечора";}
 else{target.setDate(target.getDate()+1);target.setHours(8,0,0,0);smart.textContent="До ранку";}
-smart.dataset.until=String(target.getTime());}content.querySelectorAll(".choice[data-intent]").forEach(b=>b.onclick=()=>{content.querySelectorAll(".choice[data-intent]").forEach(x=>x.classList.remove("selected"));b.classList.add("selected");chosen={intent:b.dataset.intent,icon:b.dataset.icon}});content.querySelectorAll(".duration").forEach(b=>b.onclick=()=>{content.querySelectorAll(".duration").forEach(x=>x.classList.remove("selected"));b.classList.add("selected");hours=b.dataset.smart?Math.max(1,(Number(b.dataset.until)-Date.now())/3600000):+b.dataset.hours});$("saveNow").onclick=async()=>{if(!chosen){showAlert("Спочатку обери свій вайб.");return}now={...chosen,expires:Date.now()+hours*3600000};store("vybeNow",now);renderNow();const saved=await syncNow(hours);if(saved)analyticsCapture("vybe_now_set");sheet.classList.add("hidden");tg?.HapticFeedback?.notificationOccurred("success")}}}
+smart.dataset.until=String(target.getTime());}content.querySelectorAll(".choice[data-intent]").forEach(b=>b.onclick=()=>{content.querySelectorAll(".choice[data-intent]").forEach(x=>x.classList.remove("selected"));b.classList.add("selected");chosen={intent:b.dataset.intent,icon:b.dataset.icon}});content.querySelectorAll(".duration").forEach(b=>b.onclick=()=>{content.querySelectorAll(".duration").forEach(x=>x.classList.remove("selected"));b.classList.add("selected");hours=b.dataset.smart?Math.max(1,(Number(b.dataset.until)-Date.now())/3600000):+b.dataset.hours});$("saveNow").onclick=async()=>{if(!chosen){showAlert("Спочатку обери свій вайб.");return}now={...chosen,expires:Date.now()+hours*3600000};store("vybeNow",now);renderNow();filter=chosen.intent;document.querySelectorAll(".mood").forEach(x=>x.classList.toggle("active",x.dataset.mood===filter));const saved=await syncNow(hours);if(saved){analyticsCapture("vybe_now_set");await loadPeople()}sheet.classList.add("hidden");tg?.HapticFeedback?.notificationOccurred("success")}}}
 $("setNow").onclick=()=>openSheet("now");$("premiumBtn").onclick=()=>openSheet("premium");$("notificationBtn").onclick=()=>openNotificationCenter();$("filterBtn").onclick=openDiscoverFilters;$("safetyBtn").onclick=()=>openSheet("safety");
 function people(){return remotePeople}
 function filtered(){
   const arr=people();
-  if(discoverMatchedFallback)return arr;
   return filter==="Усе"?arr:arr.filter(p=>p.intent===filter);
 }
 function renderCard(){
@@ -1121,7 +1120,7 @@ async function next(kind){
   }
   index++;renderCard();tg?.HapticFeedback?.impactOccurred("light");
 }
-$("skipBtn").onclick=()=>next("skip");$("likeBtn").onclick=()=>next("like");$("sparkBtn").onclick=()=>next("super");document.querySelectorAll(".mood").forEach(b=>b.onclick=()=>{document.querySelectorAll(".mood").forEach(x=>x.classList.remove("active"));b.classList.add("active");filter=b.dataset.mood;index=0;renderCard()});
+$("skipBtn").onclick=()=>next("skip");$("likeBtn").onclick=()=>next("like");$("sparkBtn").onclick=()=>next("super");document.querySelectorAll(".mood").forEach(b=>b.onclick=async()=>{document.querySelectorAll(".mood").forEach(x=>x.classList.remove("active"));b.classList.add("active");filter=b.dataset.mood;index=0;await loadPeople()});
 
 function avatarMarkup(photo,name,className="avatar"){
   const initial=escapeHtml((name||"V").trim().charAt(0).toUpperCase()||"V");
