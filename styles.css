@@ -410,3 +410,64 @@
   padding:0 0 calc(8px + max(env(safe-area-inset-bottom),var(--tg-safe-bottom,0px)));
   background:none;
 }
+
+.financeDeepRecon{
+  display:block;
+  padding:16px;
+}
+.financeDeepLaunch{
+  display:flex;
+  align-items:center;
+}
+.financeDeepLaunch>div{min-width:0;flex:1}
+.financeDeepLaunch .choice{width:auto;flex:0 0 auto}
+.financeDeepHead{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+.financeDeepHead>div:first-child{min-width:0}
+.financeDeepHead b,.financeDeepHead span{display:block}
+.financeDeepHead b{font-size:18px}
+.financeDeepHead span{margin-top:4px;color:var(--muted);font-size:12px;line-height:1.35}
+.financeDeepState{
+  flex:0 0 auto;
+  max-width:48%;
+  padding:7px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:700;
+  text-align:center;
+}
+.financeDeepState.ok{background:rgba(62,205,128,.12);color:#72e0a4;border:1px solid rgba(62,205,128,.28)}
+.financeDeepState.warn{background:rgba(255,184,76,.12);color:#ffc66d;border:1px solid rgba(255,184,76,.28)}
+.financeDeepMetrics{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:8px;
+  margin-top:14px;
+}
+.financeDeepMetrics>div{
+  min-width:0;
+  padding:10px 8px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#101019;
+  text-align:center;
+}
+.financeDeepMetrics strong,.financeDeepMetrics span{display:block}
+.financeDeepMetrics strong{font-size:20px}
+.financeDeepMetrics span{margin-top:2px;color:var(--muted);font-size:10px;overflow-wrap:anywhere}
+.financeDeepActions{margin-top:12px}
+.financeDeepActions .choice{width:100%}
+.financeDeepIssues{margin-top:12px}
+.financeDeepIssues .adminAttemptList{padding:0}
+.financeDeepIssues .empty{padding:12px 0 2px}
+@media (max-width:390px){
+  .financeDeepLaunch{display:block}
+  .financeDeepLaunch .choice{width:100%;margin-top:12px}
+  .financeDeepHead{display:block}
+  .financeDeepState{max-width:none;width:max-content;margin-top:10px}
+  .financeDeepMetrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
