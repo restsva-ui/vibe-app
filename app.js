@@ -36,7 +36,7 @@ const I18N_PAIRS=[
   ["Ім’я","Name"],["Вік","Age"],["Місто","City"],["Я","I am"],["Кого шукаю","Looking for"],["Про себе","About me"],
   ["⚡ VYBE NOW не задано","⚡ VYBE NOW not set"],
   ["Покажи, чого хочеш саме зараз","Show what you want right now"],
-  ["Задати","Set"],
+  ["Задати","Set"],["Змінити","Change"],
   ["Люди по твоєму вайбу","People matching your vibe"],
   ["Фільтри","Filters"],["Мої збіги","My matches"],["Чати","Chats"],
   ["Твій профіль","Your profile"],["Заповни анкету.","Complete your profile."],["Редагувати профіль","Edit profile"],
@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.31",
+      app_version:"0.9.32",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -867,6 +867,10 @@ async function hydrateProfile(){
   if(r.profile){profile={name:r.profile.name,age:r.profile.age,city:r.profile.city||"",gender:r.profile.gender||"",looking:r.profile.looking_for||"",bio:r.profile.bio||"",photo_url:r.profile.photo_url||null,verified:r.profile.verified===true,user_id:r.user_id};store("vybeProfile",profile)}
 }
 async function begin(){
+  if(validNow()){
+    filter=String(now.intent||"Усе");
+    document.querySelectorAll(".mood").forEach(x=>x.classList.toggle("active",x.dataset.mood===filter));
+  }
   const auth=await verifyTelegramAuth();window.__vybeAuth=auth;
   if(!auth?.ok){console.warn("VYBE secure auth not confirmed",auth);showAlert("Не вдалося підтвердити Telegram-авторизацію. Відкрий VYBE заново через бота.");return}
   await claimReferral();
@@ -1039,7 +1043,19 @@ async function resetDiscoveryFilters(){
   await loadPeople();
 }
 function validNow(){return now&&now.expires>Date.now()}
-function renderNow(){if(!validNow()){now=null;localStorage.removeItem("vybeNow");$("nowLabel").textContent=uiText("⚡ VYBE NOW не задано");$("nowTime").textContent=uiText("Покажи, чого хочеш саме зараз");return}$("nowLabel").textContent=now.icon+" "+uiText(now.intent);$("nowTime").textContent=uiText("Активний ще ")+Math.max(1,Math.ceil((now.expires-Date.now())/3600000))+uiText(" год.")}
+function renderNow(){
+  const setNowBtn=$("setNow");
+  if(!validNow()){
+    now=null;localStorage.removeItem("vybeNow");
+    $("nowLabel").textContent=uiText("⚡ VYBE NOW не задано");
+    $("nowTime").textContent=uiText("Покажи, чого хочеш саме зараз");
+    if(setNowBtn)setNowBtn.textContent=uiText("Задати");
+    return
+  }
+  $("nowLabel").textContent=now.icon+" "+uiText(now.intent);
+  $("nowTime").textContent=uiText("Активний ще ")+Math.max(1,Math.ceil((now.expires-Date.now())/3600000))+uiText(" год.");
+  if(setNowBtn)setNowBtn.textContent=uiText("Змінити");
+}
 const sheet=$("sheet"),content=$("sheetContent");
 function closeSheetView(){
   sendTyping(activeChat?.matchId,false);
