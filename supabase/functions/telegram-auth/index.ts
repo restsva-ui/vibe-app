@@ -1109,7 +1109,6 @@ Deno.serve(async (req: Request) => {
           category,
           message,
           status: "open",
-          block_requested: shouldBlock,
           updated_at: new Date().toISOString(),
         }),
       });
