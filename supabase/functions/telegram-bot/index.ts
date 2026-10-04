@@ -150,31 +150,47 @@ async function handleSuccessfulPayment(update: any) {
 
   if (result?.applied === true && result?.product_key === "test_1_star") {
     const db = dbClient();
+    let claim: any = null;
+    let telegramRefunded = false;
     try {
-      await telegram("refundStarPayment", {
-        user_id: Number(msg.from.id),
-        telegram_payment_charge_id: String(payment.telegram_payment_charge_id || ""),
-      });
-      await db(
-        `paid_rewards?source_order_id=eq.${encodeURIComponent(String(result.order_id))}`,
-        { method: "DELETE" },
-      );
-      await db(
-        `star_orders?id=eq.${encodeURIComponent(String(result.order_id))}`,
-        {
+      claim = await rpc("claim_star_refund", { p_order_id: String(result.order_id) });
+      if (claim?.claimed === true) {
+        await telegram("refundStarPayment", {
+          user_id: Number(claim.telegram_id),
+          telegram_payment_charge_id: String(claim.charge_id),
+        });
+        telegramRefunded = true;
+
+        try {
+          await rpc("apply_star_refund", {
+            p_payload: String(claim.payload),
+            p_telegram_id: Number(claim.telegram_id),
+            p_currency: String(claim.currency),
+            p_total_amount: Number(claim.total_amount),
+            p_charge_id: String(claim.charge_id),
+          });
+        } catch (e) {
+          console.error("stars:test_refund_finalize_pending", {
+            order_id: result.order_id,
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+      }
+
+      if (telegramRefunded || claim?.already_refunded === true) {
+        await db("star_products?product_key=eq.test_1_star", {
           method: "PATCH",
-          body: JSON.stringify({ status: "refunded", refunded_at: new Date().toISOString() }),
-        },
-      );
-      await db("star_products?product_key=eq.test_1_star", {
-        method: "PATCH",
-        body: JSON.stringify({ active: false, updated_at: new Date().toISOString() }),
-      });
-      console.log("stars:test_refunded", {
+          body: JSON.stringify({ active: false, updated_at: new Date().toISOString() }),
+        });
+      }
+
+      console.log("stars:test_refund_requested", {
         telegram_id: msg.from.id,
         order_id: result.order_id,
+        telegram_refunded: telegramRefunded,
       });
-      if (msg?.chat?.id) {
+
+      if ((telegramRefunded || claim?.already_refunded === true) && msg?.chat?.id) {
         await telegram("sendMessage", {
           chat_id: msg.chat.id,
           text: isEnglish(msg.from)
@@ -186,6 +202,11 @@ async function handleSuccessfulPayment(update: any) {
         });
       }
     } catch (e) {
+      if (claim?.claimed === true && !telegramRefunded) {
+        try {
+          await rpc("release_star_refund", { p_order_id: String(result.order_id) });
+        } catch {}
+      }
       console.error("stars:test_refund_failed", e instanceof Error ? e.message : String(e));
     }
     return true;
@@ -203,6 +224,47 @@ async function handleSuccessfulPayment(update: any) {
       },
     });
   }
+  return true;
+}
+
+async function handleRefundedPayment(update: any) {
+  const msg = update?.message;
+  const refund = msg?.refunded_payment;
+  if (!refund?.invoice_payload || !refund?.telegram_payment_charge_id) return false;
+
+  const db = dbClient();
+  const rows = await db(
+    `star_orders?invoice_payload=eq.${encodeURIComponent(String(refund.invoice_payload))}&select=id,telegram_id,product_key&limit=1`,
+  ) ?? [];
+  const order = rows?.[0];
+  if (!order?.id) {
+    console.warn("stars:refund_unknown_order", {
+      payload: String(refund.invoice_payload).slice(0, 140),
+      charge_id: String(refund.telegram_payment_charge_id).slice(0, 140),
+    });
+    return true;
+  }
+
+  const result = await rpc("apply_star_refund", {
+    p_payload: String(refund.invoice_payload),
+    p_telegram_id: Number(order.telegram_id),
+    p_currency: String(refund.currency || ""),
+    p_total_amount: Number(refund.total_amount || 0),
+    p_charge_id: String(refund.telegram_payment_charge_id || ""),
+  });
+
+  if (result?.product_key === "test_1_star") {
+    await db("star_products?product_key=eq.test_1_star", {
+      method: "PATCH",
+      body: JSON.stringify({ active: false, updated_at: new Date().toISOString() }),
+    });
+  }
+
+  console.log("stars:refunded_payment", {
+    order_id: result?.order_id ?? order.id,
+    product_key: result?.product_key ?? order.product_key,
+    applied: result?.applied === true,
+  });
   return true;
 }
 
@@ -263,10 +325,12 @@ async function createSupportTicket(msg: any, category: "general" | "payment", te
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ ok: false }, 405);
 
-  if (WEBHOOK_SECRET) {
-    const supplied = req.headers.get("x-telegram-bot-api-secret-token") ?? "";
-    if (supplied !== WEBHOOK_SECRET) return json({ ok: false }, 401);
+  if (!WEBHOOK_SECRET) {
+    console.error("telegram-bot: TELEGRAM_WEBHOOK_SECRET missing");
+    return json({ ok: false, error: "Webhook not configured" }, 503);
   }
+  const supplied = req.headers.get("x-telegram-bot-api-secret-token") ?? "";
+  if (supplied !== WEBHOOK_SECRET) return json({ ok: false }, 401);
 
   let update: any;
   try {
@@ -283,6 +347,11 @@ Deno.serve(async (req: Request) => {
 
     if (update?.message?.successful_payment) {
       await handleSuccessfulPayment(update);
+      return json({ ok: true });
+    }
+
+    if (update?.message?.refunded_payment) {
+      await handleRefundedPayment(update);
       return json({ ok: true });
     }
 
