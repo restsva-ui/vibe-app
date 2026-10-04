@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.41",
+      app_version:"0.9.42",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -648,6 +648,7 @@ async function openNotificationTarget(n){
   if(p.action==="restriction"){openRestrictionNotice();return}
 }
 async function openNotificationCenter(initialFilter="all"){
+  setSheetFullscreen(true);
   content.innerHTML='<h2>'+uiText("Сповіщення 🔔")+'</h2><div class="empty">'+uiText("Завантаження…")+'</div>';
   sheet.classList.remove("hidden");tg?.BackButton?.show?.();
   const r=await secureApi("notifications_list");
@@ -822,6 +823,7 @@ async function buyStarProduct(productKey,button){
   });
 }
 async function openWhoLikedMe(){
+  setSheetFullscreen(true);
   content.innerHTML='<h2>'+uiText("Хто лайкнув мене")+'</h2><div class="empty">'+uiText("Завантаження…")+'</div>';
   sheet.classList.remove("hidden");
   const r=await secureApi("likes_received");
@@ -1168,6 +1170,9 @@ function renderNow(){
   if(setNowBtn)setNowBtn.textContent=uiText("Змінити");
 }
 const sheet=$("sheet"),content=$("sheetContent");
+function setSheetFullscreen(enabled){
+  sheet.classList.toggle("sheetFullscreen",enabled===true);
+}
 function closeSheetView(){
   sendTyping(activeChat?.matchId,false);
   activeChat=null;
@@ -1175,6 +1180,7 @@ function closeSheetView(){
   clearTimeout(typingStopTimer);
   clearTimeout(incomingTypingTimer);
   sheet.classList.add("hidden");
+  setSheetFullscreen(false);
   tg?.BackButton?.hide?.();
 }
 $("closeSheet").onclick=closeSheetView;
@@ -1184,7 +1190,7 @@ const sheetObserver=new MutationObserver(()=>{
   else tg?.BackButton?.show?.();
 });
 sheetObserver.observe(sheet,{attributes:true,attributeFilter:["class"]});
-function openSheet(type){let h="";if(type==="now")h='<h2>Твій VYBE NOW ⚡</h2><p>Що ти хочеш саме зараз?</p><div class="choiceGrid">'+[["💬","Поговорити"],["🔥","Флірт"],["🌙","Вірт"],["🫶","Дружба"],["🎙","Голос"],["☕","Зустріч"]].map(x=>'<button class="choice" data-intent="'+x[1]+'" data-icon="'+x[0]+'">'+x[0]+" "+x[1]+"</button>").join("")+'</div><p>На скільки?</p><div class="choiceGrid"><button class="choice duration selected" data-hours="1">1 година</button><button class="choice duration" data-hours="3">3 години</button><button id="smartDuration" class="choice duration" data-smart="1">До ранку</button></div><button id="saveNow" class="primary">Увімкнути VYBE NOW</button>';else if(type==="premium"){h='<h2>'+uiText("Мої бонуси ✨")+'</h2><div class="empty">'+uiText("Завантажуємо магазин…")+'</div>';} else if(type==="filter")h='<h2>Фільтри</h2><p>Вік, місто, дистанція, кого шукаєш, онлайн та верифікація — наступний етап.</p><button class="primary" onclick="document.getElementById(\'sheet\').classList.add(\'hidden\')">Готово</button>';else if(type==="safety")h='<h2>Безпека 🛡</h2><p>VYBE працює тільки для 18+. Блокування та скарги вже захищені серверною перевіркою: заблоковані користувачі не бачать одне одного у пошуку, збігах і чатах.</p><button id="openBlockedFromSafety" class="choice safetyChoice">🚫 Мої блокування</button><p class="safetyHint">Якщо бачиш погрози, шантаж, неповнолітнього користувача, незаконний контент або пропозиції сексуальних послуг — надішли скаргу з профілю/чату.</p>';else h='<h2>VYBE</h2>';content.innerHTML=h;sheet.classList.remove("hidden");tg?.BackButton?.show?.();requestAnimationFrame(()=>{const card=sheet.querySelector(".sheetCard");if(card)card.scrollTop=0});if(type==="safety"){const b=$("openBlockedFromSafety");if(b)b.onclick=openBlockedUsers}if(type==="premium"){renderPremiumShop()}if(type==="now"){let chosen=null,hours=1;
+function openSheet(type){setSheetFullscreen(type==="premium");let h="";if(type==="now")h='<h2>Твій VYBE NOW ⚡</h2><p>Що ти хочеш саме зараз?</p><div class="choiceGrid">'+[["💬","Поговорити"],["🔥","Флірт"],["🌙","Вірт"],["🫶","Дружба"],["🎙","Голос"],["☕","Зустріч"]].map(x=>'<button class="choice" data-intent="'+x[1]+'" data-icon="'+x[0]+'">'+x[0]+" "+x[1]+"</button>").join("")+'</div><p>На скільки?</p><div class="choiceGrid"><button class="choice duration selected" data-hours="1">1 година</button><button class="choice duration" data-hours="3">3 години</button><button id="smartDuration" class="choice duration" data-smart="1">До ранку</button></div><button id="saveNow" class="primary">Увімкнути VYBE NOW</button>';else if(type==="premium"){h='<h2>'+uiText("Мої бонуси ✨")+'</h2><div class="empty">'+uiText("Завантажуємо магазин…")+'</div>';} else if(type==="filter")h='<h2>Фільтри</h2><p>Вік, місто, дистанція, кого шукаєш, онлайн та верифікація — наступний етап.</p><button class="primary" onclick="document.getElementById(\'sheet\').classList.add(\'hidden\')">Готово</button>';else if(type==="safety")h='<h2>Безпека 🛡</h2><p>VYBE працює тільки для 18+. Блокування та скарги вже захищені серверною перевіркою: заблоковані користувачі не бачать одне одного у пошуку, збігах і чатах.</p><button id="openBlockedFromSafety" class="choice safetyChoice">🚫 Мої блокування</button><p class="safetyHint">Якщо бачиш погрози, шантаж, неповнолітнього користувача, незаконний контент або пропозиції сексуальних послуг — надішли скаргу з профілю/чату.</p>';else h='<h2>VYBE</h2>';content.innerHTML=h;sheet.classList.remove("hidden");tg?.BackButton?.show?.();requestAnimationFrame(()=>{const card=sheet.querySelector(".sheetCard");if(card)card.scrollTop=0});if(type==="safety"){const b=$("openBlockedFromSafety");if(b)b.onclick=openBlockedUsers}if(type==="premium"){renderPremiumShop()}if(type==="now"){let chosen=null,hours=1;
 const smart=content.querySelector("#smartDuration");
 if(smart){const d=new Date(),hour=d.getHours();let target=new Date(d);
 if(hour<8){target.setHours(8,0,0,0);smart.textContent="До ранку";}
@@ -1738,6 +1744,7 @@ async function downloadFinanceCsv(){
 }
 async function openAdminFinance(){
   if(!adminRole){showAlert("Admin access required");return}
+  setSheetFullscreen(true);
   content.innerHTML='<h2>'+uiText("Фінанси VYBE ⭐")+'</h2><div class="empty">'+uiText("Завантаження…")+'</div>';
   sheet.classList.remove("hidden");tg?.BackButton?.show?.();
   const r=await secureApi("admin_finance_summary");
