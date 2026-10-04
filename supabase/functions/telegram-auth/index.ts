@@ -214,10 +214,24 @@ async function ensurePaymentWebhook(botToken: string) {
 async function requestStarRefund(botToken: string, orderId: string) {
   const claim = await rpc("claim_star_refund", { p_order_id: orderId });
   if (claim?.already_refunded === true) {
-    return { ok: true, refunded: true, already_refunded: true, order_id: orderId };
+    return {
+      ok: true,
+      refunded: true,
+      already_refunded: true,
+      order_id: orderId,
+      product_key: claim?.product_key ?? null,
+      stars: Number(claim?.total_amount || 0),
+    };
   }
   if (claim?.already_refunding === true || claim?.claimed !== true) {
-    return { ok: true, refunded: false, refunding: true, order_id: orderId };
+    return {
+      ok: true,
+      refunded: false,
+      refunding: true,
+      order_id: orderId,
+      product_key: claim?.product_key ?? null,
+      stars: Number(claim?.total_amount || 0),
+    };
   }
 
   let telegramRefunded = false;
