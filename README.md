@@ -110,3 +110,5 @@ The Mini App frontend currently uses the lightweight `index.html` / `app.js` / `
 
 - Server-side anti-abuse rate limiting is enforced atomically after Telegram authentication: message_send 120/min, like 120/min, pass 180/min, SuperVYBE 60/min, reports 20/hour, support_create 6/hour, Stars invoice 10/10min, plus conservative limits for profile/admin/payment mutations. Rate-limit counters are private and expire after 7 days.
 - Fixed a support runtime bug where `support_create` incorrectly referenced a report-only `block_requested` field/variable.
+
+- Telegram Stars payment/refund flow is now idempotent and webhook-recoverable: payment/refund RPCs are SECURITY INVOKER + service_role-only, refunds use a claimed `refunding` state, Telegram `refunded_payment` finalizes grant revocation, late/replayed payment webhooks cannot re-grant after refund, and payment webhook setup fails closed when `TELEGRAM_WEBHOOK_SECRET` is missing.
