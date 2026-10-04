@@ -112,3 +112,5 @@ The Mini App frontend currently uses the lightweight `index.html` / `app.js` / `
 - Fixed a support runtime bug where `support_create` incorrectly referenced a report-only `block_requested` field/variable.
 
 - Telegram Stars payment/refund flow is now idempotent and webhook-recoverable: payment/refund RPCs are SECURITY INVOKER + service_role-only, refunds use a claimed `refunding` state, Telegram `refunded_payment` finalizes grant revocation, late/replayed payment webhooks cannot re-grant after refund, and payment webhook setup fails closed when `TELEGRAM_WEBHOOK_SECRET` is missing.
+
+- VYBE 0.9.41 adds owner-only deep finance reconciliation against up to 1000 Telegram Star transactions, checking payment/refund direction, amount, invoice payload, Telegram user, local grants, stuck refunding states, and orphan Telegram transactions. Confirmed Telegram refunds can be safely reconciled back into local state only after explicit owner confirmation.
