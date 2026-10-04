@@ -99,3 +99,5 @@ The Mini App frontend currently uses the lightweight `index.html` / `app.js` / `
 - The `matches` endpoint now uses a single backend-only RPC for match/profile/online/unread/latest-message data instead of per-match N+1 queries.
 
 - Discovery is now DB-side and keyset-paginated: 20 cards per page with a 3-card prefetch buffer, exact filters/ranking/exclusions in one backend-only RPC, and no arbitrary first-100-profile cap.
+
+- Like and SuperVYBE writes now use one atomic like/match RPC with pair locking, idempotent match creation, idempotent SuperVYBE charging, and server-side prevention of the old `like(kind=super)` bypass.
