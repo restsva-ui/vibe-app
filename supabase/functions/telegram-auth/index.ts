@@ -2427,109 +2427,128 @@ Deno.serve(async (req: Request) => {
       const maxAgeRaw = Number(body.max_age);
       const minAge = Number.isFinite(minAgeRaw) ? Math.max(18, Math.min(99, Math.floor(minAgeRaw))) : 18;
       const maxAge = Number.isFinite(maxAgeRaw) ? Math.max(minAge, Math.min(99, Math.floor(maxAgeRaw))) : 99;
-      const cityFilter = clean(body.city, 40).toLocaleLowerCase("uk-UA");
+      const city = clean(body.city, 40);
       const requestedIntent = clean(body.intent, 30);
       const allowedIntents = new Set(["Поговорити", "Флірт", "Вірт", "Дружба", "Голос", "Зустріч"]);
       const intentFilter = allowedIntents.has(requestedIntent) ? requestedIntent : "";
       const onlineOnly = body.online_only === true;
       const verifiedOnly = body.verified_only === true;
-      const onlineCutoff = Date.now() - 3 * 60 * 1000;
 
-      const profiles = await db(`profiles?user_id=neq.${encodeURIComponent(user.id)}&select=user_id,name,age,city,bio,photo_url,verified&limit=100`) ?? [];
-      const intents = await db(`intents?expires_at=gt.${encodeURIComponent(nowIso)}&select=user_id,intent,expires_at&limit=200`) ?? [];
-      const spotlightRows = await db(`user_entitlements?spotlight_until=gt.${encodeURIComponent(nowIso)}&select=user_id,spotlight_until&limit=200`) ?? [];
-      const [blockedIds, sentLikes, currentMatches, ownIntentRows, activePasses] = await Promise.all([
-        getBlockedUserIds(db, user.id),
-        db(`likes?from_user_id=eq.${encodeURIComponent(user.id)}&select=to_user_id&limit=1000`) ?? [],
-        db(`matches?or=(user_a_id.eq.${encodeURIComponent(user.id)},user_b_id.eq.${encodeURIComponent(user.id)})&select=user_a_id,user_b_id&limit=1000`) ?? [],
-        db(`intents?user_id=eq.${encodeURIComponent(user.id)}&expires_at=gt.${encodeURIComponent(nowIso)}&select=intent&limit=1`) ?? [],
-        db(`discovery_passes?user_id=eq.${encodeURIComponent(user.id)}&target_intent_expires_at=gt.${encodeURIComponent(nowIso)}&select=target_user_id&limit=1000`) ?? [],
-      ]);
-      const sentLikeIds = new Set((sentLikes ?? []).map((x: any) => String(x.to_user_id)));
-      const passedIds = new Set((activePasses ?? []).map((x: any) => String(x.target_user_id)));
-      const matchedIds = new Set((currentMatches ?? []).map((m: any) =>
-        String(m.user_a_id) === String(user.id) ? String(m.user_b_id) : String(m.user_a_id)
-      ));
-      const ownIntent = ownIntentRows?.[0]?.intent ?? null;
-      const profileIds = profiles.map((p: any) => String(p.user_id));
-      const statuses = profileIds.length
-        ? await db(`users?id=in.(${profileIds.map((x) => encodeURIComponent(x)).join(",")})&select=id,last_seen,account_status`) ?? []
-        : [];
-      const statusByUser = new Map(statuses.map((x: any) => [String(x.id), x]));
-      const lastSeenByUser = new Map(statuses.map((x: any) => [String(x.id), x.last_seen]));
-      const byUser = new Map(intents.map((x: any) => [String(x.user_id), x]));
-      const spotlightByUser = new Map(spotlightRows.map((x: any) => [String(x.user_id), x.spotlight_until]));
+      const pageSizeRaw = Number(body.page_size);
+      const pageSize = Number.isFinite(pageSizeRaw)
+        ? Math.max(5, Math.min(40, Math.floor(pageSizeRaw)))
+        : 100;
 
-      const eligibleProfile = (p: any) => {
-        const id = String(p.user_id);
-        if (blockedIds.has(id)) return false;
-        const activeIntent = byUser.get(id);
-        if (!activeIntent) return false;
-        if (intentFilter && activeIntent.intent !== intentFilter) return false;
-        const isMatched = matchedIds.has(id);
-        if (sentLikeIds.has(id) || isMatched || passedIds.has(id)) return false;
-        const age = Number(p.age || 0);
-        if (age < minAge || age > maxAge) return false;
-        if (cityFilter && !String(p.city || "").toLocaleLowerCase("uk-UA").includes(cityFilter)) return false;
-        if (verifiedOnly && p.verified !== true) return false;
-        const userStatus = statusByUser.get(id);
-        if (!userStatus || userStatus.account_status === "restricted") return false;
-        const lastSeen = lastSeenByUser.get(id);
-        const online = !!lastSeen && new Date(lastSeen).getTime() >= onlineCutoff;
-        if (onlineOnly && !online) return false;
-        return true;
-      };
-      const decorateProfile = (p: any) => {
-        const id = String(p.user_id);
-        const lastSeen = lastSeenByUser.get(id) ?? null;
-        const online = !!lastSeen && new Date(lastSeen).getTime() >= onlineCutoff;
-        return {
-          user_id: p.user_id,
-          name: p.name,
-          age: p.age,
-          city: p.city,
-          bio: p.bio,
-          photo_url: p.photo_url ?? null,
-          verified: p.verified === true,
-          online,
-          intent: byUser.get(id)?.intent ?? "Поговорити",
-          intent_match: !!ownIntent && byUser.get(id)?.intent === ownIntent,
-          expires_at: byUser.get(id)?.expires_at ?? null,
-          spotlight_until: spotlightByUser.get(id) ?? null,
-          spotlight_active: spotlightByUser.has(id),
-          already_matched: matchedIds.has(id),
-        };
-      };
-      const sortPeople = (rows: any[]) => rows.sort((a: any, b: any) => {
-        const aSpot = a.spotlight_active ? 1 : 0;
-        const bSpot = b.spotlight_active ? 1 : 0;
-        if (aSpot !== bSpot) return bSpot - aSpot;
-        if (aSpot && bSpot) {
-          const diff = new Date(b.spotlight_until).getTime() - new Date(a.spotlight_until).getTime();
-          if (diff) return diff;
+      const snapshotRaw = clean(body.snapshot_at, 60);
+      const snapshotMs = snapshotRaw ? new Date(snapshotRaw).getTime() : NaN;
+      const snapshotAccepted = Number.isFinite(snapshotMs)
+        && snapshotMs <= Date.now() + 60_000
+        && snapshotMs >= Date.now() - 30 * 60_000;
+      let snapshotAt = snapshotAccepted ? new Date(snapshotMs).toISOString() : nowIso;
+
+      const rawCursor = body.cursor && typeof body.cursor === "object" && !Array.isArray(body.cursor)
+        ? body.cursor as Record<string, unknown>
+        : null;
+      let paginationReset = false;
+      let afterSpotlight: number | null = null;
+      let afterSpotlightUntil: string | null = null;
+      let afterIntentMatch: number | null = null;
+      let afterOnline: number | null = null;
+      let afterVerified: number | null = null;
+      let afterUserId: string | null = null;
+
+      if (rawCursor) {
+        if (!snapshotAccepted) {
+          paginationReset = true;
+        } else {
+          const userId = clean(rawCursor.user_id, 80);
+          const spotlight = Number(rawCursor.spotlight);
+          const intentMatch = Number(rawCursor.intent_match);
+          const online = Number(rawCursor.online);
+          const verified = Number(rawCursor.verified);
+          const spotlightUntilRaw = clean(rawCursor.spotlight_until, 60);
+          const spotlightUntilMs = new Date(spotlightUntilRaw).getTime();
+          const uuidOk = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId);
+          const bit = (value: number) => value === 0 || value === 1;
+          if (!uuidOk || !bit(spotlight) || !bit(intentMatch) || !bit(online) || !bit(verified) || !Number.isFinite(spotlightUntilMs)) {
+            return json({ ok: false, error: "Invalid discovery cursor" }, 400);
+          }
+          afterSpotlight = spotlight;
+          afterSpotlightUntil = new Date(spotlightUntilMs).toISOString();
+          afterIntentMatch = intentMatch;
+          afterOnline = online;
+          afterVerified = verified;
+          afterUserId = userId;
         }
-        if (a.intent_match !== b.intent_match) return Number(b.intent_match) - Number(a.intent_match);
-        if (a.online !== b.online) return Number(b.online) - Number(a.online);
-        if (a.verified !== b.verified) return Number(b.verified) - Number(a.verified);
-        return 0;
-      });
+      }
 
-      const people = sortPeople(profiles.filter((p: any) => eligibleProfile(p)).map(decorateProfile));
+      const rows = await rpc("vybe_discover_page", {
+        p_user_id: user.id,
+        p_min_age: minAge,
+        p_max_age: maxAge,
+        p_city: city,
+        p_intent: intentFilter || null,
+        p_online_only: onlineOnly,
+        p_verified_only: verifiedOnly,
+        p_limit: pageSize + 1,
+        p_snapshot_at: snapshotAt,
+        p_after_spotlight: afterSpotlight,
+        p_after_spotlight_until: afterSpotlightUntil,
+        p_after_intent_match: afterIntentMatch,
+        p_after_online: afterOnline,
+        p_after_verified: afterVerified,
+        p_after_user_id: afterUserId,
+      }) ?? [];
+
+      const hasMore = rows.length > pageSize;
+      const pageRows = rows.slice(0, pageSize);
+      const last = pageRows.length ? pageRows[pageRows.length - 1] : null;
+      const nextCursor = hasMore && last ? {
+        spotlight: Number(last.rank_spotlight || 0),
+        spotlight_until: last.rank_spotlight_until,
+        intent_match: Number(last.rank_intent_match || 0),
+        online: Number(last.rank_online || 0),
+        verified: Number(last.rank_verified || 0),
+        user_id: last.rank_user_id,
+      } : null;
+
+      const people = pageRows.map((row: any) => ({
+        user_id: row.user_id,
+        name: row.name,
+        age: row.age,
+        city: row.city,
+        bio: row.bio,
+        photo_url: row.photo_url ?? null,
+        verified: row.verified === true,
+        online: row.online === true,
+        intent: row.intent,
+        intent_match: row.intent_match === true,
+        expires_at: row.expires_at ?? null,
+        spotlight_until: row.spotlight_until ?? null,
+        spotlight_active: row.spotlight_active === true,
+        already_matched: false,
+      }));
 
       return json({
         ok: true,
         filters: {
           min_age: minAge,
           max_age: maxAge,
-          city: clean(body.city, 40),
+          city,
           intent: intentFilter || null,
           online_only: onlineOnly,
           verified_only: verifiedOnly,
         },
         people,
+        pagination: {
+          page_size: pageSize,
+          has_more: hasMore,
+          next_cursor: nextCursor,
+          snapshot_at: snapshotAt,
+          reset: paginationReset,
+        },
       });
     }
-
 
     if (action === "super_like") {
       const targetId = clean(body.target_user_id, 80);
