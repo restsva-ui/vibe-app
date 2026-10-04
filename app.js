@@ -85,7 +85,7 @@ const I18N_PAIRS=[
   ["Це демо-анкета. Реальна дія працює тільки для реальних користувачів.","This is a demo profile. Real actions work only with real users."],
   ["SuperVYBE не списано. Спробуй ще раз.","SuperVYBE was not used. Try again."],["Не вдалося надіслати VYBE. Спробуй ще раз.","Could not send VYBE. Try again."],
   ["У вас взаємний VYBE 💜","You have a mutual VYBE 💜"],["SuperVYBE надіслано ✦","SuperVYBE sent ✦"],
-  ["Взаємний VYBE","Mutual VYBE"],["Поки немає взаємних збігів.","No mutual matches yet."],["Відкрити приватний чат","Open private chat"],["Чати з’являться після взаємних збігів.","Chats will appear after mutual matches."],
+  ["Взаємний VYBE","Mutual VYBE"],["Поки немає взаємних збігів.","No mutual matches yet."],["Відкрити приватний чат","Open private chat"],["Новий взаємний VYBE ✨","New mutual VYBE ✨"],["Написати зараз","Message now"],["Продовжити перегляд","Keep browsing"],["Надіслано","Sent"],["Прочитано","Read"],["Чати з’являться після взаємних збігів.","Chats will appear after mutual matches."],
   ["Не вдалося відкрити чат.","Could not open chat."],["Ти","You"],["Почни розмову 👋","Start the conversation 👋"],["Напиши повідомлення…","Write a message…"],["Надіслати","Send"],["Не вдалося надіслати повідомлення.","Could not send message."],
   ["Приватність 🔐","Privacy 🔐"],
   ["VYBE використовує Telegram-авторизацію та зберігає лише дані, потрібні для роботи сервісу: Telegram ID, анкету, фото, VYBE NOW, лайки, збіги, приватні повідомлення, блокування, скарги та бонуси.","VYBE uses Telegram authorization and stores only data needed to operate the service: Telegram ID, profile, photo, VYBE NOW, likes, matches, private messages, blocks, reports and rewards."],
@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.33",
+      app_version:"0.9.34",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -218,12 +218,13 @@ const realtimeClient=window.supabase?.createClient?.(SUPABASE_URL,SUPABASE_KEY,{
 });
 let realtimeUserTopic=null,realtimeUserChannel=null,realtimeUserChannelTopic=null,realtimeConnected=false;
 const realtimeMatchChannels=new Map();
-let activeChat=null,chatRefreshTimer=null,socialRefreshTimer=null,typingStopTimer=null,lastTypingSentAt=0;
+let activeChat=null,chatRefreshTimer=null,socialRefreshTimer=null,typingStopTimer=null,incomingTypingTimer=null,lastTypingSentAt=0;
 
 function teardownSocialRealtime(){
   clearTimeout(chatRefreshTimer);
   clearTimeout(socialRefreshTimer);
   clearTimeout(typingStopTimer);
+  clearTimeout(incomingTypingTimer);
   activeChat=null;
   if(realtimeUserChannel&&realtimeClient){
     realtimeClient.removeChannel(realtimeUserChannel);
@@ -294,7 +295,7 @@ function scheduleActiveChatRefresh(delay=120){
 function setTypingLabel(show){
   const el=$("chatPresence");
   if(!el)return;
-  el.textContent=show?"друкує…":chatConnectionLabel();
+  el.textContent=show?uiText("друкує…"):(el.dataset.idleLabel||chatConnectionLabel());
   el.classList.toggle("typing",show);
 }
 function getMatchChannel(matchId){return realtimeMatchChannels.get(String(matchId))?.channel||null}
@@ -361,7 +362,11 @@ function syncMatchRealtimeChannels(){
       if(activeChat?.matchId===wantedId&&readerId!==String(profile?.user_id))scheduleActiveChatRefresh(50);
     })
     .on("broadcast",{event:"typing"},payload=>{
-      if(activeChat?.matchId===wantedId)setTypingLabel(payload?.payload?.typing===true);
+      if(activeChat?.matchId!==wantedId)return;
+      const isTyping=payload?.payload?.typing===true;
+      clearTimeout(incomingTypingTimer);
+      setTypingLabel(isTyping);
+      if(isTyping)incomingTypingTimer=setTimeout(()=>setTypingLabel(false),2600);
     })
     .subscribe();
   realtimeMatchChannels.set(wantedId,{channel,topic:m.realtime_topic});
@@ -1062,6 +1067,7 @@ function closeSheetView(){
   activeChat=null;
   syncMatchRealtimeChannels();
   clearTimeout(typingStopTimer);
+  clearTimeout(incomingTypingTimer);
   sheet.classList.add("hidden");
   tg?.BackButton?.hide?.();
 }
@@ -1130,6 +1136,7 @@ async function loadMatches(){
   matches=(r.matches||[]).map(m=>({
     match_id:m.match_id,
     realtime_topic:m.realtime_topic||null,
+    created_at:m.created_at||null,
     id:m.user_id,
     name:m.profile?.name||"VYBE",
     age:m.profile?.age||"",
@@ -1146,6 +1153,17 @@ async function loadMatches(){
   updateUnreadBadge(Number(r.unread_total||0));
   syncMatchRealtimeChannels();
   renderMatches();renderChats();return true;
+}
+function openMatchSuccess(target){
+  const match=matches.find(x=>String(x.id)===String(target?.id));
+  if(!match){showAlert("У вас взаємний VYBE 💜");return}
+  const visual=match.photo_url
+    ? '<img class="matchSuccessPhoto" src="'+escapeHtml(match.photo_url)+'" alt="'+escapeHtml(match.name)+'">'
+    : '<div class="matchSuccessFallback">'+escapeHtml((match.name||"V").trim().charAt(0).toUpperCase())+'</div>';
+  content.innerHTML='<div class="matchSuccess"><div class="matchSuccessGlow"></div>'+visual+'<div class="matchSuccessMark">♡</div><h2>'+uiText("Взаємний VYBE 💜")+'</h2><p>'+escapeHtml(match.name||"VYBE")+'</p><button id="matchChatNow" class="primary">'+uiText("Написати зараз")+'</button><button id="matchKeepBrowsing" class="choice">'+uiText("Продовжити перегляд")+'</button></div>';
+  sheet.classList.remove("hidden");tg?.BackButton?.show?.();
+  const chat=$("matchChatNow");if(chat)chat.onclick=()=>openChat(match.match_id,match.name,match.id);
+  const keep=$("matchKeepBrowsing");if(keep)keep.onclick=()=>{sheet.classList.add("hidden");tg?.BackButton?.hide?.()};
 }
 async function next(kind){
   const arr=filtered(),p=arr[index];
@@ -1172,7 +1190,7 @@ async function next(kind){
     if(!r.ok){showAlert(kind==="super"?"SuperVYBE не списано. Спробуй ще раз.":"Не вдалося надіслати VYBE. Спробуй ще раз.");return}
     if(kind==="super")await loadEntitlements();
     analyticsCapture(kind==="super"?"supervybe_sent":"like_sent");
-    if(r.matched){analyticsCapture("match_created");await loadMatches();tg?.HapticFeedback?.notificationOccurred("success");showAlert("У вас взаємний VYBE 💜")}
+    if(r.matched){analyticsCapture("match_created");await loadMatches();tg?.HapticFeedback?.notificationOccurred("success");openMatchSuccess(p)}
     else if(kind==="super")showAlert("SuperVYBE надіслано ✦")
   }
   index++;renderCard();tg?.HapticFeedback?.impactOccurred("light");
@@ -1208,12 +1226,17 @@ function renderMatches(){
 }
 function renderChats(){
   const list=$("chatList");
-  const rows=[...matches].sort((a,b)=>new Date(b.last_message_at||0)-new Date(a.last_message_at||0));
+  const rows=[...matches].sort((a,b)=>{
+    const bt=new Date(b.last_message_at||b.created_at||0).getTime();
+    const at=new Date(a.last_message_at||a.created_at||0).getTime();
+    return bt-at;
+  });
   list.innerHTML=rows.length?rows.map((p,i)=>{
     const unread=Number(p.unread_count||0);
-    const subtitle=p.last_message?escapeHtml(p.last_message):uiText("Відкрити приватний чат");
-    const time=formatChatListTime(p.last_message_at);
-    return '<div class="listItem chatRow"><button type="button" class="chatAvatarOpen" data-index="'+i+'" aria-label="'+escapeHtml(uiText("Переглянути анкету"))+'">'+avatarMarkup(p.photo_url,p.name,'avatar')+'</button><button type="button" class="chatOpen chatMainOpen" data-index="'+i+'"><div class="itemMain"><b>'+escapeHtml(p.name)+(p.age?", "+escapeHtml(p.age):"")+(p.online?' <span class="onlineMini">●</span>':'')+'</b><small>'+subtitle+'</small></div><div class="chatTail">'+(time?'<small class="chatTime">'+escapeHtml(time)+'</small>':'')+(unread?'<span class="unreadBadge">'+unread+'</span>':'')+'</div><span class="chevron">›</span></button></div>';
+    const isNewMatch=!p.last_message;
+    const subtitle=p.last_message?escapeHtml(p.last_message):uiText("Новий взаємний VYBE ✨");
+    const time=formatChatListTime(p.last_message_at||p.created_at);
+    return '<div class="listItem chatRow '+(unread?"hasUnread ":"")+(isNewMatch?"newMatchRow":"")+'"><button type="button" class="chatAvatarOpen" data-index="'+i+'" aria-label="'+escapeHtml(uiText("Переглянути анкету"))+'">'+avatarMarkup(p.photo_url,p.name,'avatar')+'</button><button type="button" class="chatOpen chatMainOpen" data-index="'+i+'"><div class="itemMain"><b>'+escapeHtml(p.name)+(p.age?", "+escapeHtml(p.age):"")+(p.online?' <span class="onlineMini">●</span>':'')+'</b><small>'+subtitle+'</small></div><div class="chatTail">'+(time?'<small class="chatTime">'+escapeHtml(time)+'</small>':'')+(unread?'<span class="unreadBadge">'+unread+'</span>':isNewMatch?'<span class="newMatchDot">✨</span>':'')+'</div><span class="chevron">›</span></button></div>';
   }).join(""):'<div class="empty">Чати з’являться після взаємних збігів.</div>';
   bindAvatarFallbacks(list);
   list.querySelectorAll(".chatOpen").forEach(b=>b.onclick=()=>{
@@ -1253,13 +1276,15 @@ async function openChat(matchId,name,userId,options={}){
     const mine=String(m.sender_id)===String(profile?.user_id);
     const sender=mine?uiText("Ти"):peerName;
     const createdAt=new Date(m.created_at).getTime();
-    const receipt=mine?(peerReadAt&&createdAt<=peerReadAt?"✓✓":"✓"):"";
-    const meta=[formatMessageTime(m.created_at),receipt].filter(Boolean).join(" · ");
+    const wasRead=mine&&!!peerReadAt&&createdAt<=peerReadAt;
+    const receipt=mine?'<span class="msgReceipt '+(wasRead?"read":"sent")+'" title="'+escapeHtml(uiText(wasRead?"Прочитано":"Надіслано"))+'">'+(wasRead?"✓✓":"✓")+'</span>':"";
+    const meta='<span>'+escapeHtml(formatMessageTime(m.created_at))+'</span>'+receipt;
     const avatar=avatarMarkup(mine?ownPhoto:peerPhoto,sender,'msgAvatar');
-    return '<div class="msgRow '+(mine?"mine":"theirs")+'">'+avatar+'<div class="msgWrap"><div class="msgSender">'+escapeHtml(sender)+'</div><div class="msgBubble">'+escapeHtml(m.body)+'</div><div class="msgMeta">'+escapeHtml(meta)+'</div></div></div>';
+    return '<div class="msgRow '+(mine?"mine":"theirs")+'">'+avatar+'<div class="msgWrap"><div class="msgSender">'+escapeHtml(sender)+'</div><div class="msgBubble">'+escapeHtml(m.body)+'</div><div class="msgMeta">'+meta+'</div></div></div>';
   }).join("");
 
-  content.innerHTML='<div class="chatHeader"><button id="chatPeerBtn" class="chatPeer" type="button">'+avatarMarkup(peerPhoto,peerName,'chatAvatar')+'<div class="chatTitle"><h2>'+escapeHtml(peerName)+'</h2><small><span id="chatPresence">'+chatConnectionLabel()+'</span></small></div></button><button id="chatSafetyBtn" class="chatSafety" aria-label="Безпека">⋯</button></div><button id="chatProfileBtn" class="chatProfileAction" type="button">👤 '+uiText("Переглянути анкету")+' <span>›</span></button><div id="chatMessages" class="chatMessages">'+(msgs||'<div class="chatEmpty">Почни розмову 👋</div>')+'</div><div class="chatComposer"><textarea id="chatMessage" class="field" maxlength="2000" placeholder="Напиши повідомлення…"></textarea><button id="sendMessage" class="primary">Надіслати</button></div>';
+  const idlePresence=peerProfile?.online?uiText("● онлайн"):chatConnectionLabel();
+  content.innerHTML='<div class="chatHeader"><button id="chatPeerBtn" class="chatPeer" type="button">'+avatarMarkup(peerPhoto,peerName,'chatAvatar')+'<div class="chatTitle"><h2>'+escapeHtml(peerName)+'</h2><small><span id="chatPresence" data-idle-label="'+escapeHtml(idlePresence)+'">'+escapeHtml(idlePresence)+'</span></small></div></button><button id="chatSafetyBtn" class="chatSafety" aria-label="Безпека">⋯</button></div><button id="chatProfileBtn" class="chatProfileAction" type="button">👤 '+uiText("Переглянути анкету")+' <span>›</span></button><div id="chatMessages" class="chatMessages">'+(msgs||'<div class="chatEmpty">Почни розмову 👋</div>')+'</div><div class="chatComposer"><textarea id="chatMessage" class="field" maxlength="2000" placeholder="Напиши повідомлення…"></textarea><button id="sendMessage" class="primary">Надіслати</button></div>';
   sheet.classList.remove("hidden");
   bindAvatarFallbacks(content);
 
