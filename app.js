@@ -81,7 +81,7 @@ const I18N_PAIRS=[
   ["Мої бонуси ✨","My bonuses ✨"],["Активувати Spotlight на 30 хв","Activate Spotlight for 30 min"],["SuperVYBE витрачається кнопкою ✦ на реальній анкеті.","Use SuperVYBE with the ✦ button on a real profile."],
   ["VYBE працює тільки для 18+. Блокування та скарги вже захищені серверною перевіркою: заблоковані користувачі не бачать одне одного у пошуку, збігах і чатах.","VYBE is for adults 18+ only. Blocks and reports are enforced server-side: blocked users cannot see each other in discovery, matches or chats."],
   ["🚫 Мої блокування","🚫 My blocked users"],["Якщо бачиш погрози, шантаж, неповнолітнього користувача, незаконний контент або пропозиції сексуальних послуг — надішли скаргу з профілю/чату.","If you see threats, blackmail, a minor, illegal content or offers of sexual services, report it from the profile or chat."],
-  ["Спочатку обери свій вайб.","Choose your vibe first."],["Анкет за цим вайбом поки немає.","No profiles match this vibe yet."],["Спробуй інший фільтр.","Try another filter."],["Зараз немає активних VYBE NOW за цими умовами.","No active VYBE NOW profiles match these filters right now."],["Спробуй інший вайб або фільтр.","Try another vibe or filter."],["Зараз нікого з таким вайбом немає.","No one with this vibe is active right now."],["Зміни VYBE NOW або спробуй інші умови.","Change VYBE NOW or try different filters."],["⚡ Задати VYBE NOW","⚡ Set VYBE NOW"],["⚡ Змінити VYBE NOW","⚡ Change VYBE NOW"],["↺ Скинути фільтри","↺ Reset filters"],["↻ Оновити пошук","↻ Refresh discovery"],["активний ще","active for"],["хв.","min"],["онлайн","online"],["Верифіковано","Verified"],["Пропустити","Skip"],
+  ["Спочатку обери свій вайб.","Choose your vibe first."],["Анкет за цим вайбом поки немає.","No profiles match this vibe yet."],["Спробуй інший фільтр.","Try another filter."],["Зараз немає активних VYBE NOW за цими умовами.","No active VYBE NOW profiles match these filters right now."],["Спробуй інший вайб або фільтр.","Try another vibe or filter."],["Зараз нікого з таким вайбом немає.","No one with this vibe is active right now."],["Зміни VYBE NOW або спробуй інші умови.","Change VYBE NOW or try different filters."],["Зараз немає активних анкет.","No active profiles right now."],["Нові активні VYBE NOW з’являться тут.","New active VYBE NOW profiles will appear here."],["⚡ Задати VYBE NOW","⚡ Set VYBE NOW"],["⚡ Змінити VYBE NOW","⚡ Change VYBE NOW"],["↺ Скинути фільтри","↺ Reset filters"],["↻ Оновити пошук","↻ Refresh discovery"],["активний ще","active for"],["хв.","min"],["онлайн","online"],["Верифіковано","Verified"],["Пропустити","Skip"],
   ["Це демо-анкета. Реальна дія працює тільки для реальних користувачів.","This is a demo profile. Real actions work only with real users."],
   ["SuperVYBE не списано. Спробуй ще раз.","SuperVYBE was not used. Try again."],["Не вдалося надіслати VYBE. Спробуй ще раз.","Could not send VYBE. Try again."],
   ["У вас взаємний VYBE 💜","You have a mutual VYBE 💜"],["SuperVYBE надіслано ✦","SuperVYBE sent ✦"],
@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.30",
+      app_version:"0.9.31",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -1088,10 +1088,11 @@ function renderCard(){
     if(actions)actions.classList.add("hidden");
     stack.classList.add("emptyStack");
     const hasFilters=discoveryFiltersActive();
-    const nowButton=validNow()?uiText("⚡ Змінити VYBE NOW"):uiText("⚡ Задати VYBE NOW");
+    const hasVibe=validNow()||filter!=="Усе";
+    const emptyTitle=hasVibe?uiText("Зараз нікого з таким вайбом немає."):uiText("Зараз немає активних анкет.");
+    const emptyText=hasVibe?uiText("Зміни VYBE NOW або спробуй інші умови."):uiText("Нові активні VYBE NOW з’являться тут.");
     const secondary=hasFilters?uiText("↺ Скинути фільтри"):uiText("↻ Оновити пошук");
-    stack.innerHTML='<div class="discoverEmpty"><div class="discoverEmptyIcon">⚡</div><h3>'+uiText("Зараз нікого з таким вайбом немає.")+'</h3><p>'+uiText("Зміни VYBE NOW або спробуй інші умови.")+'</p><div class="discoverEmptyActions"><button id="emptySetNow" class="primary">'+nowButton+'</button><button id="emptySecondary" class="choice">'+secondary+'</button></div></div>';
-    const setNowBtn=$("emptySetNow");if(setNowBtn)setNowBtn.onclick=()=>openSheet("now");
+    stack.innerHTML='<div class="discoverEmpty"><div class="discoverEmptyIcon">⚡</div><h3>'+emptyTitle+'</h3><p>'+emptyText+'</p><div class="discoverEmptyActions"><button id="emptySecondary" class="primary">'+secondary+'</button></div></div>';
     const secondaryBtn=$("emptySecondary");if(secondaryBtn)secondaryBtn.onclick=async()=>{secondaryBtn.disabled=true;try{if(hasFilters)await resetDiscoveryFilters();else await loadPeople()}finally{if($("emptySecondary"))$("emptySecondary").disabled=false}};
     return
   }
