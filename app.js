@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.35",
+      app_version:"0.9.36",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -931,7 +931,7 @@ function scheduleSupportCountRefresh(){
   supportRefreshTimer=setTimeout(()=>{if(document.visibilityState==="visible"&&window.__vybeAuth?.ok)loadSupportCounts()},250);
 }
 window.addEventListener("focus",scheduleSupportCountRefresh);
-document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")scheduleSupportCountRefresh()});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){scheduleSupportCountRefresh();if(window.__vybeAuth?.ok&&accountStatus==="active"){loadMatches();loadPeople()}}});
 
 function showOnboarding(){const o=$("onboarding");o.classList.remove("hidden");$("obName").value=profile?.name||tuser?.first_name||"";$("obAge").value=profile?.age||"";$("obCity").value=profile?.city||"";$("obGender").value=profile?.gender||"";$("obLooking").value=profile?.looking||"";$("obBio").value=profile?.bio||""}
 $("saveProfile").onclick=async()=>{const age=+$("obAge").value;if(!$("obName").value.trim()||age<18||age>99){showAlert("Вкажи ім’я та вік 18+.");return}profile={...profile,name:$("obName").value.trim(),age,city:$("obCity").value.trim(),gender:$("obGender").value.trim(),looking:$("obLooking").value.trim(),bio:$("obBio").value.trim()};store("vybeProfile",profile);$("onboarding").classList.add("hidden");renderProfile();const saved=await syncProfile();if(saved)analyticsCapture("profile_saved");await loadPeople();tg?.HapticFeedback?.notificationOccurred("success")};
