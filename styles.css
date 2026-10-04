@@ -348,3 +348,24 @@
 .discoverEmpty{padding:24px 22px 20px}
 .discoverEmptyActions{grid-template-columns:1fr}
 .discoverEmptyActions .primary{min-height:50px}
+
+
+/* VYBE 0.9.34 — chat UX */
+.chatRow.hasUnread{background:linear-gradient(135deg,rgba(139,92,246,.10),rgba(255,63,129,.045))}
+.chatRow.hasUnread .itemMain b{font-weight:850}
+.chatRow.newMatchRow .itemMain small{color:#d7b8ff;font-weight:750}
+.newMatchDot{font-size:15px;line-height:1}
+.msgMeta{display:flex;align-items:center;justify-content:flex-end;gap:6px}
+.msgRow.theirs .msgMeta{justify-content:flex-start}
+.msgReceipt{font-weight:900;letter-spacing:-.08em}
+.msgReceipt.sent{color:#a6a7b8}
+.msgReceipt.read{color:#9fc7ff}
+#chatPresence[data-idle-label^="●"]{color:var(--green)}
+.matchSuccess{position:relative;text-align:center;overflow:hidden;padding:8px 0 2px}
+.matchSuccessGlow{position:absolute;inset:-80px 10% auto;height:220px;background:radial-gradient(circle,rgba(255,63,129,.28),rgba(139,92,246,.14) 44%,transparent 72%);pointer-events:none}
+.matchSuccessPhoto,.matchSuccessFallback{position:relative;width:126px;height:126px;margin:8px auto 0;border-radius:38px;object-fit:cover;border:2px solid rgba(255,255,255,.16);box-shadow:0 18px 48px rgba(0,0,0,.34)}
+.matchSuccessFallback{display:grid;place-items:center;background:linear-gradient(135deg,#6c49c4,#d64286);font-size:54px;font-weight:900}
+.matchSuccessMark{position:relative;width:52px;height:52px;margin:-24px auto 8px;display:grid;place-items:center;border-radius:50%;background:linear-gradient(135deg,#ff3f81,#8b5cf6);border:4px solid #151520;font-size:25px;font-weight:900}
+.matchSuccess h2{position:relative;margin:8px 0 4px;font-size:27px}
+.matchSuccess p{margin:0 0 18px;color:var(--muted);font-size:16px}
+.matchSuccess .choice{width:100%;margin-top:9px;font-weight:750}
