@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.40",
+      app_version:"0.9.41",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -1586,6 +1586,7 @@ function adminStatusLabel(status){
   const labels={
     paid:currentLang==="en"?"Paid":"Оплачено",
     refunded:currentLang==="en"?"Refunded":"Повернено",
+    refunding:currentLang==="en"?"Refunding":"Повертається",
     pending:currentLang==="en"?"Pending":"Очікує",
     failed:currentLang==="en"?"Failed":"Помилка",
     expired:currentLang==="en"?"Expired":"Прострочено",
@@ -1610,6 +1611,97 @@ async function adminRefundOrder(orderId,stars,title){
   tg?.HapticFeedback?.notificationOccurred("success");
   showAlert("Повернення виконано ✅");
   await openAdminFinance();
+}
+
+function financeIssueLabel(code){
+  const uk={
+    telegram_incoming_missing:"Платіж не знайдений у Telegram",
+    telegram_incoming_not_in_scan:"Платіж поза поточним scan",
+    amount_mismatch:"Не збігається сума",
+    invoice_payload_mismatch:"Не збігається invoice payload",
+    telegram_user_mismatch:"Не збігається Telegram user",
+    telegram_refunded_local_paid:"Telegram повернув Stars, локально ще paid",
+    telegram_refunded_local_refunding:"Telegram повернув Stars, локально ще refunding",
+    telegram_refund_mismatch:"Не збігаються дані refund",
+    refund_stuck:"Refund завис",
+    refund_in_progress:"Refund виконується",
+    telegram_refund_missing:"Локально refunded, але refund не знайдено в Telegram",
+    telegram_refund_not_in_scan:"Refund поза поточним scan",
+    refund_amount_mismatch:"Не збігається сума refund",
+    paid_grant_missing:"Оплата є, grant відсутній",
+    refunded_grant_still_present:"Refund є, grant ще активний",
+    telegram_payment_without_local_order:"Telegram payment без локального order",
+    telegram_refund_without_local_order:"Telegram refund без локального order",
+  };
+  const en={
+    telegram_incoming_missing:"Payment not found in Telegram",
+    telegram_incoming_not_in_scan:"Payment is outside the current scan",
+    amount_mismatch:"Amount mismatch",
+    invoice_payload_mismatch:"Invoice payload mismatch",
+    telegram_user_mismatch:"Telegram user mismatch",
+    telegram_refunded_local_paid:"Telegram refunded, local order still paid",
+    telegram_refunded_local_refunding:"Telegram refunded, local order still refunding",
+    telegram_refund_mismatch:"Refund data mismatch",
+    refund_stuck:"Refund is stuck",
+    refund_in_progress:"Refund in progress",
+    telegram_refund_missing:"Locally refunded, Telegram refund not found",
+    telegram_refund_not_in_scan:"Refund is outside the current scan",
+    refund_amount_mismatch:"Refund amount mismatch",
+    paid_grant_missing:"Payment exists but grant is missing",
+    refunded_grant_still_present:"Refund exists but grant is still active",
+    telegram_payment_without_local_order:"Telegram payment without local order",
+    telegram_refund_without_local_order:"Telegram refund without local order",
+  };
+  return (currentLang==="en"?en:uk)[code]||code;
+}
+
+function renderFinanceDeepReconciliation(r){
+  const root=$("financeDeepRecon");
+  if(!root)return;
+  if(!r?.ok){
+    root.innerHTML='<b>'+(currentLang==="en"?"Deep reconciliation":"Глибока звірка")+'</b><span>'+escapeHtml(r?.error||"Error")+'</span>';
+    return;
+  }
+  const s=r.summary||{},scan=r.scan||{},issues=Array.isArray(r.issues)?r.issues:[];
+  const issueHtml=issues.length?issues.slice(0,20).map(x=>{
+    const sev=String(x.severity||"info");
+    const badge=sev==="critical"?"🔴":sev==="high"?"🟠":"ℹ️";
+    return '<div class="adminAttempt"><b>'+badge+' '+escapeHtml(financeIssueLabel(x.code))+'</b><small>'+escapeHtml(String(x.order_id||x.charge_id||"—"))+' • ⭐ '+Number(x.stars||0)+'</small></div>';
+  }).join(""):'<div class="empty">'+(currentLang==="en"?"No inconsistencies found ✅":"Розбіжностей не знайдено ✅")+'</div>';
+  const scope=scan.telegram_history_complete
+    ? (currentLang==="en"?"Telegram history scanned completely":"Історію Telegram проскановано повністю")
+    : (currentLang==="en"?"Scan limited to the latest ":"Scan обмежений останніми ")+Number(scan.telegram_scan_limit||0);
+  const repairBtn=Number(s.repairable_count||0)>0
+    ? '<button id="financeRepairBtn" class="choice">'+(currentLang==="en"?"Repair confirmed refunds":"Виправити підтверджені refund-и")+' ('+Number(s.repairable_count||0)+')</button>'
+    :"";
+  root.innerHTML='<div><b>'+(currentLang==="en"?"Deep reconciliation":"Глибока звірка")+'</b>'+
+    '<span>'+scope+' • '+Number(scan.telegram_transactions_fetched||0)+' tx</span>'+
+    '<span>'+(currentLang==="en"?"Checked":"Перевірено")+': '+Number(s.checked_orders||0)+' • '+
+    (currentLang==="en"?"Critical":"Критичних")+': '+Number(s.critical_count||0)+' • '+
+    (currentLang==="en"?"High":"Важливих")+': '+Number(s.high_count||0)+'</span></div>'+
+    '<div>'+repairBtn+'</div><div class="adminAttemptList">'+issueHtml+'</div>';
+  const repair=$("financeRepairBtn");
+  if(repair)repair.onclick=async()=>{
+    const ok=await confirmAction(currentLang==="en"
+      ?"Repair only refunds that Telegram already confirms as completed?"
+      :"Виправити лише ті refund-и, які Telegram уже підтверджує як виконані?");
+    if(!ok)return;
+    repair.disabled=true;
+    repair.textContent=currentLang==="en"?"Repairing…":"Виправляємо…";
+    const fixed=await secureApi("admin_finance_reconcile",{repair_refunds:true,confirmation:"RECONCILE_REFUNDS"});
+    renderFinanceDeepReconciliation(fixed);
+    if(fixed?.repaired_order_ids?.length){
+      tg?.HapticFeedback?.notificationOccurred("success");
+      await openAdminFinance();
+    }
+  };
+}
+
+async function runFinanceDeepReconciliation(){
+  const root=$("financeDeepRecon");
+  if(root)root.innerHTML='<b>'+(currentLang==="en"?"Deep reconciliation":"Глибока звірка")+'</b><span>'+(currentLang==="en"?"Checking Telegram…":"Перевіряємо Telegram…")+'</span>';
+  const r=await secureApi("admin_finance_reconcile");
+  renderFinanceDeepReconciliation(r);
 }
 
 async function getFinanceCsv(){
@@ -1688,6 +1780,7 @@ async function openAdminFinance(){
     '<div class="adminBalance"><small>'+uiText("Баланс бота")+'</small><strong>⭐ '+Number(bal.amount||0)+'</strong><span>'+uiText("Джерело істини для поточного балансу — Telegram.")+'</span></div>'+
     '<div class="adminMetrics">'+adminMetricCard("24 години",sales.today)+adminMetricCard("7 днів",sales.days_7)+adminMetricCard("30 днів",sales.days_30)+adminMetricCard("Весь час",sales.all_time)+'</div>'+
     '<div class="adminRecon"><b>'+uiText("Звірка Telegram ↔ VYBE")+'</b><span>'+uiText("Збігів")+': '+Number(rec.matched_orders||0)+' '+uiText("з")+' '+Number(rec.checked_orders||0)+'</span></div>'+
+    (r.admin_role==="owner"?'<div id="financeDeepRecon" class="adminRecon"><div><b>'+(currentLang==="en"?"Deep reconciliation":"Глибока звірка")+'</b><span>'+(currentLang==="en"?"Owner-only scan up to 1000 Telegram transactions":"Owner-only scan до 1000 Telegram transactions")+'</span></div><button id="financeReconcileBtn" class="choice">'+(currentLang==="en"?"Deep check":"Глибока перевірка")+'</button></div>':"")+
     '<h3>'+uiText("Продажі за продуктами")+'</h3><div class="adminProducts">'+productHtml+'</div>'+
     '<h3>'+uiText("Статуси замовлень")+'</h3><div class="adminStatusGrid"><div><b>'+Number(status.paid||0)+'</b><span>'+uiText("Успішних")+'</span></div><div><b>'+Number(status.refunded||0)+'</b><span>'+uiText("Повернення")+'</span></div><div><b>'+Number(status.pending||0)+'</b><span>'+uiText("Відкритих")+'</span></div><div><b>'+Number(status.failed||0)+'</b><span>'+uiText("Помилок")+'</span></div><div><b>'+Number(status.expired||0)+'</b><span>'+uiText("Прострочених")+'</span></div><div><b>'+Number(status.cancelled||0)+'</b><span>'+uiText("Скасованих")+'</span></div></div>'+
     '<div class="adminWithdraw"><div><b>'+uiText("Виведення Stars")+'</b><span>'+uiText("Виведення виконується власником через Telegram / Fragment. VYBE не зберігає 2FA і не запускає виведення від імені бота.")+'</span></div><button id="withdrawHelpBtn" class="choice">'+uiText("Як вивести")+'</button></div>'+
@@ -1698,6 +1791,7 @@ async function openAdminFinance(){
     '<h3>'+uiText("Останні транзакції Telegram")+'</h3><div class="adminTransactions">'+txHtml+'</div>';
 
   $("adminRefreshBtn").onclick=openAdminFinance;
+  const financeReconcileBtn=$("financeReconcileBtn");if(financeReconcileBtn)financeReconcileBtn.onclick=runFinanceDeepReconciliation;
   const withdrawHelp=$("withdrawHelpBtn");if(withdrawHelp)withdrawHelp.onclick=()=>{const url="https://core.telegram.org/api/stars#withdrawal";if(tg?.openLink)tg.openLink(url);else window.open(url,"_blank","noopener,noreferrer")};
   const downloadCsv=$("downloadCsvBtn");if(downloadCsv)downloadCsv.onclick=downloadFinanceCsv;
   const copyCsv=$("copyCsvBtn");if(copyCsv)copyCsv.onclick=copyFinanceCsv;
