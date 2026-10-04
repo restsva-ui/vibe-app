@@ -116,3 +116,5 @@ The Mini App frontend currently uses the lightweight `index.html` / `app.js` / `
 - VYBE 0.9.41 adds owner-only deep finance reconciliation against up to 1000 Telegram Star transactions, checking payment/refund direction, amount, invoice payload, Telegram user, local grants, stuck refunding states, and orphan Telegram transactions. Confirmed Telegram refunds can be safely reconciled back into local state only after explicit owner confirmation.
 
 - VYBE 0.9.45 hardens account deletion: social data/support/notifications/unpaid orders are removed transactionally; completed Stars orders are detached from the deleted user and retained only for refund/finance integrity; profile photos are deleted only after the database transaction succeeds, with retries; admin/owner self-deletion is blocked until the admin role is removed.
+
+- Profile-photo uploads are now server-hardened: only normalized 900x900 WebP/JPEG payloads are accepted, EXIF/XMP/animated WebP payloads are rejected, upload rollback removes orphan files on DB failure, and successful replace/remove/account-delete flows clean the whole per-user Storage folder while keeping only the active photo.
