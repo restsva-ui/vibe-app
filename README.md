@@ -2,7 +2,7 @@
 
 VYBE is an 18+ Telegram Mini App for social discovery, dating, friendship and virtual communication. The core UX is based on a user's current intent ("vybe") rather than endless generic swiping.
 
-## Current beta — 0.9.31
+## Current beta — 0.9.32
 
 Implemented and wired to production Supabase:
 
@@ -13,6 +13,7 @@ Implemented and wired to production Supabase:
 - live Discovery cards show intent expiry, online state, verification and Spotlight prominence
 - brand-safe localization keeps `VYBE` unchanged inside VYBE NOW and version labels
 - Discovery has an actionable empty state with filter reset/refresh and avoids duplicate VYBE NOW calls to action
+- reopening the app restores the active VYBE NOW mood filter and shows `Change` instead of `Set` while active
 - likes, SuperVYBE, mutual matches and realtime chat
 - unread chat counters and read state
 - block/report flows enforced server-side
