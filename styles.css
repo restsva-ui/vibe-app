@@ -309,3 +309,25 @@
 .notificationText span{margin-top:3px;color:#d4d4df;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .notificationText small{margin-top:4px;color:var(--muted);font-size:10px}
 .notificationChevron{color:#bbb3cc;font-size:22px;padding-left:2px}
+
+
+/* VYBE 0.9.28 — live discovery */
+.discoveryBadges{position:absolute;z-index:3;top:16px;left:16px;right:64px;display:flex;gap:7px;flex-wrap:wrap}
+.discoveryBadge{display:inline-flex;align-items:center;min-height:30px;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(12,12,18,.62);backdrop-filter:blur(12px);font-size:11px;font-weight:850;letter-spacing:.02em}
+.onlineBadge{color:#7cf0b7;border-color:rgba(94,230,168,.28);background:rgba(16,52,39,.58)}
+.spotlightBadge{color:#f2dcff;border-color:rgba(202,158,255,.42);background:linear-gradient(135deg,rgba(139,92,246,.72),rgba(255,63,129,.55));box-shadow:0 8px 26px rgba(139,92,246,.28)}
+.spotlightCard{box-shadow:0 20px 60px rgba(139,92,246,.26),0 0 0 1px rgba(202,158,255,.24)}
+.vibeNowLive{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:9px 0 10px;padding:9px 11px;border:1px solid rgba(255,255,255,.16);border-radius:14px;background:rgba(15,15,24,.58);backdrop-filter:blur(10px)}
+.vibeNowLive span{min-width:0;font-size:13px;font-weight:750}
+.vibeNowLive span b{margin-right:5px;color:#d7b8ff;font-size:10px;letter-spacing:.08em}
+.vibeNowLive small{flex:0 0 auto;color:#f3d8ff;font-size:10px;font-weight:750}
+.profileFacts{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+.profileFacts span{padding:6px 9px;border-radius:999px;background:rgba(255,255,255,.09);font-size:11px;color:#e1e1ea}
+.profileFacts .verifiedFact{color:#bfe0ff;background:rgba(98,169,255,.12)}
+.actions{align-items:flex-start;padding-top:16px;padding-bottom:22px}
+.actionGroup{display:grid;justify-items:center;gap:6px;min-width:72px}
+.actionGroup small{color:var(--muted);font-size:10px;font-weight:750}
+.actionGroup.superGroup small{color:#d7b8ff}
+.action.super{width:64px;height:64px;background:linear-gradient(135deg,#7045d8,#bb55ee);border:1px solid rgba(231,200,255,.55);color:#fff;box-shadow:0 10px 30px rgba(139,92,246,.26)}
+.action.like{box-shadow:0 10px 30px rgba(255,63,129,.20)}
+@media (max-width:390px){.vibeNowLive{align-items:flex-start;flex-direction:column;gap:5px}.actionGroup{min-width:66px}}
