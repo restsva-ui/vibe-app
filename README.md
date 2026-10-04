@@ -103,3 +103,5 @@ The Mini App frontend currently uses the lightweight `index.html` / `app.js` / `
 - Like and SuperVYBE writes now use one atomic like/match RPC with pair locking, idempotent match creation, idempotent SuperVYBE charging, and server-side prevention of the old `like(kind=super)` bypass.
 
 - Notification pipeline uses backend-only RPCs for unread/list/mark-seen, FK-covering indexes for actor/match cleanup, and an atomic Telegram notification delivery claim so concurrent messages cannot bypass the per-chat cooldown.
+
+- The notification pipeline now has a dedicated partial index for per-chat unread `mark_seen`, while delivery dedup/cooldown remain atomic and the remaining unindexed foreign keys are covered.
