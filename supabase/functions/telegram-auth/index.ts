@@ -697,6 +697,217 @@ async function fetchTelegramStarTransactions(botToken: string, maxTransactions =
   };
 }
 
+function buildFinanceReconciliation(
+  orders: any[],
+  telegramScan: { transactions: any[]; complete: boolean; fetched: number; max_transactions: number },
+  paidRewards: any[],
+) {
+  const txById = new Map<string, any[]>();
+  for (const tx of telegramScan.transactions || []) {
+    const id = String(tx?.id || "");
+    if (!id) continue;
+    const list = txById.get(id) ?? [];
+    list.push(tx);
+    txById.set(id, list);
+  }
+
+  const rewardsByOrder = new Map<string, any[]>();
+  for (const reward of paidRewards || []) {
+    const key = String(reward?.source_order_id || "");
+    if (!key) continue;
+    const list = rewardsByOrder.get(key) ?? [];
+    list.push(reward);
+    rewardsByOrder.set(key, list);
+  }
+
+  const chargeOrders = (orders || []).filter((o: any) =>
+    !!o?.telegram_payment_charge_id &&
+    ["paid","refunding","refunded"].includes(String(o?.status || ""))
+  );
+  const localByCharge = new Map(
+    chargeOrders.map((o: any) => [String(o.telegram_payment_charge_id), o]),
+  );
+
+  const issues: any[] = [];
+  const repairableOrders: any[] = [];
+  let matched = 0;
+
+  const addIssue = (order: any, code: string, severity: string, details: Record<string, unknown> = {}, repairable = false) => {
+    issues.push({
+      code,
+      severity,
+      repairable,
+      order_id: order?.id ?? null,
+      product_key: order?.product_key ?? null,
+      status: order?.status ?? null,
+      stars: Number(order?.total_amount || 0),
+      charge_id: order?.telegram_payment_charge_id ?? null,
+      ...details,
+    });
+  };
+
+  for (const order of chargeOrders) {
+    const chargeId = String(order.telegram_payment_charge_id);
+    const txs = txById.get(chargeId) ?? [];
+    const incoming = txs.find((tx: any) => tx.direction === "incoming") ?? null;
+    const outgoing = txs.find((tx: any) => tx.direction === "outgoing") ?? null;
+    const amount = Number(order.total_amount || 0);
+    let orderClean = true;
+
+    if (!incoming) {
+      addIssue(
+        order,
+        telegramScan.complete ? "telegram_incoming_missing" : "telegram_incoming_not_in_scan",
+        telegramScan.complete ? "high" : "info",
+        { scan_complete: telegramScan.complete },
+      );
+      orderClean = false;
+    } else {
+      if (Number(incoming.amount || 0) !== amount) {
+        addIssue(order, "amount_mismatch", "critical", {
+          telegram_amount: Number(incoming.amount || 0),
+          local_amount: amount,
+        });
+        orderClean = false;
+      }
+      if (incoming.invoice_payload && String(incoming.invoice_payload) !== String(order.invoice_payload || "")) {
+        addIssue(order, "invoice_payload_mismatch", "critical", {
+          telegram_payload: incoming.invoice_payload,
+          local_payload: order.invoice_payload ?? null,
+        });
+        orderClean = false;
+      }
+      if (incoming.partner_user_id && Number(incoming.partner_user_id) !== Number(order.telegram_id)) {
+        addIssue(order, "telegram_user_mismatch", "critical", {
+          telegram_user_id: Number(incoming.partner_user_id),
+          local_telegram_id: Number(order.telegram_id),
+        });
+        orderClean = false;
+      }
+    }
+
+    if (order.status === "paid") {
+      if (outgoing) {
+        const refundAmountMatches = Number(outgoing.amount || 0) === amount;
+        if (refundAmountMatches) {
+          addIssue(order, "telegram_refunded_local_paid", "critical", {}, true);
+          repairableOrders.push(order);
+        } else {
+          addIssue(order, "refund_amount_mismatch", "critical", {
+            telegram_amount: Number(outgoing.amount || 0),
+            local_amount: amount,
+          });
+        }
+        orderClean = false;
+      }
+      if (["supervybe","spotlight"].includes(String(order.grant_type || "")) && !(rewardsByOrder.get(String(order.id))?.length)) {
+        addIssue(order, "paid_grant_missing", "critical");
+        orderClean = false;
+      }
+    }
+
+    if (order.status === "refunding") {
+      if (outgoing && Number(outgoing.amount || 0) === amount) {
+        addIssue(order, "telegram_refunded_local_refunding", "high", {}, true);
+        repairableOrders.push(order);
+      } else {
+        const requestedAt = order.refund_requested_at ? new Date(order.refund_requested_at).getTime() : 0;
+        const stuck = requestedAt > 0 && Date.now() - requestedAt > 10 * 60 * 1000;
+        addIssue(order, stuck ? "refund_stuck" : "refund_in_progress", stuck ? "high" : "info", {
+          refund_requested_at: order.refund_requested_at ?? null,
+        });
+      }
+      orderClean = false;
+    }
+
+    if (order.status === "refunded") {
+      if (!outgoing) {
+        addIssue(
+          order,
+          telegramScan.complete ? "telegram_refund_missing" : "telegram_refund_not_in_scan",
+          telegramScan.complete ? "high" : "info",
+          { scan_complete: telegramScan.complete },
+        );
+        orderClean = false;
+      } else if (Number(outgoing.amount || 0) !== amount) {
+        addIssue(order, "refund_amount_mismatch", "critical", {
+          telegram_amount: Number(outgoing.amount || 0),
+          local_amount: amount,
+        });
+        orderClean = false;
+      }
+      if (rewardsByOrder.get(String(order.id))?.length) {
+        addIssue(order, "refunded_grant_still_present", "critical");
+        orderClean = false;
+      }
+    }
+
+    if (orderClean) matched += 1;
+  }
+
+  for (const tx of telegramScan.transactions || []) {
+    if (tx.direction !== "incoming") continue;
+    if (tx.partner_type !== "user" || tx.transaction_type !== "invoice_payment") continue;
+    if (!String(tx.invoice_payload || "").startsWith("vybe_star:")) continue;
+    if (localByCharge.has(String(tx.id))) continue;
+    issues.push({
+      code: "telegram_payment_without_local_order",
+      severity: "critical",
+      repairable: false,
+      order_id: null,
+      product_key: null,
+      status: null,
+      stars: Number(tx.amount || 0),
+      charge_id: String(tx.id || ""),
+      invoice_payload: tx.invoice_payload ?? null,
+      telegram_user_id: tx.partner_user_id ?? null,
+    });
+  }
+
+  for (const tx of telegramScan.transactions || []) {
+    if (tx.direction !== "outgoing") continue;
+    if (tx.partner_type !== "user") continue;
+    if (localByCharge.has(String(tx.id))) continue;
+    issues.push({
+      code: "telegram_refund_without_local_order",
+      severity: "critical",
+      repairable: false,
+      order_id: null,
+      product_key: null,
+      status: null,
+      stars: Number(tx.amount || 0),
+      charge_id: String(tx.id || ""),
+      telegram_user_id: tx.partner_user_id ?? null,
+    });
+  }
+
+  const severityRank: Record<string, number> = { critical: 0, high: 1, info: 2 };
+  issues.sort((a: any, c: any) =>
+    (severityRank[a.severity] ?? 9) - (severityRank[c.severity] ?? 9) ||
+    String(a.order_id || a.charge_id || "").localeCompare(String(c.order_id || c.charge_id || ""))
+  );
+
+  return {
+    scan: {
+      telegram_transactions_fetched: Number(telegramScan.fetched || 0),
+      telegram_history_complete: telegramScan.complete === true,
+      telegram_scan_limit: Number(telegramScan.max_transactions || 0),
+      local_charge_orders: chargeOrders.length,
+    },
+    summary: {
+      checked_orders: chargeOrders.length,
+      clean_orders: matched,
+      issue_count: issues.length,
+      critical_count: issues.filter((x: any) => x.severity === "critical").length,
+      high_count: issues.filter((x: any) => x.severity === "high").length,
+      info_count: issues.filter((x: any) => x.severity === "info").length,
+      repairable_count: [...new Set(repairableOrders.map((x: any) => String(x.id)))].length,
+    },
+    issues,
+    repairable_orders: [...new Map(repairableOrders.map((x: any) => [String(x.id), x])).values()],
+  };
+}
+
 const PROFILE_BUCKET = "profile-photos";
 const PROFILE_MAX_BYTES = 2 * 1024 * 1024;
 
