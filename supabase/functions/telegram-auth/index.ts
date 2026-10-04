@@ -993,11 +993,11 @@ async function uploadProfilePhoto(userId: string, bytes: Uint8Array, mime: strin
   return { objectPath, publicUrl };
 }
 
-async function deleteProfilePhotoByUrl(photoUrl: string | null | undefined) {
-  if (!photoUrl) return;
+async function deleteProfilePhotoByUrl(photoUrl: string | null | undefined): Promise<boolean> {
+  if (!photoUrl) return true;
   const marker = `/storage/v1/object/public/${PROFILE_BUCKET}/`;
   const idx = photoUrl.indexOf(marker);
-  if (idx < 0) return;
+  if (idx < 0) return true;
   const encoded = photoUrl.slice(idx + marker.length);
   let objectPath = encoded;
   try {
@@ -1009,7 +1009,18 @@ async function deleteProfilePhotoByUrl(photoUrl: string | null | undefined) {
   );
   if (!response.ok && response.status !== 404) {
     console.warn("profile_photo:delete_failed", { status: response.status });
+    return false;
   }
+  return true;
+}
+
+async function deleteProfilePhotoWithRetry(photoUrl: string | null | undefined) {
+  if (!photoUrl) return true;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    if (await deleteProfilePhotoByUrl(photoUrl)) return true;
+    if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 180 * attempt));
+  }
+  return false;
 }
 
 async function getBlockedUserIds(db: ReturnType<typeof dbClient>, userId: string): Promise<Set<string>> {
@@ -2646,15 +2657,30 @@ Deno.serve(async (req: Request) => {
         return json({ ok: false, error: "Confirmation required" }, 400);
       }
 
-      const profile = await getProfile(db, user.id);
       try {
-        await deleteProfilePhotoByUrl(profile?.photo_url);
+        const result = await rpc("vybe_delete_account", { p_user_id: user.id });
+        const photoCleanupOk = await deleteProfilePhotoWithRetry(result?.photo_url ?? null);
+        if (!photoCleanupOk) {
+          console.error("account_delete:photo_cleanup_pending", { user_id: user.id });
+        }
+        return json({
+          ok: true,
+          deleted: result?.deleted === true,
+          already_deleted: result?.already_deleted === true,
+          financial_orders_retained: Number(result?.financial_orders_retained || 0),
+          photo_cleanup_ok: photoCleanupOk,
+        });
       } catch (e) {
-        console.warn("account_delete:photo_cleanup_failed", { user_id: user.id });
+        const message = String(e instanceof Error ? e.message : e);
+        if (message.includes("ADMIN_ACCOUNT_DELETE_BLOCKED") || message.includes("ADMIN_AUDIT_RETENTION")) {
+          return json({ ok: false, error: "ADMIN_ACCOUNT_DELETE_BLOCKED" }, 409);
+        }
+        console.error("account_delete:failed", {
+          user_id: user.id,
+          error: message.slice(0, 180),
+        });
+        return json({ ok: false, error: "Account deletion failed" }, 500);
       }
-
-      await db(`users?id=eq.${encodeURIComponent(user.id)}`, { method: "DELETE" });
-      return json({ ok: true, deleted: true });
     }
 
     if (action === "blocks_list") {
