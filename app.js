@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.32",
+      app_version:"0.9.33",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -1277,7 +1277,18 @@ async function openChat(matchId,name,userId,options={}){
   }
 
   const current=matches.find(x=>String(x.match_id)===key);
-  if(current){current.unread_count=0;renderChats()}
+  if(current){
+    current.unread_count=0;
+    renderChats();
+    updateUnreadBadge(matches.reduce((sum,m)=>sum+Number(m.unread_count||0),0));
+  }
+  secureApi("notifications_mark_seen",{match_id:key}).then(seen=>{
+    const marked=Number(seen?.marked||0);
+    if(seen?.ok&&marked>0){
+      notificationUnread=Math.max(0,Number(notificationUnread||0)-marked);
+      renderNotificationBadge();
+    }
+  }).catch(()=>{});
   if(!options.noMatchRefresh)loadMatches();
 
   $("sendMessage").onclick=async()=>{
