@@ -2,7 +2,7 @@
 
 VYBE is an 18+ Telegram Mini App for social discovery, dating, friendship and virtual communication. The core UX is based on a user's current intent ("vybe") rather than endless generic swiping.
 
-## Current beta — 0.9.37
+## Current beta — 0.9.40
 
 Implemented and wired to production Supabase:
 
@@ -97,3 +97,5 @@ The Mini App frontend currently uses the lightweight `index.html` / `app.js` / `
 - Telegram message notification is no longer suppressed by a coarse 90-second last-seen rule; the per-chat 3-minute delivery cooldown remains to prevent notification spam.
 
 - The `matches` endpoint now uses a single backend-only RPC for match/profile/online/unread/latest-message data instead of per-match N+1 queries.
+
+- Discovery is now DB-side and keyset-paginated: 20 cards per page with a 3-card prefetch buffer, exact filters/ranking/exclusions in one backend-only RPC, and no arbitrary first-100-profile cap.
