@@ -1420,6 +1420,9 @@ Deno.serve(async (req: Request) => {
         p_limit: 100,
       }) ?? [];
 
+      const notificationPhotoUrls = await signProfilePhotoUrls(
+        (rows ?? []).map((x: any) => x?.actor?.photo_url ?? null),
+      );
       const notifications = (rows ?? []).map((x: any) => ({
         id: x.id,
         event_type: x.event_type,
@@ -1432,7 +1435,9 @@ Deno.serve(async (req: Request) => {
           ? {
               user_id: x.actor.user_id,
               name: x.actor.name || "VYBE",
-              photo_url: x.actor.photo_url ?? null,
+              photo_url: x.actor.photo_url
+                ? (notificationPhotoUrls.get(String(x.actor.photo_url)) ?? null)
+                : null,
               verified: x.actor.verified === true,
             }
           : null,
@@ -1837,8 +1842,10 @@ Deno.serve(async (req: Request) => {
           ? db(`profiles?user_id=in.(${userIds.map((x) => encodeURIComponent(x)).join(",")})&select=user_id,name,age,city,photo_url,verified`) ?? []
           : [],
       ]);
+      const moderationPhotos = await signProfilePhotoUrls((profiles ?? []).map((x: any) => x.photo_url ?? null));
+      const signedProfiles = (profiles ?? []).map((p: any) => withSignedProfilePhoto(p, moderationPhotos));
       const userById = new Map((users ?? []).map((x: any) => [String(x.id), x]));
-      const profileById = new Map((profiles ?? []).map((x: any) => [String(x.user_id), x]));
+      const profileById = new Map((signedProfiles ?? []).map((x: any) => [String(x.user_id), x]));
       const decorate = (id: string) => {
         const u = userById.get(id) ?? {};
         const p = profileById.get(id) ?? {};
@@ -2868,7 +2875,9 @@ Deno.serve(async (req: Request) => {
         db(`profiles?user_id=in.(${senderIds.map((x) => encodeURIComponent(x)).join(",")})&select=user_id,name,age,city,bio,photo_url,verified`) ?? [],
         db(`users?id=in.(${senderIds.map((x) => encodeURIComponent(x)).join(",")})&select=id,last_seen,account_status`) ?? [],
       ]);
-      const profileById = new Map(profiles.map((p: any) => [String(p.user_id), p]));
+      const likesPhotos = await signProfilePhotoUrls((profiles ?? []).map((p: any) => p.photo_url ?? null));
+      const signedLikeProfiles = (profiles ?? []).map((p: any) => withSignedProfilePhoto(p, likesPhotos));
+      const profileById = new Map(signedLikeProfiles.map((p: any) => [String(p.user_id), p]));
       const statusById = new Map(statuses.map((x: any) => [String(x.id), x]));
       const activeSenderIds = senderIds.filter((id) => statusById.get(id)?.account_status !== "restricted");
       const latestLikeByUser = new Map<string, any>();
@@ -3096,11 +3105,13 @@ Deno.serve(async (req: Request) => {
         return json({ ok: false, error: "User unavailable" }, 404);
       }
       const lastSeen = target.last_seen ? new Date(target.last_seen).getTime() : 0;
+      const publicPhotos = await signProfilePhotoUrls([profile.photo_url ?? null]);
+      const signedProfile = withSignedProfilePhoto(profile, publicPhotos);
       return json({
         ok: true,
         user_id: targetId,
         profile: {
-          ...profile,
+          ...signedProfile,
           online: !!lastSeen && lastSeen >= Date.now() - 3 * 60 * 1000,
           intent: intentRows?.[0]?.intent ?? null,
           intent_expires_at: intentRows?.[0]?.expires_at ?? null,
@@ -3248,13 +3259,14 @@ Deno.serve(async (req: Request) => {
         user_id: last.rank_user_id,
       } : null;
 
+      const discoveryPhotos = await signProfilePhotoUrls(pageRows.map((row: any) => row.photo_url ?? null));
       const people = pageRows.map((row: any) => ({
         user_id: row.user_id,
         name: row.name,
         age: row.age,
         city: row.city,
         bio: row.bio,
-        photo_url: row.photo_url ?? null,
+        photo_url: row.photo_url ? (discoveryPhotos.get(String(row.photo_url)) ?? null) : null,
         verified: row.verified === true,
         online: row.online === true,
         intent: row.intent,
@@ -3391,10 +3403,24 @@ Deno.serve(async (req: Request) => {
 
     if (action === "matches") {
       const enriched = await rpc("vybe_matches_for_user", { p_user_id: user.id }) ?? [];
+      const matchPhotos = await signProfilePhotoUrls(
+        (enriched ?? []).map((m: any) => m?.profile?.photo_url ?? null),
+      );
+      const signedMatches = (enriched ?? []).map((m: any) => ({
+        ...m,
+        profile: m?.profile
+          ? {
+              ...m.profile,
+              photo_url: m.profile.photo_url
+                ? (matchPhotos.get(String(m.profile.photo_url)) ?? null)
+                : null,
+            }
+          : m?.profile ?? null,
+      }));
       return json({
         ok: true,
-        matches: enriched,
-        unread_total: enriched.reduce((n: number, m: any) => n + Number(m.unread_count || 0), 0),
+        matches: signedMatches,
+        unread_total: signedMatches.reduce((n: number, m: any) => n + Number(m.unread_count || 0), 0),
       });
     }
 
