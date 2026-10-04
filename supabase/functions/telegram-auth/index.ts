@@ -2653,45 +2653,12 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "matches") {
-      const allRows = await db(`matches?or=(user_a_id.eq.${encodeURIComponent(user.id)},user_b_id.eq.${encodeURIComponent(user.id)})&select=id,user_a_id,user_b_id,realtime_topic,created_at&order=created_at.desc&limit=100`) ?? [];
-      const blockedIds = await getBlockedUserIds(db, user.id);
-      const rows = allRows.filter((m: any) => {
-        const otherId = String(m.user_a_id) === String(user.id) ? String(m.user_b_id) : String(m.user_a_id);
-        return !blockedIds.has(otherId);
+      const enriched = await rpc("vybe_matches_for_user", { p_user_id: user.id }) ?? [];
+      return json({
+        ok: true,
+        matches: enriched,
+        unread_total: enriched.reduce((n: number, m: any) => n + Number(m.unread_count || 0), 0),
       });
-      const otherIds = [...new Set(rows.map((m: any) => String(m.user_a_id) === String(user.id) ? String(m.user_b_id) : String(m.user_a_id)))];
-      let profiles: any[] = [];
-      if (otherIds.length) profiles = await db(`profiles?user_id=in.(${otherIds.map((x) => encodeURIComponent(x)).join(",")})&select=user_id,name,age,city,bio,photo_url,verified`) ?? [];
-      const statuses = otherIds.length
-        ? await db(`users?id=in.(${otherIds.map((x) => encodeURIComponent(x)).join(",")})&select=id,last_seen,account_status`) ?? []
-        : [];
-      const statusById = new Map(statuses.map((x: any) => [String(x.id), x]));
-      const byId = new Map(profiles.map((p: any) => [String(p.user_id), p]));
-      const activeRows = rows.filter((m: any) => {
-        const otherId = String(m.user_a_id) === String(user.id) ? String(m.user_b_id) : String(m.user_a_id);
-        return statusById.get(otherId)?.account_status !== "restricted";
-      });
-      const enriched = await Promise.all(activeRows.map(async (m: any) => {
-        const otherId = String(m.user_a_id) === String(user.id) ? String(m.user_b_id) : String(m.user_a_id);
-        const reads = await db(`match_reads?user_id=eq.${encodeURIComponent(user.id)}&match_id=eq.${encodeURIComponent(m.id)}&select=last_read_at&limit=1`) ?? [];
-        const lastRead = reads?.[0]?.last_read_at ?? "1970-01-01T00:00:00.000Z";
-        const unread = await db(`messages?match_id=eq.${encodeURIComponent(m.id)}&sender_id=neq.${encodeURIComponent(user.id)}&created_at=gt.${encodeURIComponent(lastRead)}&select=id`) ?? [];
-        const latest = await db(`messages?match_id=eq.${encodeURIComponent(m.id)}&select=body,created_at&order=created_at.desc&limit=1`) ?? [];
-        return {
-          match_id: m.id,
-          realtime_topic: m.realtime_topic,
-          created_at: m.created_at,
-          user_id: otherId,
-          profile: {
-            ...(byId.get(otherId) ?? {}),
-            online: !!statusById.get(otherId)?.last_seen && new Date(statusById.get(otherId).last_seen).getTime() >= Date.now() - 3 * 60 * 1000,
-          },
-          unread_count: unread.length,
-          last_message: latest?.[0]?.body ?? "",
-          last_message_at: latest?.[0]?.created_at ?? null,
-        };
-      }));
-      return json({ ok:true, matches:enriched, unread_total:enriched.reduce((n:any,m:any)=>n+Number(m.unread_count||0),0) });
     }
 
     if (action === "messages_list") {
