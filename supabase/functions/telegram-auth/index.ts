@@ -375,28 +375,23 @@ async function sendSocialNotification(
     const recipient = recipientRows?.[0];
     if (!recipient || recipient.account_status === "restricted") return false;
 
-    const recorded = await recordNotificationEvent(db,input);
-    if (!recorded.created) return false;
+    await recordNotificationEvent(db,input);
 
     const prefs = await getNotificationPreferences(db, input.recipientUserId);
     if (input.eventType === "like" && prefs.likes_enabled !== true) return false;
     if (input.eventType === "match" && prefs.matches_enabled !== true) return false;
     if (input.eventType === "message" && prefs.messages_enabled !== true) return false;
 
-    if (input.sourceKey) {
-      const duplicate = await db(
-        `notification_deliveries?source_key=eq.${encodeURIComponent(input.sourceKey)}&select=id&limit=1`,
-      ) ?? [];
-      if (duplicate?.length) return false;
-    }
-
-    if (input.eventType === "message" && input.matchId) {
-      const cooldownFrom = new Date(Date.now() - 3 * 60 * 1000).toISOString();
-      const recent = await db(
-        `notification_deliveries?recipient_user_id=eq.${encodeURIComponent(input.recipientUserId)}&event_type=eq.message&match_id=eq.${encodeURIComponent(input.matchId)}&created_at=gte.${encodeURIComponent(cooldownFrom)}&select=id&limit=1`,
-      ) ?? [];
-      if (recent?.length) return false;
-    }
+    const claim = await rpc("vybe_claim_notification_delivery", {
+      p_recipient_user_id: input.recipientUserId,
+      p_actor_user_id: input.actorUserId ?? null,
+      p_event_type: input.eventType,
+      p_match_id: input.matchId ?? null,
+      p_source_key: input.sourceKey ?? null,
+      p_cooldown_seconds: input.eventType === "message" && input.matchId ? 180 : 0,
+    });
+    if (claim?.claimed !== true || !claim?.delivery_id) return false;
+    const deliveryId = String(claim.delivery_id);
 
     let text = "";
     let buttonText = "Open VYBE / Відкрити VYBE";
@@ -416,25 +411,36 @@ async function sendSocialNotification(
       if (input.matchId) url = `https://restsva-ui.github.io/vibe-app/?chat=${encodeURIComponent(input.matchId)}`;
     }
 
-    const sent = await telegramApi(botToken, "sendMessage", {
-      chat_id: Number(recipient.telegram_id),
-      text,
-      reply_markup: {
-        inline_keyboard: [[{ text: buttonText, web_app: { url } }]],
-      },
-    });
+    let sent: any;
+    try {
+      sent = await telegramApi(botToken, "sendMessage", {
+        chat_id: Number(recipient.telegram_id),
+        text,
+        reply_markup: {
+          inline_keyboard: [[{ text: buttonText, web_app: { url } }]],
+        },
+      });
+    } catch (e) {
+      try {
+        await db(`notification_deliveries?id=eq.${encodeURIComponent(deliveryId)}`, { method: "DELETE" });
+      } catch {}
+      throw e;
+    }
 
-    await db("notification_deliveries", {
-      method: "POST",
-      body: JSON.stringify({
-        recipient_user_id: input.recipientUserId,
-        actor_user_id: input.actorUserId ?? null,
+    try {
+      await db(
+        `notification_deliveries?id=eq.${encodeURIComponent(deliveryId)}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ telegram_message_id: Number(sent?.message_id || 0) || null }),
+        },
+      );
+    } catch (e) {
+      console.warn("social_notification:delivery_finalize_failed", {
+        delivery_id: deliveryId,
         event_type: input.eventType,
-        match_id: input.matchId ?? null,
-        source_key: input.sourceKey ?? null,
-        telegram_message_id: Number(sent?.message_id || 0) || null,
-      }),
-    });
+      });
+    }
 
     console.log("social_notification:sent", {
       event_type: input.eventType,
@@ -748,59 +754,32 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "notifications_count") {
-      const rows = await db(
-        `notification_events?recipient_user_id=eq.${encodeURIComponent(user.id)}&seen_at=is.null&select=id&limit=100`,
-      ) ?? [];
-      return json({ ok: true, unread: rows.length });
+      const unread = await rpc("vybe_notification_unread_count", { p_user_id: user.id });
+      return json({ ok: true, unread: Number(unread || 0) });
     }
 
     if (action === "notifications_list") {
-      const rows = await db(
-        `notification_events?recipient_user_id=eq.${encodeURIComponent(user.id)}&select=id,event_type,actor_user_id,match_id,payload,created_at,seen_at&order=created_at.desc&limit=100`,
-      ) ?? [];
-      const actorIds = [...new Set((rows ?? [])
-        .filter((x: any) => x.event_type !== "like" && x.actor_user_id)
-        .map((x: any) => String(x.actor_user_id)))];
-
-      const [profiles,currentMatches] = await Promise.all([
-        actorIds.length
-          ? db(
-              `profiles?user_id=in.(${actorIds.map((x) => encodeURIComponent(x)).join(",")})&select=user_id,name,photo_url,verified`,
-            ) ?? []
-          : Promise.resolve([]),
-        db(
-          `matches?or=(user_a_id.eq.${encodeURIComponent(user.id)},user_b_id.eq.${encodeURIComponent(user.id)})&select=id,user_a_id,user_b_id&limit=500`,
-        ) ?? [],
-      ]);
-      const profileById = new Map((profiles ?? []).map((p: any) => [String(p.user_id), p]));
-      const matchByOtherId = new Map((currentMatches ?? []).map((m: any) => [
-        String(m.user_a_id) === String(user.id) ? String(m.user_b_id) : String(m.user_a_id),
-        String(m.id),
-      ]));
+      const rows = await rpc("vybe_notifications_for_user", {
+        p_user_id: user.id,
+        p_limit: 100,
+      }) ?? [];
 
       const notifications = (rows ?? []).map((x: any) => ({
         id: x.id,
         event_type: x.event_type,
-        match_id: x.match_id ?? (
-          x.event_type === "like" && x.actor_user_id
-            ? matchByOtherId.get(String(x.actor_user_id)) ?? null
-            : null
-        ),
+        match_id: x.match_id ?? null,
         payload: x.payload ?? {},
         created_at: x.created_at,
         seen_at: x.seen_at ?? null,
         unread: !x.seen_at,
-        actor: x.event_type === "like" || !x.actor_user_id
-          ? null
-          : (() => {
-              const p = profileById.get(String(x.actor_user_id));
-              return p ? {
-                user_id: p.user_id,
-                name: p.name || "VYBE",
-                photo_url: p.photo_url ?? null,
-                verified: p.verified === true,
-              } : null;
-            })(),
+        actor: x.actor
+          ? {
+              user_id: x.actor.user_id,
+              name: x.actor.name || "VYBE",
+              photo_url: x.actor.photo_url ?? null,
+              verified: x.actor.verified === true,
+            }
+          : null,
       }));
 
       return json({
@@ -811,14 +790,21 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "notifications_mark_seen") {
-      const now = new Date().toISOString();
-      const matchId = clean(body.match_id, 80);
-      const matchFilter = matchId ? `&match_id=eq.${encodeURIComponent(matchId)}` : "";
-      const rows = await db(
-        `notification_events?recipient_user_id=eq.${encodeURIComponent(user.id)}&seen_at=is.null${matchFilter}`,
-        { method: "PATCH", body: JSON.stringify({ seen_at: now }) },
-      ) ?? [];
-      return json({ ok: true, marked: rows.length, seen_at: now, match_id: matchId || null });
+      const matchIdRaw = clean(body.match_id, 80);
+      const matchId = matchIdRaw || null;
+      if (matchId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(matchId)) {
+        return json({ ok: false, error: "Invalid match id" }, 400);
+      }
+      const result = await rpc("vybe_mark_notifications_seen", {
+        p_user_id: user.id,
+        p_match_id: matchId,
+      }) ?? {};
+      return json({
+        ok: true,
+        marked: Number(result.marked || 0),
+        seen_at: result.seen_at ?? new Date().toISOString(),
+        match_id: matchId,
+      });
     }
 
     if (action === "profile_get") {
