@@ -2552,47 +2552,34 @@ Deno.serve(async (req: Request) => {
 
     if (action === "super_like") {
       const targetId = clean(body.target_user_id, 80);
-      if (!targetId || targetId === user.id) return json({ ok: false, error: "Invalid like target" }, 400);
-      if (await isRestrictedUser(db,targetId)) return json({ ok:false,error:"User unavailable" },403);
-      if (await isBlockedBetween(db, user.id, targetId)) return json({ ok: false, error: "User blocked" }, 403);
-
-      const reciprocalBefore = await db(
-        `likes?from_user_id=eq.${encodeURIComponent(targetId)}&to_user_id=eq.${encodeURIComponent(user.id)}&select=id&limit=1`,
-      ) ?? [];
-      const [pairA,pairB] = [String(user.id),String(targetId)].sort();
-      const matchBefore = reciprocalBefore.length
-        ? await db(
-            `matches?user_a_id=eq.${encodeURIComponent(pairA)}&user_b_id=eq.${encodeURIComponent(pairB)}&select=id&limit=1`,
-          ) ?? []
-        : [];
+      if (!targetId || targetId === String(user.id)) return json({ ok: false, error: "Invalid like target" }, 400);
 
       try {
-        const result = await rpc("use_supervybe_and_like", {
+        const result = await rpc("vybe_like_and_match", {
           p_user_id: user.id,
           p_target_user_id: targetId,
+          p_kind: "super",
         });
 
         const matchId = result?.match?.id ? String(result.match.id) : null;
-        if (result?.matched === true && matchId) {
-          if (!matchBefore.length) {
-            await Promise.all([
-              sendSocialNotification(db,botToken,{
-                eventType:"match",
-                recipientUserId:String(user.id),
-                actorUserId:targetId,
-                matchId,
-                sourceKey:`match:${matchId}:${user.id}`,
-              }),
-              sendSocialNotification(db,botToken,{
-                eventType:"match",
-                recipientUserId:targetId,
-                actorUserId:String(user.id),
-                matchId,
-                sourceKey:`match:${matchId}:${targetId}`,
-              }),
-            ]);
-          }
-        } else {
+        if (result?.matched === true && result?.match_created === true && matchId) {
+          await Promise.all([
+            sendSocialNotification(db,botToken,{
+              eventType:"match",
+              recipientUserId:String(user.id),
+              actorUserId:targetId,
+              matchId,
+              sourceKey:`match:${matchId}:${user.id}`,
+            }),
+            sendSocialNotification(db,botToken,{
+              eventType:"match",
+              recipientUserId:targetId,
+              actorUserId:String(user.id),
+              matchId,
+              sourceKey:`match:${matchId}:${targetId}`,
+            }),
+          ]);
+        } else if (result?.matched !== true && result?.super_charged === true) {
           await sendSocialNotification(db,botToken,{
             eventType:"like",
             recipientUserId:targetId,
@@ -2609,6 +2596,7 @@ Deno.serve(async (req: Request) => {
         if (message.includes("TARGET_NOT_FOUND")) return json({ ok: false, error: "User not found" }, 404);
         if (message.includes("INVALID_TARGET")) return json({ ok: false, error: "Invalid like target" }, 400);
         if (message.includes("USER_BLOCKED")) return json({ ok: false, error: "User blocked" }, 403);
+        if (message.includes("USER_UNAVAILABLE")) return json({ ok: false, error: "Account unavailable" }, 403);
         console.error("super_like:rpc_failed", { user_id: user.id, target_id: targetId, error: message.slice(0, 180) });
         return json({ ok: false, error: "SuperVYBE transaction failed" }, 500);
       }
@@ -2616,59 +2604,53 @@ Deno.serve(async (req: Request) => {
 
     if (action === "like") {
       const targetId = clean(body.target_user_id, 80);
-      const kind = body.kind === "super" ? "super" : "like";
-      if (!targetId || targetId === user.id) return json({ ok: false, error: "Invalid like target" }, 400);
-      const target = await db(`users?id=eq.${encodeURIComponent(targetId)}&select=id,account_status&limit=1`);
-      if (!target?.[0]) return json({ ok: false, error: "User not found" }, 404);
-      if (target[0].account_status === "restricted") return json({ ok:false,error:"User unavailable" },403);
-      if (await isBlockedBetween(db, user.id, targetId)) return json({ ok: false, error: "User blocked" }, 403);
+      if (!targetId || targetId === String(user.id)) return json({ ok: false, error: "Invalid like target" }, 400);
 
-      const existing = await db(`likes?from_user_id=eq.${encodeURIComponent(user.id)}&to_user_id=eq.${encodeURIComponent(targetId)}&select=id&limit=1`);
-      if (existing?.length) {
-        await db(`likes?id=eq.${encodeURIComponent(existing[0].id)}`, { method: "PATCH", body: JSON.stringify({ kind }) });
-      } else {
-        await db("likes", { method: "POST", body: JSON.stringify({ from_user_id: user.id, to_user_id: targetId, kind }) });
-      }
-
-      const reciprocal = await db(`likes?from_user_id=eq.${encodeURIComponent(targetId)}&to_user_id=eq.${encodeURIComponent(user.id)}&select=id&limit=1`);
-      if (!reciprocal?.length) {
-        await sendSocialNotification(db,botToken,{
-          eventType:"like",
-          recipientUserId:targetId,
-          actorUserId:String(user.id),
-          sourceKey:`${kind}_like:${user.id}:${targetId}`,
-          variant:kind === "super" ? "super" : "like",
+      try {
+        const result = await rpc("vybe_like_and_match", {
+          p_user_id: user.id,
+          p_target_user_id: targetId,
+          p_kind: "like",
         });
-        return json({ ok: true, matched: false });
-      }
 
-      const [userA, userB] = [String(user.id), String(targetId)].sort();
-      let matchRows = await db(`matches?user_a_id=eq.${encodeURIComponent(userA)}&user_b_id=eq.${encodeURIComponent(userB)}&select=id,user_a_id,user_b_id,created_at&limit=1`);
-      const matchWasNew = !matchRows?.length;
-      if (matchWasNew) {
-        matchRows = await db("matches", { method: "POST", body: JSON.stringify({ user_a_id: userA, user_b_id: userB }) });
-      }
-      const match = matchRows?.[0] ?? null;
-      if (matchWasNew && match?.id) {
-        const matchId = String(match.id);
-        await Promise.all([
-          sendSocialNotification(db,botToken,{
-            eventType:"match",
-            recipientUserId:String(user.id),
-            actorUserId:targetId,
-            matchId,
-            sourceKey:`match:${matchId}:${user.id}`,
-          }),
-          sendSocialNotification(db,botToken,{
-            eventType:"match",
+        const matchId = result?.match?.id ? String(result.match.id) : null;
+        if (result?.matched === true && result?.match_created === true && matchId) {
+          await Promise.all([
+            sendSocialNotification(db,botToken,{
+              eventType:"match",
+              recipientUserId:String(user.id),
+              actorUserId:targetId,
+              matchId,
+              sourceKey:`match:${matchId}:${user.id}`,
+            }),
+            sendSocialNotification(db,botToken,{
+              eventType:"match",
+              recipientUserId:targetId,
+              actorUserId:String(user.id),
+              matchId,
+              sourceKey:`match:${matchId}:${targetId}`,
+            }),
+          ]);
+        } else if (result?.matched !== true && result?.like_created === true) {
+          await sendSocialNotification(db,botToken,{
+            eventType:"like",
             recipientUserId:targetId,
             actorUserId:String(user.id),
-            matchId,
-            sourceKey:`match:${matchId}:${targetId}`,
-          }),
-        ]);
+            sourceKey:`like:${user.id}:${targetId}`,
+            variant:"like",
+          });
+        }
+
+        return json({ ok: true, ...(result ?? {}) });
+      } catch (e: any) {
+        const message = String(e?.message || "");
+        if (message.includes("TARGET_NOT_FOUND")) return json({ ok: false, error: "User not found" }, 404);
+        if (message.includes("INVALID_TARGET")) return json({ ok: false, error: "Invalid like target" }, 400);
+        if (message.includes("USER_BLOCKED")) return json({ ok: false, error: "User blocked" }, 403);
+        if (message.includes("USER_UNAVAILABLE")) return json({ ok: false, error: "Account unavailable" }, 403);
+        console.error("like:rpc_failed", { user_id: user.id, target_id: targetId, error: message.slice(0, 180) });
+        return json({ ok: false, error: "VYBE transaction failed" }, 500);
       }
-      return json({ ok: true, matched: true, match });
     }
 
     if (action === "matches") {
