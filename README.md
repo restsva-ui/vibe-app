@@ -119,4 +119,4 @@ The Mini App frontend currently uses the lightweight `index.html` / `app.js` / `
 
 - Profile-photo uploads are now server-hardened: only normalized 900x900 WebP/JPEG payloads are accepted, EXIF/XMP/animated WebP payloads are rejected, upload rollback removes orphan files on DB failure, and successful replace/remove/account-delete flows clean the whole per-user Storage folder while keeping only the active photo.
 
-- VYBE 0.9.46 stages private profile media: profile photos are returned through two-hour signed URLs across Profile, Discovery, Matches, Notifications, Who Liked, Public Profile, and Moderation; foreground resume refreshes signed profile URLs. The Storage bucket is migrated to private separately after the signed-URL Edge deployment is active.
+- VYBE 0.9.46 uses private profile media: the profile-photos bucket is private, database rows store only object paths, and photos are returned through two-hour signed URLs across Profile, Discovery, Matches, Notifications, Who Liked, Public Profile, and Moderation. Foreground resume refreshes signed profile URLs.
