@@ -4,10 +4,10 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-function json(data: unknown, status = 200) {
+function json(data: unknown, status = 200, extraHeaders: Record<string,string> = {}) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json; charset=utf-8" },
+    headers: { ...corsHeaders, ...extraHeaders, "Content-Type": "application/json; charset=utf-8" },
   });
 }
 
@@ -106,6 +106,78 @@ async function rpc(name: string, payload: Record<string, unknown>) {
     throw error;
   }
   return data;
+}
+
+type RateLimitPolicy = {
+  windowSeconds: number;
+  maxHits: number;
+};
+
+const ACTION_RATE_LIMITS: Record<string, RateLimitPolicy> = {
+  notification_settings_update: { windowSeconds: 60, maxHits: 30 },
+  photo_upload: { windowSeconds: 600, maxHits: 8 },
+  photo_remove: { windowSeconds: 600, maxHits: 20 },
+  save_profile: { windowSeconds: 600, maxHits: 30 },
+  referral_claim: { windowSeconds: 3600, maxHits: 10 },
+  support_create: { windowSeconds: 3600, maxHits: 6 },
+  admin_moderation_update: { windowSeconds: 60, maxHits: 60 },
+  admin_moderation_restrict: { windowSeconds: 60, maxHits: 30 },
+  admin_support_update: { windowSeconds: 60, maxHits: 60 },
+  admin_test_reset_match: { windowSeconds: 3600, maxHits: 10 },
+  admin_refund_star_order: { windowSeconds: 3600, maxHits: 20 },
+  star_invoice: { windowSeconds: 600, maxHits: 10 },
+  star_test_refund: { windowSeconds: 3600, maxHits: 5 },
+  star_order_close: { windowSeconds: 600, maxHits: 30 },
+  spotlight_use: { windowSeconds: 60, maxHits: 20 },
+  account_delete: { windowSeconds: 3600, maxHits: 5 },
+  block_user: { windowSeconds: 60, maxHits: 60 },
+  unblock_user: { windowSeconds: 60, maxHits: 60 },
+  report_user: { windowSeconds: 3600, maxHits: 20 },
+  set_intent: { windowSeconds: 600, maxHits: 30 },
+  pass: { windowSeconds: 60, maxHits: 180 },
+  super_like: { windowSeconds: 60, maxHits: 60 },
+  like: { windowSeconds: 60, maxHits: 120 },
+  message_send: { windowSeconds: 60, maxHits: 120 },
+};
+
+async function enforceActionRateLimit(userId: string, action: string): Promise<Response | null> {
+  const policy = ACTION_RATE_LIMITS[action];
+  if (!policy) return null;
+
+  try {
+    const result = await rpc("vybe_take_rate_limit", {
+      p_user_id: userId,
+      p_bucket_key: action,
+      p_window_seconds: policy.windowSeconds,
+      p_max_hits: policy.maxHits,
+      p_cost: 1,
+    });
+
+    if (result?.allowed !== false) return null;
+
+    const retryAfter = Math.max(1, Number(result?.retry_after_seconds || 1));
+    console.warn("rate_limit:blocked", {
+      user_id: userId,
+      action,
+      retry_after_seconds: retryAfter,
+    });
+    return json(
+      {
+        ok: false,
+        error: "RATE_LIMITED",
+        retry_after_seconds: retryAfter,
+      },
+      429,
+      { "Retry-After": String(retryAfter) },
+    );
+  } catch (e) {
+    console.error("rate_limit:failed", {
+      user_id: userId,
+      action,
+      error: String(e instanceof Error ? e.message : e).slice(0, 180),
+    });
+    return json({ ok: false, error: "Rate limit check unavailable" }, 503);
+  }
 }
 
 async function telegramApi(botToken: string, method: string, payload: Record<string, unknown>) {
@@ -718,6 +790,9 @@ Deno.serve(async (req: Request) => {
         restricted_at: user.restricted_at ?? null,
       }, 403);
     }
+
+    const rateLimitResponse = await enforceActionRateLimit(String(user.id), String(action));
+    if (rateLimitResponse) return rateLimitResponse;
 
     if (action === "notification_settings_get") {
       const prefs = await getNotificationPreferences(db, user.id);
