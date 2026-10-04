@@ -2290,6 +2290,39 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true, intent, expires_at: expiresAt });
     }
 
+    if (action === "pass") {
+      const targetId = clean(body.target_user_id, 80);
+      if (!targetId || targetId === String(user.id)) return json({ ok: false, error: "Invalid pass target" }, 400);
+      if (await isRestrictedUser(db, targetId)) return json({ ok: false, error: "User unavailable" }, 403);
+      if (await isBlockedBetween(db, user.id, targetId)) return json({ ok: false, error: "User blocked" }, 403);
+
+      const nowIso = new Date().toISOString();
+      const targetIntentRows = await db(
+        `intents?user_id=eq.${encodeURIComponent(targetId)}&expires_at=gt.${encodeURIComponent(nowIso)}&select=expires_at&limit=1`,
+      ) ?? [];
+      const targetIntentExpiresAt = targetIntentRows?.[0]?.expires_at ?? null;
+      if (!targetIntentExpiresAt) return json({ ok: true, recorded: false, reason: "inactive_intent" });
+
+      const existing = await db(
+        `discovery_passes?user_id=eq.${encodeURIComponent(user.id)}&target_user_id=eq.${encodeURIComponent(targetId)}&select=user_id&limit=1`,
+      ) ?? [];
+      const payload = {
+        user_id: user.id,
+        target_user_id: targetId,
+        target_intent_expires_at: targetIntentExpiresAt,
+        passed_at: nowIso,
+      };
+      if (existing.length) {
+        await db(
+          `discovery_passes?user_id=eq.${encodeURIComponent(user.id)}&target_user_id=eq.${encodeURIComponent(targetId)}`,
+          { method: "PATCH", body: JSON.stringify(payload) },
+        );
+      } else {
+        await db("discovery_passes", { method: "POST", body: JSON.stringify(payload) });
+      }
+      return json({ ok: true, recorded: true, target_intent_expires_at: targetIntentExpiresAt });
+    }
+
     if (action === "discover") {
       const nowIso = new Date().toISOString();
       const minAgeRaw = Number(body.min_age);
@@ -2304,13 +2337,15 @@ Deno.serve(async (req: Request) => {
       const profiles = await db(`profiles?user_id=neq.${encodeURIComponent(user.id)}&select=user_id,name,age,city,bio,photo_url,verified&limit=100`) ?? [];
       const intents = await db(`intents?expires_at=gt.${encodeURIComponent(nowIso)}&select=user_id,intent,expires_at&limit=200`) ?? [];
       const spotlightRows = await db(`user_entitlements?spotlight_until=gt.${encodeURIComponent(nowIso)}&select=user_id,spotlight_until&limit=200`) ?? [];
-      const [blockedIds, sentLikes, currentMatches, ownIntentRows] = await Promise.all([
+      const [blockedIds, sentLikes, currentMatches, ownIntentRows, activePasses] = await Promise.all([
         getBlockedUserIds(db, user.id),
         db(`likes?from_user_id=eq.${encodeURIComponent(user.id)}&select=to_user_id&limit=1000`) ?? [],
         db(`matches?or=(user_a_id.eq.${encodeURIComponent(user.id)},user_b_id.eq.${encodeURIComponent(user.id)})&select=user_a_id,user_b_id&limit=1000`) ?? [],
         db(`intents?user_id=eq.${encodeURIComponent(user.id)}&expires_at=gt.${encodeURIComponent(nowIso)}&select=intent&limit=1`) ?? [],
+        db(`discovery_passes?user_id=eq.${encodeURIComponent(user.id)}&target_intent_expires_at=gt.${encodeURIComponent(nowIso)}&select=target_user_id&limit=1000`) ?? [],
       ]);
       const sentLikeIds = new Set((sentLikes ?? []).map((x: any) => String(x.to_user_id)));
+      const passedIds = new Set((activePasses ?? []).map((x: any) => String(x.target_user_id)));
       const matchedIds = new Set((currentMatches ?? []).map((m: any) =>
         String(m.user_a_id) === String(user.id) ? String(m.user_b_id) : String(m.user_a_id)
       ));
@@ -2327,10 +2362,11 @@ Deno.serve(async (req: Request) => {
       const eligibleProfile = (p: any, matchedFallback = false) => {
         const id = String(p.user_id);
         if (blockedIds.has(id)) return false;
+        if (!byUser.has(id)) return false;
         const isMatched = matchedIds.has(id);
         if (matchedFallback) {
           if (!isMatched) return false;
-        } else if (sentLikeIds.has(id) || isMatched) {
+        } else if (sentLikeIds.has(id) || isMatched || passedIds.has(id)) {
           return false;
         }
         const age = Number(p.age || 0);
