@@ -1,16 +1,16 @@
-:root{--bg:#0b0b12;--card:#151522;--muted:#9495aa;--text:#f7f7fb;--accent:#ff3f81;--accent2:#8b5cf6;--line:#29293d;--green:#5ee6a8}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% -10%,#2a1837 0,#0b0b12 42%);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}button,input,textarea{font:inherit}.app{min-height:var(--tg-viewport-height,100vh);padding:calc(16px + var(--tg-safe-top,0px)) 16px calc(88px + max(env(safe-area-inset-bottom),var(--tg-safe-bottom,0px)));max-width:560px;margin:auto}.topbar,.sectionTitle,.nowCard{display:flex;justify-content:space-between;align-items:center}.eyebrow{font-size:12px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}.hello{font-size:24px;font-weight:800;margin-top:3px}.iconBtn{width:42px;height:42px;border:0;border-radius:14px;color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2));font-size:20px}.nowCard{margin:16px 0 2px;padding:13px 14px;border:1px solid #49316b;border-radius:18px;background:linear-gradient(120deg,rgba(139,92,246,.16),rgba(255,63,129,.09))}.nowCard b,.nowCard small{display:block}.nowCard small{color:#b9b9ca;margin-top:3px;font-size:12px}.nowCard button{border:0;background:#fff;color:#17121d;padding:8px 11px;border-radius:12px;font-weight:750}.moodStrip{display:flex;gap:8px;overflow-x:auto;padding:13px 0 12px;scrollbar-width:none}.moodStrip::-webkit-scrollbar{display:none}.mood{flex:0 0 auto;white-space:nowrap;border:1px solid var(--line);background:#11111b;color:#c9cad7;padding:10px 14px;border-radius:999px}.mood.active{background:#fff;color:#111;border-color:#fff}.sectionTitle{font-weight:750;margin:8px 0 12px}.textBtn{border:0;background:none;color:#d5a7ff}.cardStack{min-height:515px}.personCard{position:relative;height:510px;border-radius:28px;overflow:hidden;background:#1a1a25;box-shadow:0 20px 50px rgba(0,0,0,.35)}.personCard img,.generatedAvatar{width:100%;height:100%;object-fit:cover}.generatedAvatar{display:grid;place-items:center;background:radial-gradient(circle at 50% 35%,#9d6cff,#2a1837 48%,#11111b);font-size:150px;font-weight:900;color:#fff}.gradient{position:absolute;inset:0;background:linear-gradient(transparent 38%,rgba(8,8,13,.92) 84%,#090910)}.personMeta{position:absolute;left:18px;right:18px;bottom:18px}.nameRow{display:flex;align-items:center;gap:8px}.nameRow h2{font-size:30px;margin:0}.intent{display:inline-block;margin:10px 0 9px;padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.14);backdrop-filter:blur(8px);font-size:13px}.bio{margin:0 0 8px;line-height:1.35}.meta{color:#b8b8c8;font-size:13px}.actions{display:flex;justify-content:center;gap:18px;padding:18px}.action{width:58px;height:58px;border-radius:50%;border:1px solid var(--line);background:#151520;color:#fff;font-size:24px}.action.like{background:linear-gradient(135deg,#ff3f81,#ff6b6b);border:0}.action.super{color:#d7b8ff}.view{display:none}.view.active{display:block}.list{display:grid;gap:10px}.listItem{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);padding:12px;border-radius:18px}.avatar{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#583e8f,#ff5b91);font-size:24px}.avatar.big{width:84px;height:84px;margin:auto;font-size:42px}.itemMain{flex:1}.itemMain b{display:block}.itemMain small{color:var(--muted)}.pill{font-size:12px;background:#241b38;color:#d8b7ff;padding:6px 9px;border-radius:999px}.statusDot{font-size:12px;color:var(--green)}.profileCard,.menuCard{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:20px;margin-bottom:14px;text-align:center}.profileCard p{color:var(--muted)}.primary{border:0;border-radius:15px;padding:13px 18px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-weight:750;width:100%}.menuCard{padding:6px;text-align:left}.menuCard button{width:100%;display:flex;justify-content:space-between;padding:15px;border:0;border-bottom:1px solid var(--line);background:none;color:#fff}.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(100%,560px);display:grid;grid-template-columns:repeat(4,1fr);background:rgba(12,12,19,.9);backdrop-filter:blur(18px);border-top:1px solid var(--line);padding:9px 8px calc(9px + env(safe-area-inset-bottom));z-index:5}.navItem{border:0;background:none;color:#77788e;display:grid;gap:3px;place-items:center}.navItem span{font-size:20px}.navItem small{font-size:11px}.navItem.active{color:#fff}.overlay,.sheet{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.82);display:grid;place-items:center;padding:calc(18px + var(--tg-safe-top,0px)) 18px calc(18px + var(--tg-safe-bottom,0px));overflow:auto}.hidden{display:none!important}.modal,.sheetCard{width:min(100%,520px);background:#151520;border:1px solid var(--line);border-radius:28px;padding:24px}.logoMark{width:54px;height:54px;border-radius:17px;display:grid;place-items:center;background:linear-gradient(135deg,var(--accent),var(--accent2));font-size:28px;font-weight:900}.modal p,.modal small{color:var(--muted);line-height:1.4}.ageBadge{font-weight:900;font-size:24px;margin:12px 0;color:#ff8eb3}.checkRow{display:flex;gap:10px;align-items:flex-start;margin:16px 0}.onboarding{margin:auto}.onboarding label{display:block;font-size:12px;color:#aaaabd;margin:10px 0}.field{display:block;width:100%;margin-top:6px;border:1px solid var(--line);background:#0f0f18;color:#fff;border-radius:13px;padding:12px;outline:none}.field:focus{border-color:#8b5cf6}textarea.field{min-height:75px;resize:vertical}.two{display:grid;grid-template-columns:90px 1fr;gap:10px}.stepDots{display:flex;gap:5px}.stepDots i{width:7px;height:7px;background:#373747;border-radius:50%}.stepDots i.on{width:24px;background:#ff4f89;border-radius:8px}.sheet{place-items:end center;padding:var(--tg-sheet-top,88px) 0 var(--tg-safe-bottom,0px)}.sheetCard{border-radius:28px 28px 0 0;min-height:280px;max-height:calc(var(--tg-viewport-height,100dvh) - var(--tg-sheet-top,88px) - var(--tg-safe-bottom,0px));overflow-y:auto;overscroll-behavior:contain;position:relative}.handle{width:50px;height:5px;border-radius:10px;background:#3a3a4c;margin:-8px auto 18px}.close{position:absolute;right:16px;top:16px;border:0;background:#222231;color:#fff;width:34px;height:34px;border-radius:50%;font-size:22px}.choiceGrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:14px 0}.choice{border:1px solid var(--line);background:#101019;color:#fff;border-radius:15px;padding:13px}.choice.selected{border-color:#ff4f89;background:#261522}.priceGrid{display:grid;gap:10px;margin-top:14px}.price{padding:14px;border-radius:18px;border:1px solid var(--line);background:#101019;display:flex;justify-content:space-between}.price strong{color:#ffd866}.empty{padding:50px 20px;text-align:center;color:var(--muted)}
+:root{--bg:#0c1014;--card:#151b22;--surface:#1c242d;--surface2:#242f3a;--text:#f4f1ed;--muted:#a1aebc;--line:#2e3a46;--accent:#e9b49b;--accent2:#dfa58f;--accent-ink:#211814;--accent-soft:#e9b49b14;--green:#82dfba}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% -10%,#1f2730 0,#0b0e12 42%);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}button,input,textarea{font:inherit}.app{min-height:var(--tg-viewport-height,100vh);padding:calc(16px + var(--tg-safe-top,0px)) 16px calc(88px + max(env(safe-area-inset-bottom),var(--tg-safe-bottom,0px)));max-width:560px;margin:auto}.topbar,.sectionTitle,.nowCard{display:flex;justify-content:space-between;align-items:center}.eyebrow{font-size:12px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}.hello{font-size:24px;font-weight:800;margin-top:3px}.iconBtn{width:42px;height:42px;border:0;border-radius:14px;color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2));font-size:20px}.nowCard{margin:16px 0 2px;padding:13px 14px;border:1px solid #3d4e5f;border-radius:18px;background:linear-gradient(120deg,rgba(157,169,181,.16),rgba(233,180,155,.09))}.nowCard b,.nowCard small{display:block}.nowCard small{color:#b9c2ca;margin-top:3px;font-size:12px}.nowCard button{border:0;background:#fff;color:#12171d;padding:8px 11px;border-radius:12px;font-weight:750}.moodStrip{display:flex;gap:8px;overflow-x:auto;padding:13px 0 12px;scrollbar-width:none}.moodStrip::-webkit-scrollbar{display:none}.mood{flex:0 0 auto;white-space:nowrap;border:1px solid var(--line);background:#11161b;color:#c9d0d7;padding:10px 14px;border-radius:999px}.mood.active{background:#fff;color:#111;border-color:#fff}.sectionTitle{font-weight:750;margin:8px 0 12px}.textBtn{border:0;background:none;color:#cdd3d9}.cardStack{min-height:515px}.personCard{position:relative;height:510px;border-radius:28px;overflow:hidden;background:#191f26;box-shadow:0 20px 50px rgba(0,0,0,.35)}.personCard img,.generatedAvatar{width:100%;height:100%;object-fit:cover}.generatedAvatar{display:grid;place-items:center;background:radial-gradient(circle at 50% 35%,#abb6c0,#1f2730 48%,#11161b);font-size:150px;font-weight:900;color:#fff}.gradient{position:absolute;inset:0;background:linear-gradient(transparent 38%,rgba(8,10,13,.92) 84%,#0a0c0f)}.personMeta{position:absolute;left:18px;right:18px;bottom:18px}.nameRow{display:flex;align-items:center;gap:8px}.nameRow h2{font-size:30px;margin:0}.intent{display:inline-block;margin:10px 0 9px;padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.14);backdrop-filter:blur(8px);font-size:13px}.bio{margin:0 0 8px;line-height:1.35}.meta{color:#b7c0c9;font-size:13px}.actions{display:flex;justify-content:center;gap:18px;padding:18px}.action{width:58px;height:58px;border-radius:50%;border:1px solid var(--line);background:#151a20;color:#fff;font-size:24px}.action.like{background:linear-gradient(135deg,var(--accent),#ff6b6b);border:0}.action.super{color:#e0dcd7}.view{display:none}.view.active{display:block}.list{display:grid;gap:10px}.listItem{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);padding:12px;border-radius:18px}.avatar{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#50667d,#ff5b91);font-size:24px}.avatar.big{width:84px;height:84px;margin:auto;font-size:42px}.itemMain{flex:1}.itemMain b{display:block}.itemMain small{color:var(--muted)}.pill{font-size:12px;background:#202933;color:#d6dbe0;padding:6px 9px;border-radius:999px}.statusDot{font-size:12px;color:var(--green)}.profileCard,.menuCard{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:20px;margin-bottom:14px;text-align:center}.profileCard p{color:var(--muted)}.primary{border:0;border-radius:15px;padding:13px 18px;background:var(--accent);color:var(--accent-ink);font-weight:750;width:100%}.menuCard{padding:6px;text-align:left}.menuCard button{width:100%;display:flex;justify-content:space-between;padding:15px;border:0;border-bottom:1px solid var(--line);background:none;color:#fff}.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(100%,560px);display:grid;grid-template-columns:repeat(4,1fr);background:rgba(12,15,19,.9);backdrop-filter:blur(18px);border-top:1px solid var(--line);padding:9px 8px calc(9px + env(safe-area-inset-bottom));z-index:5}.navItem{border:0;background:none;color:#67829e;display:grid;gap:3px;place-items:center}.navItem span{font-size:20px}.navItem small{font-size:11px}.navItem.active{color:#fff}.overlay,.sheet{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.82);display:grid;place-items:center;padding:calc(18px + var(--tg-safe-top,0px)) 18px calc(18px + var(--tg-safe-bottom,0px));overflow:auto}.hidden{display:none!important}.modal,.sheetCard{width:min(100%,520px);background:#151a20;border:1px solid var(--line);border-radius:28px;padding:24px}.logoMark{width:54px;height:54px;border-radius:17px;display:grid;place-items:center;background:transparent;font-size:28px;font-weight:900}.modal p,.modal small{color:var(--muted);line-height:1.4}.ageBadge{font-weight:900;font-size:24px;margin:12px 0;color:#ff8eb3}.checkRow{display:flex;gap:10px;align-items:flex-start;margin:16px 0}.onboarding{margin:auto}.onboarding label{display:block;font-size:12px;color:#a9b3be;margin:10px 0}.field{display:block;width:100%;margin-top:6px;border:1px solid var(--line);background:#0f1318;color:#fff;border-radius:13px;padding:12px;outline:none}.field:focus{border-color:#9da9b5}textarea.field{min-height:75px;resize:vertical}.two{display:grid;grid-template-columns:90px 1fr;gap:10px}.stepDots{display:flex;gap:5px}.stepDots i{width:7px;height:7px;background:#313f4d;border-radius:50%}.stepDots i.on{width:24px;background:#ff4f89;border-radius:8px}.sheet{place-items:end center;padding:var(--tg-sheet-top,88px) 0 var(--tg-safe-bottom,0px)}.sheetCard{border-radius:28px 28px 0 0;min-height:280px;max-height:calc(var(--tg-viewport-height,100dvh) - var(--tg-sheet-top,88px) - var(--tg-safe-bottom,0px));overflow-y:auto;overscroll-behavior:contain;position:relative}.handle{width:50px;height:5px;border-radius:10px;background:#344352;margin:-8px auto 18px}.close{position:absolute;right:16px;top:16px;border:0;background:#202933;color:#fff;width:34px;height:34px;border-radius:50%;font-size:22px}.choiceGrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:14px 0}.choice{border:1px solid var(--line);background:#101419;color:#fff;border-radius:15px;padding:13px}.choice.selected{border-color:#ff4f89;background:#171d24}.priceGrid{display:grid;gap:10px;margin-top:14px}.price{padding:14px;border-radius:18px;border:1px solid var(--line);background:#101419;display:flex;justify-content:space-between}.price strong{color:#ffd866}.empty{padding:50px 20px;text-align:center;color:var(--muted)}
 /* VYBE chat 0.5.6 */
-.chatHeader{display:flex;align-items:center;gap:12px;margin:0 42px 14px 0}.chatHeader h2{margin:0 0 3px;font-size:24px}.chatHeader small{color:var(--muted)}.chatAvatar,.msgAvatar{flex:0 0 auto;display:grid;place-items:center;border-radius:50%;background:linear-gradient(135deg,#583e8f,#ff5b91);color:#fff;font-weight:800}.chatAvatar{width:48px;height:48px;font-size:20px}.chatMessages{max-height:48vh;min-height:120px;overflow:auto;padding:10px 2px 14px;display:flex;flex-direction:column;gap:12px}.msgRow{display:flex;gap:8px;align-items:flex-end;max-width:88%}.msgRow.mine{align-self:flex-end;flex-direction:row-reverse}.msgRow.theirs{align-self:flex-start}.msgAvatar{width:30px;height:30px;font-size:12px}.msgWrap{min-width:0}.msgSender{font-size:11px;color:var(--muted);margin:0 8px 4px}.msgRow.mine .msgSender{text-align:right}.msgBubble{padding:10px 13px;border-radius:17px;background:#242436;line-height:1.35;overflow-wrap:anywhere}.msgRow.mine .msgBubble{background:linear-gradient(135deg,#a52d68,#7045d8);color:#fff;border-bottom-right-radius:5px}.msgRow.theirs .msgBubble{border-bottom-left-radius:5px}.chatEmpty{text-align:center;color:var(--muted);padding:36px 10px}.chatComposer{border-top:1px solid var(--line);padding-top:12px}.chatComposer textarea{min-height:64px;margin:0 0 9px}.chatComposer button:disabled{opacity:.55}
+.chatHeader{display:flex;align-items:center;gap:12px;margin:0 42px 14px 0}.chatHeader h2{margin:0 0 3px;font-size:24px}.chatHeader small{color:var(--muted)}.chatAvatar,.msgAvatar{flex:0 0 auto;display:grid;place-items:center;border-radius:50%;background:linear-gradient(135deg,#50667d,#ff5b91);color:#fff;font-weight:800}.chatAvatar{width:48px;height:48px;font-size:20px}.chatMessages{max-height:48vh;min-height:120px;overflow:auto;padding:10px 2px 14px;display:flex;flex-direction:column;gap:12px}.msgRow{display:flex;gap:8px;align-items:flex-end;max-width:88%}.msgRow.mine{align-self:flex-end;flex-direction:row-reverse}.msgRow.theirs{align-self:flex-start}.msgAvatar{width:30px;height:30px;font-size:12px}.msgWrap{min-width:0}.msgSender{font-size:11px;color:var(--muted);margin:0 8px 4px}.msgRow.mine .msgSender{text-align:right}.msgBubble{padding:10px 13px;border-radius:17px;background:#232d37;line-height:1.35;overflow-wrap:anywhere}.msgRow.mine .msgBubble{background:linear-gradient(135deg,#a52d68,#7f8e9e);color:#fff;border-bottom-right-radius:5px}.msgRow.theirs .msgBubble{border-bottom-left-radius:5px}.chatEmpty{text-align:center;color:var(--muted);padding:36px 10px}.chatComposer{border-top:1px solid var(--line);padding-top:12px}.chatComposer textarea{min-height:64px;margin:0 0 9px}.chatComposer button:disabled{opacity:.55}
 
 /* VYBE list readability 0.5.7 */
-.listItem{color:var(--text);width:100%;text-align:left;cursor:pointer}.listItem .itemMain b{color:var(--text);font-size:16px}.listItem .itemMain small{display:block;margin-top:3px}.chevron{color:#c9cad7;font-size:24px}.unreadBadge{min-width:24px;height:24px;padding:0 7px;border-radius:999px;display:grid;place-items:center;background:var(--accent);color:#fff;font-size:12px;font-weight:800}
+.listItem{color:var(--text);width:100%;text-align:left;cursor:pointer}.listItem .itemMain b{color:var(--text);font-size:16px}.listItem .itemMain small{display:block;margin-top:3px}.chevron{color:#c9d0d7;font-size:24px}.unreadBadge{min-width:24px;height:24px;padding:0 7px;border-radius:999px;display:grid;place-items:center;background:var(--accent);color:#fff;font-size:12px;font-weight:800}
 
 
 /* VYBE 0.7.0 — safety controls */
 .personCard{position:relative}
 .cardSafety,.chatSafety{
   width:38px;height:38px;border:0;border-radius:50%;display:grid;place-items:center;
-  background:rgba(12,12,18,.72);color:#fff;font-size:24px;font-weight:800;
+  background:rgba(12,15,18,.72);color:#fff;font-size:24px;font-weight:800;
   backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);cursor:pointer
 }
 .cardSafety{position:absolute;top:14px;right:14px;z-index:5}
@@ -33,7 +33,7 @@
 .msgMeta{margin-top:4px;font-size:10px;line-height:1;color:var(--muted);text-align:right;letter-spacing:.02em}
 .msgRow.theirs .msgMeta{text-align:left}
 #chatPresence{transition:opacity .18s ease,color .18s ease}
-#chatPresence.typing{color:#b991ff;font-weight:800}
+#chatPresence.typing{color:#c0c8d0;font-weight:800}
 .statusDot{font-size:11px}
 
 .statusDot.offline{color:var(--muted)}
@@ -54,7 +54,7 @@
 
 /* VYBE 0.9.1 — account safety */
 .dangerText{color:#ffb0bf;line-height:1.5}
-.dangerPrimary{background:linear-gradient(135deg,#ff4773,#d7204f)!important;box-shadow:0 12px 30px rgba(215,32,79,.24)}
+.dangerPrimary{background:#b33650!important;box-shadow:none;color:#fff!important}
 
 
 /* VYBE 0.9.2 — language selector */
@@ -65,13 +65,13 @@
 
 /* VYBE 0.9.3 — legal links */
 .ageLegalLinks{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:10px 0}
-.ageLegalLinks button{border:0;background:none;color:#d8b7ff;padding:5px 6px;text-decoration:underline;text-underline-offset:3px}
+.ageLegalLinks button{border:0;background:none;color:#d6dbe0;padding:5px 6px;text-decoration:underline;text-underline-offset:3px}
 
 
 /* VYBE 0.9.5 — Stars shop */
 .shopTitle{margin:22px 0 6px}
 .starShop{display:grid;gap:10px;margin-top:12px}
-.starProduct{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px;border:1px solid var(--line);border-radius:18px;background:#101019}
+.starProduct{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px;border:1px solid var(--line);border-radius:18px;background:#101419}
 .starProduct b,.starProduct small{display:block}
 .starProduct small{margin-top:4px;color:var(--muted);line-height:1.35}
 .starProduct .buyStarBtn{width:auto;white-space:nowrap;padding:10px 12px}
@@ -83,7 +83,7 @@
 /* VYBE 0.9.6 — purchase consent */
 .purchaseTerms{align-items:flex-start;padding:10px 2px;margin:10px 0 12px}
 .purchaseTerms span{color:var(--muted);font-size:12px;line-height:1.45}
-.inlineLink{border:0;background:none;color:#d8b7ff;padding:0;text-decoration:underline;text-underline-offset:2px}
+.inlineLink{border:0;background:none;color:#d6dbe0;padding:0;text-decoration:underline;text-underline-offset:2px}
 .buyStarBtn:disabled{opacity:.45;cursor:not-allowed}
 
 
@@ -93,10 +93,10 @@
 
 
 /* VYBE 0.9.9 — payment completion UX */
-.shopFooter{position:sticky;bottom:-1px;margin:18px -4px -4px;padding:12px 4px 4px;background:linear-gradient(180deg,rgba(21,21,32,0),#151520 34%)}
-.appNotice{position:fixed;z-index:120;left:16px;right:16px;top:calc(var(--tg-sheet-top,88px) + 10px);max-width:520px;margin:auto;display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid #4a3a66;border-radius:16px;background:#191624;box-shadow:0 18px 50px rgba(0,0,0,.45);color:#fff}
+.shopFooter{position:sticky;bottom:-1px;margin:18px -4px -4px;padding:12px 4px 4px;background:linear-gradient(180deg,rgba(21,26,32,0),#151a20 34%)}
+.appNotice{position:fixed;z-index:120;left:16px;right:16px;top:calc(var(--tg-sheet-top,88px) + 10px);max-width:520px;margin:auto;display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid #3e5062;border-radius:16px;background:#171d23;box-shadow:0 18px 50px rgba(0,0,0,.45);color:#fff}
 .appNotice span{flex:1;font-weight:700}
-.appNotice button{border:0;background:#2c263a;color:#fff;width:30px;height:30px;border-radius:50%;font-size:18px}
+.appNotice button{border:0;background:#25303b;color:#fff;width:30px;height:30px;border-radius:50%;font-size:18px}
 .sheetCard{scroll-padding-top:18px;scroll-padding-bottom:84px}
 
 
@@ -106,17 +106,17 @@
 .adminHead h2{margin:0}
 .adminHead small{color:var(--muted)}
 .adminHead .choice{width:auto;padding:9px 12px}
-.adminBalance{margin:16px 0;padding:18px;border:1px solid #5a456f;border-radius:20px;background:linear-gradient(135deg,rgba(139,92,246,.15),rgba(255,63,129,.08))}
+.adminBalance{margin:16px 0;padding:18px;border:1px solid #465a6e;border-radius:20px;background:linear-gradient(135deg,rgba(157,169,181,.15),rgba(233,180,155,.08))}
 .adminBalance small,.adminBalance span{display:block;color:var(--muted)}
 .adminBalance strong{display:block;font-size:34px;margin:4px 0 2px;color:#ffd866}
 .adminMetrics{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.adminMetric{padding:13px;border:1px solid var(--line);border-radius:16px;background:#101019}
+.adminMetric{padding:13px;border:1px solid var(--line);border-radius:16px;background:#101419}
 .adminMetric small,.adminMetric span{display:block;color:var(--muted);font-size:11px}
 .adminMetric strong{display:block;margin:4px 0;font-size:20px}
 .adminRecon{display:flex;justify-content:space-between;gap:12px;margin:14px 0;padding:12px 14px;border:1px solid var(--line);border-radius:14px}
 .adminRecon span{color:var(--muted);font-size:12px}
 .adminOrders,.adminTransactions{display:grid;gap:8px}
-.adminOrder,.adminTx{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;border:1px solid var(--line);border-radius:15px;background:#101019}
+.adminOrder,.adminTx{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;border:1px solid var(--line);border-radius:15px;background:#101419}
 .adminOrderMain{min-width:0;flex:1}
 .adminOrder b,.adminOrder small,.adminTx b,.adminTx small{display:block}
 .adminOrder small,.adminTx small{margin-top:3px;color:var(--muted);font-size:11px}
@@ -131,34 +131,34 @@
 
 /* VYBE 0.9.12 — finance breakdown */
 .adminProducts{display:grid;gap:8px}
-.adminProduct{display:flex;justify-content:space-between;gap:12px;padding:13px;border:1px solid var(--line);border-radius:15px;background:#101019}
+.adminProduct{display:flex;justify-content:space-between;gap:12px;padding:13px;border:1px solid var(--line);border-radius:15px;background:#101419}
 .adminProduct b,.adminProduct small{display:block}
 .adminProduct small{color:var(--muted);font-size:11px;margin-top:3px}
 .adminProductStars{text-align:right;flex:0 0 auto}
 .adminProductStars strong{font-size:18px;color:#ffd866}
 .adminStatusGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.adminStatusGrid>div{padding:11px;border:1px solid var(--line);border-radius:14px;background:#101019;text-align:center}
+.adminStatusGrid>div{padding:11px;border:1px solid var(--line);border-radius:14px;background:#101419;text-align:center}
 .adminStatusGrid b,.adminStatusGrid span{display:block}
 .adminStatusGrid b{font-size:20px}
 .adminStatusGrid span{font-size:10px;color:var(--muted);margin-top:2px}
-.adminAttempts{margin:14px 0;border:1px solid var(--line);border-radius:15px;background:#0f0f18}
+.adminAttempts{margin:14px 0;border:1px solid var(--line);border-radius:15px;background:#0f1318}
 .adminAttempts summary{cursor:pointer;padding:12px 14px;font-weight:700}
 .adminAttemptList{display:grid;gap:6px;padding:0 10px 10px}
-.adminAttempt{padding:10px;border-radius:12px;background:#151520}
+.adminAttempt{padding:10px;border-radius:12px;background:#151a20}
 .adminAttempt b,.adminAttempt small{display:block}
 .adminAttempt small{color:var(--muted);font-size:11px;margin-top:2px}
 @media (max-width:390px){.adminStatusGrid{grid-template-columns:repeat(2,1fr)}.adminProduct{flex-direction:column}.adminProductStars{text-align:left}}
 
 
 /* VYBE 0.9.13 — finance owner tools */
-.adminWithdraw,.adminExport{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0;padding:14px;border:1px solid var(--line);border-radius:16px;background:#101019}
+.adminWithdraw,.adminExport{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0;padding:14px;border:1px solid var(--line);border-radius:16px;background:#101419}
 .adminWithdraw b,.adminWithdraw span,.adminExport b,.adminExport span{display:block}
 .adminWithdraw span,.adminExport span{margin-top:4px;color:var(--muted);font-size:11px;line-height:1.4}
 .adminWithdraw .choice{width:auto;flex:0 0 auto}
 .adminExport>div:last-child{display:flex;gap:8px;flex:0 0 auto}
 .adminExport .choice{width:auto;padding:9px 10px}
 .adminRefundHistoryList{display:grid;gap:8px}
-.adminRefundHistory{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#101019}
+.adminRefundHistory{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#101419}
 .adminRefundHistory b,.adminRefundHistory small{display:block}
 .adminRefundHistory small{margin-top:3px;color:var(--muted);font-size:11px}
 .adminRefundHistory strong{color:#ff8fa8;white-space:nowrap}
@@ -167,7 +167,7 @@
 
 /* VYBE 0.9.14 — support center */
 .supportMessage{min-height:110px;resize:vertical}
-.myTicket,.supportTicketDetail,.supportOrder{margin:8px 0;padding:13px;border:1px solid var(--line);border-radius:15px;background:#101019}
+.myTicket,.supportTicketDetail,.supportOrder{margin:8px 0;padding:13px;border:1px solid var(--line);border-radius:15px;background:#101419}
 .myTicketHead{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .myTicket p,.supportTicketDetail p{white-space:pre-wrap;overflow-wrap:anywhere}
 .myTicket small,.supportTicketDetail small,.supportOrder span{display:block;color:var(--muted);font-size:11px}
@@ -175,16 +175,16 @@
 .supportStatus.open{background:rgba(255,216,102,.13);color:#ffd866}
 .supportStatus.reviewed{background:rgba(116,173,255,.13);color:#91bfff}
 .supportStatus.resolved{background:rgba(114,230,173,.13);color:#72e6ad}
-.supportReply{margin-top:10px;padding:10px;border-left:3px solid #8b5cf6;background:rgba(139,92,246,.08);border-radius:8px}
+.supportReply{margin-top:10px;padding:10px;border-left:3px solid #9da9b5;background:rgba(157,169,181,.08);border-radius:8px}
 .supportReply p{margin:5px 0 0}
 .supportStats{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin:14px 0}
-.supportStats>div{padding:10px 5px;border:1px solid var(--line);border-radius:13px;text-align:center;background:#101019}
+.supportStats>div{padding:10px 5px;border:1px solid var(--line);border-radius:13px;text-align:center;background:#101419}
 .supportStats b,.supportStats span{display:block}
 .supportStats b{font-size:20px}
 .supportStats span{font-size:9px;color:var(--muted);margin-top:2px}
 .supportQueue{display:grid;gap:8px}
-.supportQueueItem{width:100%;text-align:left;padding:13px;border:1px solid var(--line);border-radius:15px;background:#101019;color:var(--text)}
-.supportQueueItem p{margin:8px 0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;color:#d8d8e2}
+.supportQueueItem{width:100%;text-align:left;padding:13px;border:1px solid var(--line);border-radius:15px;background:#101419;color:var(--text)}
+.supportQueueItem p{margin:8px 0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;color:#e1ded9}
 .supportQueueItem small{color:var(--muted)}
 .supportOrder{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .supportAdminActions{display:grid;gap:8px;margin-top:12px}
@@ -193,15 +193,15 @@
 
 /* VYBE 0.9.16 — support hardening */
 .menuCard button{position:relative}
-.menuBadge{position:absolute;right:34px;top:50%;transform:translateY(-50%);margin:0;min-width:22px;height:22px;padding:0 6px;border-radius:999px;display:inline-grid;place-items:center;background:#ff3f81;color:#fff;font-size:11px;font-weight:900;line-height:1}
+.menuBadge{position:absolute;right:34px;top:50%;transform:translateY(-50%);margin:0;min-width:22px;height:22px;padding:0 6px;border-radius:999px;display:inline-grid;place-items:center;background:var(--accent);color:#fff;font-size:11px;font-weight:900;line-height:1}
 .ticketUnread{color:#ff4f8b;font-size:12px;vertical-align:middle}
-.myTicket.unread,.supportQueueItem.unread{border-color:rgba(255,63,129,.55);box-shadow:0 0 0 1px rgba(255,63,129,.08) inset}
-.supportQueueItem.unread{background:linear-gradient(135deg,rgba(255,63,129,.07),#101019 46%)}
+.myTicket.unread,.supportQueueItem.unread{border-color:rgba(233,180,155,.55);box-shadow:0 0 0 1px rgba(233,180,155,.08) inset}
+.supportQueueItem.unread{background:linear-gradient(135deg,rgba(233,180,155,.07),#101419 46%)}
 
 
 /* VYBE 0.9.18 — moderation center */
-.moderationQueueItem.urgent{border-color:rgba(255,91,91,.55);background:linear-gradient(135deg,rgba(255,72,72,.08),#101019 48%)}
-.moderationCase,.moderationReporter{margin:10px 0;padding:14px;border:1px solid var(--line);border-radius:16px;background:#101019}
+.moderationQueueItem.urgent{border-color:rgba(255,91,91,.55);background:linear-gradient(135deg,rgba(255,72,72,.08),#101419 48%)}
+.moderationCase,.moderationReporter{margin:10px 0;padding:14px;border:1px solid var(--line);border-radius:16px;background:#101419}
 .moderationCase.urgent{border-color:rgba(255,91,91,.55)}
 .moderationCase hr{border:0;border-top:1px solid var(--line);margin:14px 0}
 .moderationPerson b,.moderationPerson small,.moderationReporter b,.moderationReporter span{display:block}
@@ -214,7 +214,7 @@
 .restrictionIcon{font-size:48px}
 .restrictionNotice h2{margin-bottom:10px}
 .restrictionNotice p{color:var(--muted);line-height:1.5}
-.restrictionReason{margin:14px 0;padding:12px;border:1px solid var(--line);border-radius:14px;text-align:left;background:#101019}
+.restrictionReason{margin:14px 0;padding:12px;border:1px solid var(--line);border-radius:14px;text-align:left;background:#101419}
 .restrictionReason b,.restrictionReason span{display:block}
 .restrictionReason span{margin-top:4px;color:#ffb1c0}
 
@@ -227,17 +227,17 @@
 
 
 /* VYBE 0.9.20 — peer profiles */
-.profilePeek{margin-top:12px;border:1px solid rgba(255,255,255,.22);background:rgba(12,12,18,.48);color:#fff;border-radius:12px;padding:9px 12px;font-weight:750;backdrop-filter:blur(8px)}
-.matchedCardBadge{display:inline-block;margin-bottom:8px;padding:6px 9px;border-radius:999px;background:rgba(165,92,246,.22);border:1px solid rgba(202,158,255,.3);font-size:12px;font-weight:800}
+.profilePeek{margin-top:12px;border:1px solid rgba(255,255,255,.22);background:rgba(12,15,18,.48);color:#fff;border-radius:12px;padding:9px 12px;font-weight:750;backdrop-filter:blur(8px)}
+.matchedCardBadge{display:inline-block;margin-bottom:8px;padding:6px 9px;border-radius:999px;background:rgba(157,169,181,.22);border:1px solid rgba(200,206,213,.3);font-size:12px;font-weight:800}
 .chatPeer{display:flex;align-items:center;gap:12px;min-width:0;flex:1;padding:0;border:0;background:none;color:inherit;text-align:left;cursor:pointer}
 .chatPeer .chatTitle{min-width:0}
 .chatPeer .chatTitle h2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.publicProfile{overflow:hidden;border:1px solid var(--line);border-radius:22px;background:#101019}
+.publicProfile{overflow:hidden;border:1px solid var(--line);border-radius:22px;background:#101419}
 .publicProfilePhoto,.publicProfileFallback{width:100%;height:320px;object-fit:cover}
-.publicProfileFallback{display:grid;place-items:center;background:radial-gradient(circle at 50% 35%,#9d6cff,#2a1837 48%,#11111b);font-size:120px;font-weight:900}
+.publicProfileFallback{display:grid;place-items:center;background:radial-gradient(circle at 50% 35%,#abb6c0,#1f2730 48%,#11161b);font-size:120px;font-weight:900}
 .publicProfileBody{padding:18px}
 .publicProfileBody h2{margin:0 0 10px;font-size:28px}
-.publicMatched{display:inline-block;margin-bottom:10px;padding:6px 9px;border-radius:999px;background:rgba(165,92,246,.18);color:#e6cbff;font-size:12px;font-weight:800}
+.publicMatched{display:inline-block;margin-bottom:10px;padding:6px 9px;border-radius:999px;background:rgba(157,169,181,.18);color:#e8e6e2;font-size:12px;font-weight:800}
 .publicMeta{color:var(--muted);font-size:13px;line-height:1.45}
 .publicBio{line-height:1.5;white-space:pre-wrap}
 .publicProfileBody>.primary,.publicProfileBody>.choice{margin-top:10px}
@@ -247,11 +247,11 @@
 
 /* VYBE 0.9.21 — report UX */
 .reportReasonList{display:grid;gap:8px;margin:12px 0 14px}
-.reportReasonBtn{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:14px;background:#101019;color:var(--text);text-align:left}
+.reportReasonBtn{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:14px;background:#101419;color:var(--text);text-align:left}
 .reportReasonBtn b{display:none;color:#72e6ad}
-.reportReasonBtn.selected{border-color:rgba(139,92,246,.75);background:rgba(139,92,246,.10)}
+.reportReasonBtn.selected{border-color:rgba(157,169,181,.75);background:rgba(157,169,181,.10)}
 .reportReasonBtn.selected b{display:block}
-.reportBlockToggle{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;margin:12px 0;padding:13px 14px;border:1px solid var(--line);border-radius:14px;background:#101019;color:var(--text);text-align:left}
+.reportBlockToggle{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;margin:12px 0;padding:13px 14px;border:1px solid var(--line);border-radius:14px;background:#101419;color:var(--text);text-align:left}
 .reportBlockToggle span b,.reportBlockToggle span small{display:block}
 .reportBlockToggle span small{margin-top:4px;color:var(--muted);font-weight:400;line-height:1.35}
 .reportBlockToggle strong{font-size:11px;color:var(--muted)}
@@ -269,7 +269,7 @@
 .chatMainOpen{display:flex;align-items:center;gap:12px;flex:1;min-width:0;padding:12px;border:0;background:none;color:inherit;text-align:left;cursor:pointer}
 .chatMainOpen .itemMain{min-width:0}
 .chatMainOpen .itemMain b,.chatMainOpen .itemMain small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.chatProfileAction{display:flex;align-items:center;justify-content:space-between;width:100%;margin:-4px 0 10px;padding:10px 12px;border:1px solid var(--line);border-radius:13px;background:#101019;color:#ddd;font-weight:750}
+.chatProfileAction{display:flex;align-items:center;justify-content:space-between;width:100%;margin:-4px 0 10px;padding:10px 12px;border:1px solid var(--line);border-radius:13px;background:#101419;color:#ddd;font-weight:750}
 .chatProfileAction span{color:var(--muted);font-size:20px}
 .chatAvatar.avatarShell,.msgAvatar.avatarShell{display:grid}
 .chatAvatar.avatarShell{overflow:hidden}
@@ -287,56 +287,56 @@
 
 /* VYBE 0.9.25 — notification center */
 .topbarActions{display:flex;align-items:center;gap:8px}
-.notificationIconBtn{position:relative;background:#151522!important;border:1px solid var(--line)!important;font-size:18px!important}
-.notificationBadge{position:absolute;right:-5px;top:-5px;min-width:19px;height:19px;padding:0 5px;border-radius:999px;display:grid;place-items:center;background:#ff3f81;color:#fff;font-size:10px;font-weight:900;border:2px solid #0b0b12}
+.notificationIconBtn{position:relative;background:#151b22!important;border:1px solid var(--line)!important;font-size:18px!important}
+.notificationBadge{position:absolute;right:-5px;top:-5px;min-width:19px;height:19px;padding:0 5px;border-radius:999px;display:grid;place-items:center;background:var(--accent);color:#fff;font-size:10px;font-weight:900;border:2px solid #0b0e12}
 .notificationHead{display:flex;align-items:center;gap:10px;margin-right:42px}
 .notificationHead h2{margin:0}
-.notificationCount{display:inline-grid;place-items:center;min-width:25px;height:25px;padding:0 7px;border-radius:999px;background:#262238;color:#d8c8ff;font-size:11px;font-weight:800}
+.notificationCount{display:inline-grid;place-items:center;min-width:25px;height:25px;padding:0 7px;border-radius:999px;background:#232d37;color:#e7e4e0;font-size:11px;font-weight:800}
 .notificationFilters{display:flex;gap:7px;overflow-x:auto;margin:16px 0 12px;padding-bottom:3px;scrollbar-width:none}
 .notificationFilters::-webkit-scrollbar{display:none}
-.notificationFilter{flex:0 0 auto;border:1px solid var(--line);background:#101019;color:#b9b9ca;border-radius:999px;padding:8px 11px;font-size:12px;font-weight:750}
-.notificationFilter.selected{border-color:#8b5cf6;background:rgba(139,92,246,.14);color:#fff}
+.notificationFilter{flex:0 0 auto;border:1px solid var(--line);background:#101419;color:#b9c2ca;border-radius:999px;padding:8px 11px;font-size:12px;font-weight:750}
+.notificationFilter.selected{border-color:#9da9b5;background:rgba(157,169,181,.14);color:#fff}
 .notificationList{display:grid;gap:8px}
-.notificationItem{position:relative;width:100%;display:flex;align-items:center;gap:11px;text-align:left;padding:12px;border:1px solid var(--line);border-radius:16px;background:#101019;color:var(--text)}
-.notificationItem.unread{border-color:rgba(255,63,129,.42);background:linear-gradient(135deg,rgba(255,63,129,.07),#101019 48%)}
-.notificationItem.unread:after{content:"";position:absolute;right:12px;top:12px;width:7px;height:7px;border-radius:50%;background:#ff3f81}
+.notificationItem{position:relative;width:100%;display:flex;align-items:center;gap:11px;text-align:left;padding:12px;border:1px solid var(--line);border-radius:16px;background:#101419;color:var(--text)}
+.notificationItem.unread{border-color:rgba(233,180,155,.42);background:linear-gradient(135deg,rgba(233,180,155,.07),#101419 48%)}
+.notificationItem.unread:after{content:"";position:absolute;right:12px;top:12px;width:7px;height:7px;border-radius:50%;background:var(--accent)}
 .notificationAvatar,.notificationEmoji{width:44px;height:44px;flex:0 0 44px;border-radius:50%;display:grid;place-items:center}
-.notificationAvatar{background:linear-gradient(135deg,#583e8f,#ff5b91);font-weight:800;overflow:hidden}
-.notificationEmoji{background:#1c1b2a;font-size:21px}
+.notificationAvatar{background:linear-gradient(135deg,#50667d,#ff5b91);font-weight:800;overflow:hidden}
+.notificationEmoji{background:#1b222a;font-size:21px}
 .notificationText{min-width:0;flex:1}
 .notificationText b,.notificationText span,.notificationText small{display:block}
 .notificationText b{font-size:14px}
-.notificationText span{margin-top:3px;color:#d4d4df;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.notificationText span{margin-top:3px;color:#d4dadf;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .notificationText small{margin-top:4px;color:var(--muted);font-size:10px}
-.notificationChevron{color:#bbb3cc;font-size:22px;padding-left:2px}
+.notificationChevron{color:#b7c0c8;font-size:22px;padding-left:2px}
 
 
 /* VYBE 0.9.28 — live discovery */
 .discoveryBadges{position:absolute;z-index:3;top:16px;left:16px;right:64px;display:flex;gap:7px;flex-wrap:wrap}
-.discoveryBadge{display:inline-flex;align-items:center;min-height:30px;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(12,12,18,.62);backdrop-filter:blur(12px);font-size:11px;font-weight:850;letter-spacing:.02em}
+.discoveryBadge{display:inline-flex;align-items:center;min-height:30px;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(12,15,18,.62);backdrop-filter:blur(12px);font-size:11px;font-weight:850;letter-spacing:.02em}
 .onlineBadge{color:#7cf0b7;border-color:rgba(94,230,168,.28);background:rgba(16,52,39,.58)}
-.spotlightBadge{color:#f2dcff;border-color:rgba(202,158,255,.42);background:linear-gradient(135deg,rgba(139,92,246,.72),rgba(255,63,129,.55));box-shadow:0 8px 26px rgba(139,92,246,.28)}
-.spotlightCard{box-shadow:0 20px 60px rgba(139,92,246,.26),0 0 0 1px rgba(202,158,255,.24)}
-.vibeNowLive{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:9px 0 10px;padding:9px 11px;border:1px solid rgba(255,255,255,.16);border-radius:14px;background:rgba(15,15,24,.58);backdrop-filter:blur(10px)}
+.spotlightBadge{color:#f0eeeb;border-color:rgba(200,206,213,.42);background:linear-gradient(135deg,rgba(157,169,181,.72),rgba(233,180,155,.55));box-shadow:0 8px 26px rgba(157,169,181,.28)}
+.spotlightCard{box-shadow:0 20px 60px rgba(157,169,181,.26),0 0 0 1px rgba(200,206,213,.24)}
+.vibeNowLive{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:9px 0 10px;padding:9px 11px;border:1px solid rgba(255,255,255,.16);border-radius:14px;background:rgba(15,19,24,.58);backdrop-filter:blur(10px)}
 .vibeNowLive span{min-width:0;font-size:13px;font-weight:750}
-.vibeNowLive span b{margin-right:5px;color:#d7b8ff;font-size:10px;letter-spacing:.08em}
-.vibeNowLive small{flex:0 0 auto;color:#f3d8ff;font-size:10px;font-weight:750}
+.vibeNowLive span b{margin-right:5px;color:#e0dcd7;font-size:10px;letter-spacing:.08em}
+.vibeNowLive small{flex:0 0 auto;color:#eeece9;font-size:10px;font-weight:750}
 .profileFacts{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
-.profileFacts span{padding:6px 9px;border-radius:999px;background:rgba(255,255,255,.09);font-size:11px;color:#e1e1ea}
+.profileFacts span{padding:6px 9px;border-radius:999px;background:rgba(255,255,255,.09);font-size:11px;color:#e9e6e2}
 .profileFacts .verifiedFact{color:#bfe0ff;background:rgba(98,169,255,.12)}
 .actions{align-items:flex-start;padding-top:16px;padding-bottom:22px}
 .actionGroup{display:grid;justify-items:center;gap:6px;min-width:72px}
 .actionGroup small{color:var(--muted);font-size:10px;font-weight:750}
-.actionGroup.superGroup small{color:#d7b8ff}
-.action.super{width:64px;height:64px;background:linear-gradient(135deg,#7045d8,#bb55ee);border:1px solid rgba(231,200,255,.55);color:#fff;box-shadow:0 10px 30px rgba(139,92,246,.26)}
-.action.like{box-shadow:0 10px 30px rgba(255,63,129,.20)}
+.actionGroup.superGroup small{color:#e0dcd7}
+.action.super{width:64px;height:64px;background:linear-gradient(135deg,#7f8e9e,#94a2af);border:1px solid rgba(231,228,224,.55);color:#fff;box-shadow:0 10px 30px rgba(157,169,181,.26)}
+.action.like{box-shadow:0 10px 30px rgba(233,180,155,.20)}
 @media (max-width:390px){.vibeNowLive{align-items:flex-start;flex-direction:column;gap:5px}.actionGroup{min-width:66px}}
 
 
 /* VYBE 0.9.30 — actionable Discovery empty state */
 .cardStack.emptyStack{min-height:0}
-.discoverEmpty{margin:28px 0 12px;padding:28px 22px 22px;border:1px solid rgba(139,92,246,.28);border-radius:24px;background:linear-gradient(145deg,rgba(139,92,246,.11),rgba(255,63,129,.055) 58%,rgba(21,21,34,.72));text-align:center;box-shadow:0 18px 48px rgba(0,0,0,.18)}
-.discoverEmptyIcon{width:58px;height:58px;margin:0 auto 14px;display:grid;place-items:center;border-radius:19px;background:linear-gradient(135deg,rgba(139,92,246,.26),rgba(255,63,129,.23));border:1px solid rgba(215,184,255,.28);font-size:27px;box-shadow:0 10px 30px rgba(139,92,246,.14)}
+.discoverEmpty{margin:28px 0 12px;padding:28px 22px 22px;border:1px solid rgba(157,169,181,.28);border-radius:24px;background:linear-gradient(145deg,rgba(157,169,181,.11),rgba(233,180,155,.055) 58%,rgba(21,27,34,.72));text-align:center;box-shadow:0 18px 48px rgba(0,0,0,.18)}
+.discoverEmptyIcon{width:58px;height:58px;margin:0 auto 14px;display:grid;place-items:center;border-radius:19px;background:linear-gradient(135deg,rgba(157,169,181,.26),rgba(233,180,155,.23));border:1px solid rgba(224,220,215,.28);font-size:27px;box-shadow:0 10px 30px rgba(157,169,181,.14)}
 .discoverEmpty h3{margin:0;font-size:20px;line-height:1.25}
 .discoverEmpty p{max-width:330px;margin:9px auto 19px;color:var(--muted);line-height:1.45;font-size:14px}
 .discoverEmptyActions{display:grid;gap:9px}
@@ -351,21 +351,21 @@
 
 
 /* VYBE 0.9.34 — chat UX */
-.chatRow.hasUnread{background:linear-gradient(135deg,rgba(139,92,246,.10),rgba(255,63,129,.045))}
+.chatRow.hasUnread{background:linear-gradient(135deg,rgba(157,169,181,.10),rgba(233,180,155,.045))}
 .chatRow.hasUnread .itemMain b{font-weight:850}
-.chatRow.newMatchRow .itemMain small{color:#d7b8ff;font-weight:750}
+.chatRow.newMatchRow .itemMain small{color:#e0dcd7;font-weight:750}
 .newMatchDot{font-size:15px;line-height:1}
 .msgMeta{display:flex;align-items:center;justify-content:flex-end;gap:6px}
 .msgRow.theirs .msgMeta{justify-content:flex-start}
 .msgReceipt{font-weight:900;letter-spacing:-.08em}
-.msgReceipt.sent{color:#a6a7b8}
+.msgReceipt.sent{color:#a4afba}
 .msgReceipt.read{color:#9fc7ff}
 #chatPresence[data-idle-label^="●"]{color:var(--green)}
 .matchSuccess{position:relative;text-align:center;overflow:hidden;padding:8px 0 2px}
-.matchSuccessGlow{position:absolute;inset:-80px 10% auto;height:220px;background:radial-gradient(circle,rgba(255,63,129,.28),rgba(139,92,246,.14) 44%,transparent 72%);pointer-events:none}
+.matchSuccessGlow{position:absolute;inset:-80px 10% auto;height:220px;background:radial-gradient(circle,rgba(233,180,155,.28),rgba(157,169,181,.14) 44%,transparent 72%);pointer-events:none}
 .matchSuccessPhoto,.matchSuccessFallback{position:relative;width:126px;height:126px;margin:8px auto 0;border-radius:38px;object-fit:cover;border:2px solid rgba(255,255,255,.16);box-shadow:0 18px 48px rgba(0,0,0,.34)}
-.matchSuccessFallback{display:grid;place-items:center;background:linear-gradient(135deg,#6c49c4,#d64286);font-size:54px;font-weight:900}
-.matchSuccessMark{position:relative;width:52px;height:52px;margin:-24px auto 8px;display:grid;place-items:center;border-radius:50%;background:linear-gradient(135deg,#ff3f81,#8b5cf6);border:4px solid #151520;font-size:25px;font-weight:900}
+.matchSuccessFallback{display:grid;place-items:center;background:linear-gradient(135deg,#6c86a1,#d64286);font-size:54px;font-weight:900}
+.matchSuccessMark{position:relative;width:52px;height:52px;margin:-24px auto 8px;display:grid;place-items:center;border-radius:50%;background:linear-gradient(135deg,var(--accent),#9da9b5);border:4px solid #151a20;font-size:25px;font-weight:900}
 .matchSuccess h2{position:relative;margin:8px 0 4px;font-size:27px}
 .matchSuccess p{margin:0 0 18px;color:var(--muted);font-size:16px}
 .matchSuccess .choice{width:100%;margin-top:9px;font-weight:750}
@@ -373,10 +373,10 @@
 
 /* VYBE 0.9.37 — contextual like notification */
 .likeNotice{text-align:center;padding:8px 0 4px}
-.likeNoticeIcon{width:72px;height:72px;margin:2px auto 14px;display:grid;place-items:center;border-radius:24px;background:linear-gradient(135deg,rgba(255,63,129,.24),rgba(139,92,246,.24));border:1px solid rgba(215,184,255,.3);font-size:34px;box-shadow:0 18px 42px rgba(139,92,246,.16)}
+.likeNoticeIcon{width:72px;height:72px;margin:2px auto 14px;display:grid;place-items:center;border-radius:24px;background:linear-gradient(135deg,rgba(233,180,155,.24),rgba(157,169,181,.24));border:1px solid rgba(224,220,215,.3);font-size:34px;box-shadow:0 18px 42px rgba(157,169,181,.16)}
 .likeNotice h2{margin:0 0 8px;font-size:27px}
 .likeNotice>p{max-width:340px;margin:0 auto 18px;color:var(--muted);line-height:1.45}
-.likeNoticePlus{margin:0 0 18px;padding:16px 18px;border:1px solid rgba(139,92,246,.26);border-radius:18px;background:rgba(139,92,246,.08);text-align:left}
+.likeNoticePlus{margin:0 0 18px;padding:16px 18px;border:1px solid rgba(157,169,181,.26);border-radius:18px;background:rgba(157,169,181,.08);text-align:left}
 .likeNoticePlus b{display:block;margin-bottom:4px;font-size:18px}
 .likeNoticePlus span{color:var(--muted);font-size:14px}
 .likeNotice .choice{width:100%;margin-top:9px;font-weight:750}
@@ -453,7 +453,7 @@
   padding:10px 8px;
   border:1px solid var(--line);
   border-radius:12px;
-  background:#101019;
+  background:#101419;
   text-align:center;
 }
 .financeDeepMetrics strong,.financeDeepMetrics span{display:block}

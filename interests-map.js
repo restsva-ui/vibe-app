@@ -80,7 +80,7 @@ async function mountVibeMap({picker=false,center=[50.45,30.5],zoom=11,loadPeople
     document.getElementById("mapCity").onchange=e=>{const city=VYBE_MAP_CITIES[Number(e.target.value)];if(e.target.value!==""&&city)map.setView([city[2],city[3]],11)};
     if(picker){
       let area;
-      const showArea=()=>{const c=map.getCenter(),point=snapMapPoint(c.lat,c.lng);if(!point)return;area?.remove();area=L.rectangle([[point.lat-.025,point.lng-.025],[point.lat+.025,point.lng+.025]],{color:"#a970a4",weight:2,fillOpacity:.18,interactive:false}).addTo(map);};
+      const showArea=()=>{const c=map.getCenter(),point=snapMapPoint(c.lat,c.lng);if(!point)return;area?.remove();area=L.rectangle([[point.lat-.025,point.lng-.025],[point.lat+.025,point.lng+.025]],{color:"#d99c80",weight:2,fillOpacity:.18,interactive:false}).addTo(map);};
       showArea();map.on("moveend",showArea);map.on("click",e=>map.panTo(e.latlng));
       const button=document.getElementById("confirmMapArea");button.disabled=false;button.onclick=()=>{const c=map.getCenter();onPick(snapMapPoint(c.lat,c.lng));};
       document.getElementById("mapStatus").textContent=uiText("Виділена ділянка — район, який побачать інші.");

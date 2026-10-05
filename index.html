@@ -3,24 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0b0b12">
+<meta name="theme-color" content="#0c1014">
+<link rel="icon" type="image/svg+xml" href="./assets/vybe-mark.svg?v=20261005-brand1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>VYBE 0.9.48</title>
-<link rel="stylesheet" href="./styles.css?v=20261004-financeui0944">
-<link rel="stylesheet" href="./visual.css?v=20261005-media1">
+<link rel="stylesheet" href="./styles.css?v=20261005-brand1">
+<link rel="stylesheet" href="./visual.css?v=20261005-brand1">
 <script src="https://telegram.org/js/telegram-web-app.js">
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2">
 </script>
 <style>
-#vibeSplash{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(circle at 50% 45%,#19182a 0,#0b0b12 55%,#07070b 100%);opacity:1;visibility:visible;transition:opacity .35s ease,visibility .35s ease}
+#vibeSplash{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#0c1014;opacity:1;visibility:visible;transition:opacity .35s ease,visibility .35s ease}
 #vibeSplash.done{opacity:0;visibility:hidden;pointer-events:none}
-.vibeSplashLogo{width:min(92vw,520px);perspective:900px;transform-style:preserve-3d}
-.vibeSplashArt{display:block;width:100%;height:auto;transform-origin:50% 50%;will-change:transform,opacity;animation:vibeLogo3D 1.9s cubic-bezier(.16,.84,.24,1) both}
-@keyframes vibeLogo3D{0%{opacity:0;transform:translateY(20px) scale(.68) rotateX(18deg) rotateY(-24deg)}28%{opacity:1;transform:translateY(0) scale(1.06) rotateX(-5deg) rotateY(10deg)}58%{transform:scale(.99) rotateX(4deg) rotateY(-8deg)}82%{transform:scale(1.025) rotateX(-2deg) rotateY(4deg)}100%{opacity:1;transform:scale(1) rotateX(0) rotateY(0)}}
-@media (prefers-reduced-motion:reduce){.vibeSplashArt{animation:vibeLogoFade .8s ease both}@keyframes vibeLogoFade{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}}
+.vibeSplashLogo{width:min(74vw,340px);perspective:900px;transform-style:preserve-3d}
+.vibeSplashArt{display:block;width:100%;height:auto;transform-origin:50% 50%;will-change:transform,opacity;animation:vibeLogo3D 1.3s cubic-bezier(.16,.84,.24,1) both}
+@keyframes vibeLogo3D{0%{opacity:0;transform:translateY(12px) scale(.94) rotateX(10deg) rotateY(-12deg)}55%{opacity:1;transform:translateY(0) scale(1.015) rotateX(-2deg) rotateY(3deg)}100%{opacity:1;transform:scale(1) rotateX(0) rotateY(0)}}
+@media (prefers-reduced-motion:reduce){.vibeSplashArt{animation:vibeLogoFade .35s ease both}@keyframes vibeLogoFade{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:scale(1)}}}
 </style>
-<link rel="stylesheet" href="./chat-media.css?v=20261005-media1">
+<link rel="stylesheet" href="./chat-media.css?v=20261005-brand1">
 </head>
 <body>
 <svg class="iconSprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -102,12 +103,12 @@
 </svg>
 <div id="vibeSplash" aria-hidden="true">
 <div class="vibeSplashLogo">
-<img class="vibeSplashArt" src="./assets/vibe-logo-3d.svg?v=20261005-1138" alt="">
+<img class="vibeSplashArt" src="./assets/vybe-wordmark.svg?v=20261005-brand1" alt="">
 </div>
 </div>
 <div id="ageGate" class="overlay">
 <div class="modal ageModal">
-<div class="logoMark">V</div>
+<div class="logoMark"><img src="./assets/vybe-mark.svg?v=20261005-brand1" width="64" height="64" alt=""></div>
 <h1>VYBE</h1>
 <p>Знайомства, флірт, дружба та приватне спілкування для дорослих.</p>
 <div class="ageBadge">18+</div>
@@ -152,7 +153,7 @@
 <header class="topbar">
 <div class="topbarCopy">
 <div class="eyebrow">
-<span class="brandWord">vibe</span>
+<img class="brandWord" src="./assets/vybe-wordmark.svg?v=20261005-brand1" width="110" height="29" alt="VYBE">
 <span class="brandEdition">beta</span>
 </div>
 <div id="hello" class="hello">Привіт 👋</div>
@@ -418,9 +419,9 @@
 </div>
 </div>
 </div>
-<script src="./interests-map.js?v=20261005-interests-map1"></script>
+<script src="./interests-map.js?v=20261005-brand1"></script>
 <script src="./chat-media.js?v=20261005-media2"></script>
-<script src="./app.js?v=20261005-media1">
+<script src="./app.js?v=20261005-brand1">
 </script>
 <script>
 (()=>{const splash=document.getElementById("vibeSplash");if(!splash)return;let closed=false;const close=()=>{if(closed)return;closed=true;splash.classList.add("done");setTimeout(()=>splash.remove(),450)};const start=()=>setTimeout(close,2050);if(document.readyState==="complete")start();else window.addEventListener("load",start,{once:true});setTimeout(close,3200)})();
