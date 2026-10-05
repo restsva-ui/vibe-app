@@ -60,6 +60,7 @@ for (const token of referralChecks) {
 }
 
 if (!index.includes("VYBE 0.9.47")) fail("index.html: version is not 0.9.47");
+if (!index.includes("@supabase/supabase-js@2.117.2")) fail("index.html: Supabase JS dependency is not pinned to 2.117.2");
 if (!app.includes('app_version:"0.9.47"')) fail("app.js: analytics version is not 0.9.47");
 
 if (process.exitCode) process.exit(process.exitCode);
