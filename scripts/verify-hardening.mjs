@@ -5,6 +5,7 @@ const index = fs.readFileSync("index.html", "utf8");
 const auth = fs.readFileSync("supabase/functions/telegram-auth/index.ts", "utf8");
 const bot = fs.readFileSync("supabase/functions/telegram-bot/index.ts", "utf8");
 const telegramInitData = fs.readFileSync("supabase/functions/_shared/telegram-init-data.ts", "utf8");
+const serviceAuth = fs.readFileSync("supabase/functions/_shared/supabase-service-auth.ts", "utf8");
 
 const fail = (message) => {
   console.error("HARDENING CHECK FAILED:", message);
@@ -24,6 +25,7 @@ for (const [label, pattern] of secretPatterns) {
     ["telegram-auth", auth],
     ["telegram-bot", bot],
     ["telegram-init-data", telegramInitData],
+    ["supabase-service-auth", serviceAuth],
   ]) {
     if (pattern.test(source)) fail(`${label} found in ${name}`);
     pattern.lastIndex = 0;
@@ -34,13 +36,22 @@ for (const [name, source, expected] of [
   ["telegram-auth", auth, 3],
   ["telegram-bot", bot, 2],
 ]) {
-  const guards = source.match(/key\.startsWith\("sb_secret_"\)/g) || [];
-  if (guards.length !== expected) {
-    fail(`${name}: expected ${expected} sb_secret Authorization guards, found ${guards.length}`);
+  const uses = source.match(/serviceRoleAuthHeaders\(key\)/g) || [];
+  if (uses.length !== expected) {
+    fail(`${name}: expected ${expected} shared service-key header calls, found ${uses.length}`);
   }
-  if (/^\s*Authorization:\s*`Bearer \$\{key\}`,/m.test(source)) {
+  if (source.includes('key.startsWith("sb_secret_")')) {
+    fail(`${name}: service-key classification logic was duplicated outside the shared module`);
+  }
+  if (/^\s*Authorization:\s*`Bearer \${key}`,/m.test(source)) {
     fail(`${name}: unguarded Supabase key is still sent as Bearer Authorization`);
   }
+}
+if (!serviceAuth.includes('key.startsWith("sb_secret_")')) {
+  fail("shared Supabase service-key classifier is missing");
+}
+if (!serviceAuth.includes("? { apikey: key }")) {
+  fail("shared Supabase service-key classifier does not omit Bearer auth for opaque keys");
 }
 
 if (!auth.includes('import { validateTelegramInitData } from "../_shared/telegram-init-data.ts";')) {
