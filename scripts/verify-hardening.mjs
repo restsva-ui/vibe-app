@@ -1,6 +1,8 @@
 import fs from "node:fs";
 
 const app = fs.readFileSync("app.js", "utf8");
+const chatMedia = fs.readFileSync("chat-media.js", "utf8");
+const mediaApi = fs.readFileSync("supabase/functions/_shared/chat-media-api.ts", "utf8");
 const index = fs.readFileSync("index.html", "utf8");
 const auth = fs.readFileSync("supabase/functions/telegram-auth/index.ts", "utf8");
 const bot = fs.readFileSync("supabase/functions/telegram-bot/index.ts", "utf8");
@@ -22,6 +24,8 @@ const secretPatterns = [
 for (const [label, pattern] of secretPatterns) {
   for (const [name, source] of [
     ["app.js", app],
+    ["chat-media.js", chatMedia],
+    ["chat-media-api", mediaApi],
     ["telegram-auth", auth],
     ["telegram-bot", bot],
     ["telegram-init-data", telegramInitData],

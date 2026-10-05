@@ -1,5 +1,7 @@
 import { serviceRoleAuthHeaders } from "../_shared/supabase-service-auth.ts";
 import { validateTelegramInitData } from "../_shared/telegram-init-data.ts";
+import { boundedJson } from "../_shared/chat-media.ts";
+import { MEDIA_ACTIONS, handleMediaAction, flushMediaCleanup } from "../_shared/chat-media-api.ts";
 import { parseInterests, parseMapArea, parseMapBounds } from "../_shared/discovery-preferences.ts";
 
 const corsHeaders = {
@@ -100,6 +102,13 @@ const ACTION_RATE_LIMITS: Record<string, RateLimitPolicy> = {
   super_like: { windowSeconds: 60, maxHits: 60 },
   like: { windowSeconds: 60, maxHits: 120 },
   message_send: { windowSeconds: 60, maxHits: 120 },
+  message_media_send: { windowSeconds: 600, maxHits: 30 },
+  message_media_url: { windowSeconds: 60, maxHits: 90 },
+  call_start: { windowSeconds: 600, maxHits: 12 },
+  call_action: { windowSeconds: 60, maxHits: 60 },
+  call_poll: { windowSeconds: 60, maxHits: 90 },
+  call_signal: { windowSeconds: 60, maxHits: 180 },
+  rtc_config: { windowSeconds: 600, maxHits: 30 },
 };
 
 async function enforceActionRateLimit(userId: string, action: string): Promise<Response | null> {
@@ -444,7 +453,7 @@ async function recordNotificationEvent(
     actorUserId?: string | null;
     matchId?: string | null;
     sourceKey?: string | null;
-    variant?: "like" | "super";
+    variant?: "like" | "super" | "call_audio" | "call_video";
     payload?: Record<string, unknown>;
   },
 ) {
@@ -488,7 +497,7 @@ async function sendSocialNotification(
     actorUserId?: string | null;
     matchId?: string | null;
     sourceKey?: string | null;
-    variant?: "like" | "super";
+    variant?: "like" | "super" | "call_audio" | "call_video";
   },
 ) {
   try {
@@ -531,7 +540,7 @@ async function sendSocialNotification(
       buttonText = "Open chat / Відкрити чат";
       if (input.matchId) url = `https://restsva-ui.github.io/vibe-app/?chat=${encodeURIComponent(input.matchId)}`;
     } else {
-      text = "VYBE 💬\n\nYou have a new message. / У тебе нове повідомлення.";
+      text = input.variant === "call_audio" ? "VYBE 📞\n\nIncoming voice call. Open VYBE to answer. / Вхідний голосовий дзвінок. Відкрий VYBE, щоб відповісти." : input.variant === "call_video" ? "VYBE 🎥\n\nIncoming video call. Open VYBE to answer. / Вхідний відеодзвінок. Відкрий VYBE, щоб відповісти." : "VYBE 💬\n\nYou have a new message. / У тебе нове повідомлення.";
       buttonText = "Open chat / Відкрити чат";
       if (input.matchId) url = `https://restsva-ui.github.io/vibe-app/?chat=${encodeURIComponent(input.matchId)}`;
     }
@@ -1305,8 +1314,9 @@ Deno.serve(async (req: Request) => {
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
     if (!botToken) return json({ ok: false, error: "Server configuration error" }, 500);
 
+    if (Number(req.headers.get("content-length") || 0) > 18000000) return json({ok:false,error:"MEDIA_TOO_LARGE"},413);
     let body: any;
-    try { body = await req.json(); } catch { return json({ ok: false, error: "Invalid JSON body" }, 400); }
+    try { body = await boundedJson(req); } catch (e) { if(e instanceof Error && e.message==="BODY_TOO_LARGE")return json({ok:false,error:"MEDIA_TOO_LARGE"},413); return json({ ok: false, error: "Invalid JSON body" }, 400); }
     if (typeof body?.initData !== "string" || !body.initData.length) return json({ ok: false, error: "initData is required" }, 400);
     if (body.initData.length > 20000) return json({ ok: false, error: "initData is too large" }, 413);
 
@@ -1454,6 +1464,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "profile_get") {
+      await flushMediaCleanup({db,storage:storageRequest});
       const adminRole = await getAdminRole(db, user.id);
       const rawProfile = await getProfile(db, user.id);
       const signedPhotos = await signProfilePhotoUrls([rawProfile?.photo_url]);
@@ -2916,6 +2927,7 @@ Deno.serve(async (req: Request) => {
 
       try {
         const result = await rpc("vybe_delete_account", { p_user_id: user.id });
+        const mediaCleanupOk = await flushMediaCleanup({db,storage:storageRequest});
         let photoCleanupOk = await cleanupProfilePhotoFolder(user.id, null);
         if (!photoCleanupOk && result?.photo_url) {
           photoCleanupOk = await deleteProfilePhotoWithRetry(result.photo_url);
@@ -2929,6 +2941,7 @@ Deno.serve(async (req: Request) => {
           already_deleted: result?.already_deleted === true,
           financial_orders_retained: Number(result?.financial_orders_retained || 0),
           photo_cleanup_ok: photoCleanupOk,
+          media_cleanup_ok: mediaCleanupOk,
         });
       } catch (e) {
         const message = String(e instanceof Error ? e.message : e);
@@ -3443,6 +3456,14 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    if (MEDIA_ACTIONS.has(String(action))) {
+      const result = await handleMediaAction(String(action), body, {
+        userId:String(user.id),db,rpc,storage:storageRequest,env:name=>Deno.env.get(name),
+        notify:(peer,match,key,variant)=>sendSocialNotification(db,botToken,{eventType:"message",recipientUserId:peer,actorUserId:String(user.id),matchId:match,sourceKey:key,variant}),
+      });
+      return json(result.data,result.status);
+    }
+
     if (action === "messages_list") {
       const matchId = clean(body.match_id, 80);
       const owned = await getMatchOtherUser(db, matchId, user.id);
@@ -3450,7 +3471,7 @@ Deno.serve(async (req: Request) => {
       if (await isRestrictedUser(db,owned.id)) return json({ok:false,error:"User unavailable"},403);
       if (await isBlockedBetween(db, user.id, owned.id)) return json({ ok: false, error: "User blocked" }, 403);
 
-      const newestMessages = await db(`messages?match_id=eq.${encodeURIComponent(matchId)}&select=id,match_id,sender_id,body,created_at&order=created_at.desc&limit=200`) ?? [];
+      const newestMessages = await db(`messages?match_id=eq.${encodeURIComponent(matchId)}&select=id,match_id,sender_id,body,kind,media_mime,duration_ms,created_at&order=created_at.desc&limit=200`) ?? [];
       const messages = [...newestMessages].reverse();
       const [myReads, peerReads] = await Promise.all([
         db(`match_reads?user_id=eq.${encodeURIComponent(user.id)}&match_id=eq.${encodeURIComponent(matchId)}&select=last_read_at&limit=1`),

@@ -6,3 +6,5 @@
 *.p12
 *.pfx
 .DS_Store
+
+supabase/.temp/

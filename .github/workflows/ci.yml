@@ -36,11 +36,22 @@ jobs:
         run: |
           node --check app.js
           node --check interests-map.js
+          node --check chat-media.js
 
       - name: Test interests and map privacy boundaries
         run: |
           npx --yes esbuild@0.25.11 scripts/test-discovery-preferences.ts --bundle --platform=node --format=esm --outfile=/tmp/test-discovery-preferences.mjs
           node /tmp/test-discovery-preferences.mjs
+
+      - name: Test media and call access boundaries
+        run: |
+          npx --yes esbuild@0.25.11 scripts/test-chat-media.ts --bundle --platform=node --format=esm --outfile=/tmp/test-chat-media.mjs
+          node /tmp/test-chat-media.mjs
+
+      - name: Test native WebRTC audio and video transfer
+        run: |
+          npm install --prefix /tmp/vybe-rtc-test @roamhq/wrtc@0.10.0 --no-audit --no-fund
+          node scripts/test-webrtc-loopback.mjs /tmp/vybe-rtc-test
 
       - name: Test Telegram initData validation
         run: |

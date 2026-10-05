@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>VYBE 0.9.48</title>
 <link rel="stylesheet" href="./styles.css?v=20261004-financeui0944">
-<link rel="stylesheet" href="./visual.css?v=20261005-interests-map1">
+<link rel="stylesheet" href="./visual.css?v=20261005-media1">
 <script src="https://telegram.org/js/telegram-web-app.js">
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2">
@@ -20,6 +20,7 @@
 @keyframes vibeLogo3D{0%{opacity:0;transform:translateY(20px) scale(.68) rotateX(18deg) rotateY(-24deg)}28%{opacity:1;transform:translateY(0) scale(1.06) rotateX(-5deg) rotateY(10deg)}58%{transform:scale(.99) rotateX(4deg) rotateY(-8deg)}82%{transform:scale(1.025) rotateX(-2deg) rotateY(4deg)}100%{opacity:1;transform:scale(1) rotateX(0) rotateY(0)}}
 @media (prefers-reduced-motion:reduce){.vibeSplashArt{animation:vibeLogoFade .8s ease both}@keyframes vibeLogoFade{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}}
 </style>
+<link rel="stylesheet" href="./chat-media.css?v=20261005-media1">
 </head>
 <body>
 <svg class="iconSprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -418,7 +419,8 @@
 </div>
 </div>
 <script src="./interests-map.js?v=20261005-interests-map1"></script>
-<script src="./app.js?v=20261005-interests-map1">
+<script src="./chat-media.js?v=20261005-media1"></script>
+<script src="./app.js?v=20261005-media1">
 </script>
 <script>
 (()=>{const splash=document.getElementById("vibeSplash");if(!splash)return;let closed=false;const close=()=>{if(closed)return;closed=true;splash.classList.add("done");setTimeout(()=>splash.remove(),450)};const start=()=>setTimeout(close,2050);if(document.readyState==="complete")start();else window.addEventListener("load",start,{once:true});setTimeout(close,3200)})();

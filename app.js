@@ -159,7 +159,7 @@ function uiText(value){
 function uiLocale(){return currentLang==="en"?"en-US":"uk-UA"}
 function skipI18nElement(el){
   if(!el?.closest)return false;
-  return !!el.closest(".msgBubble,.bio,.meta,#profileBio,#profileMeta,#profileName,#hello,.nameRow h2,.chatTitle h2,.blockedRow b,.chatOpen .itemMain small,.matchOpen .itemMain small,.msgSender,.avatar,.generatedAvatar,.chatAvatar,.msgAvatar,.userNameNoI18n,.mapShell,.interestPicker,.interestTags");
+  return !!el.closest(".msgBubble,.bio,.meta,#profileBio,#profileMeta,#profileName,#hello,.nameRow h2,.chatTitle h2,.blockedRow b,.chatOpen .itemMain small,.matchOpen .itemMain small,.msgSender,.avatar,.generatedAvatar,.chatAvatar,.msgAvatar,.userNameNoI18n,.mapShell,.interestPicker,.interestTags,.mediaShell");
 }
 function localizeDom(root=document){
   document.documentElement.lang=currentLang==="en"?"en":"uk";
@@ -250,6 +250,7 @@ const realtimeClient=window.supabase?.createClient?.(SUPABASE_URL,SUPABASE_KEY,{
 });
 let realtimeUserTopic=null,realtimeUserChannel=null,realtimeUserChannelTopic=null,realtimeConnected=false;
 const realtimeMatchChannels=new Map();
+let chatMedia=null,chatRequestId=0;
 let activeChat=null,chatRefreshTimer=null,socialRefreshTimer=null,typingStopTimer=null,incomingTypingTimer=null,lastTypingSentAt=0,localTypingActive=false;
 
 function teardownSocialRealtime(){
@@ -271,6 +272,7 @@ function teardownSocialRealtime(){
   setRealtimeBadge(false);
 }
 function enterRestrictedMode(reason=null,{showNotice=true}={}){
+  chatMedia?.stop();
   accountStatus="restricted";
   restrictionReason=reason||restrictionReason||null;
   remotePeople=[];matches=[];
@@ -378,7 +380,9 @@ function setupUserRealtime(topic){
       scheduleSocialRefresh(80);
       scheduleSupportCountRefresh();
     })
+    .on("broadcast",{event:"call_changed"},()=>chatMedia?.poll())
     .on("broadcast",{event:"relationship_changed"},()=>{
+      chatMedia?.disposeRecording();chatMedia?.endCall();
       if(activeChat){activeChat=null;sheet?.classList?.add("hidden");syncMatchRealtimeChannels()}
       scheduleSocialRefresh(80);
     })
@@ -1022,6 +1026,7 @@ async function hydrateProfile(){
   accountStatus=r.account_status||"active";
   restrictionReason=r.restriction_reason||null;
   if(r.realtime_topic){realtimeUserTopic=r.realtime_topic;setupUserRealtime(realtimeUserTopic)}
+  if(accountStatus==="active")chatMedia?.start();else chatMedia?.stop();
   if(r.profile){profile={name:r.profile.name,age:r.profile.age,city:r.profile.city||"",gender:r.profile.gender||"",looking:r.profile.looking_for||"",bio:r.profile.bio||"",photo_url:r.profile.photo_url||null,verified:r.profile.verified===true,user_id:r.user_id,interests:normalizeInterests(r.profile.interests),map_enabled:r.profile.map_enabled===true,map_lat:r.profile.map_lat??null,map_lng:r.profile.map_lng??null};store("vybeProfile",profile)}
 }
 async function begin(){
@@ -1253,6 +1258,7 @@ function setSheetFullscreen(enabled){
   sheet.classList.toggle("sheetFullscreen",enabled===true);
 }
 function closeSheetView(){
+  chatMedia?.disposeRecording();
   sendTyping(activeChat?.matchId,false);
   activeChat=null;
   syncMatchRealtimeChannels();
@@ -1444,7 +1450,7 @@ function renderChats(){
   list.innerHTML=rows.length?rows.map((p,i)=>{
     const unread=Number(p.unread_count||0);
     const isNewMatch=!p.last_message;
-    const subtitle=p.last_message?escapeHtml(p.last_message):uiText("Новий взаємний VYBE ✨");
+    const subtitle=p.last_message?escapeHtml(p.last_message==="🎙 Голосове повідомлення"?(currentLang==="en"?"🎙 Voice message":p.last_message):p.last_message==="🎥 Відеоповідомлення"?(currentLang==="en"?"🎥 Video message":p.last_message):p.last_message):uiText("Новий взаємний VYBE ✨");
     const time=formatChatListTime(p.last_message_at||p.created_at);
     return '<div class="listItem chatRow '+(unread?"hasUnread ":"")+(isNewMatch?"newMatchRow":"")+'"><button type="button" class="chatAvatarOpen" data-index="'+i+'" aria-label="'+escapeHtml(uiText("Переглянути анкету"))+'">'+avatarMarkup(p.photo_url,p.name,'avatar')+'</button><button type="button" class="chatOpen chatMainOpen" data-index="'+i+'"><div class="itemMain"><b>'+escapeHtml(p.name)+(p.age?", "+escapeHtml(p.age):"")+(p.online?' <span class="onlineMini">●</span>':'')+'</b><small>'+subtitle+'</small></div><div class="chatTail">'+(time?'<small class="chatTime">'+escapeHtml(time)+'</small>':'')+(unread?'<span class="unreadBadge">'+unread+'</span>':isNewMatch?'<span class="newMatchDot">✨</span>':'')+'</div><span class="chevron">›</span></button></div>';
   }).join(""):emptyStateMarkup("chat","Чати з’являться після взаємних збігів.","Тут будуть твої розмови після взаємного VYBE.");
@@ -1457,7 +1463,9 @@ function renderChats(){
   });
 }
 async function openChat(matchId,name,userId,options={}){
+  const requestId=++chatRequestId;
   const key=String(matchId);
+  const keepDom=options.silent&&activeChat?.matchId===key&&$("chatMessage")&&!sheet.classList.contains("hidden");
   const previousBox=$("chatMessages");
   const previousDraft=options.preserveDraft&&activeChat?.matchId===key?($("chatMessage")?.value||""):"";
   const stickToBottom=!previousBox||(previousBox.scrollHeight-previousBox.scrollTop-previousBox.clientHeight<90);
@@ -1467,8 +1475,9 @@ async function openChat(matchId,name,userId,options={}){
     secureApi("messages_list",{match_id:matchId}),
     secureApi("profile_public",{target_user_id:userId}),
   ]);
+  if(requestId!==chatRequestId||(options.silent&&activeChat?.matchId!==key))return;
   if(!r.ok){
-    if(options.silent){activeChat=null;sheet.classList.add("hidden");await loadMatches();return}
+    if(options.silent){chatMedia?.disposeRecording();activeChat=null;sheet.classList.add("hidden");await loadMatches();return}
     showAlert("Не вдалося відкрити чат.");return
   }
 
@@ -1490,13 +1499,25 @@ async function openChat(matchId,name,userId,options={}){
     const receipt=mine?'<span class="msgReceipt '+(wasRead?"read":"sent")+'" title="'+escapeHtml(uiText(wasRead?"Прочитано":"Надіслано"))+'">'+(wasRead?"✓✓":"✓")+'</span>':"";
     const meta='<span>'+escapeHtml(formatMessageTime(m.created_at))+'</span>'+receipt;
     const avatar=avatarMarkup(mine?ownPhoto:peerPhoto,sender,'msgAvatar');
-    return '<div class="msgRow '+(mine?"mine":"theirs")+'">'+avatar+'<div class="msgWrap"><div class="msgSender">'+escapeHtml(sender)+'</div><div class="msgBubble">'+escapeHtml(m.body)+'</div><div class="msgMeta">'+meta+'</div></div></div>';
+    return '<div data-message-id="'+escapeHtml(m.id)+'" class="msgRow '+(mine?"mine":"theirs")+'">'+avatar+'<div class="msgWrap"><div class="msgSender">'+escapeHtml(sender)+'</div><div class="msgBubble">'+(m.kind==='voice'||m.kind==='video'?chatMedia.messageMarkup(m):escapeHtml(m.body))+'</div><div class="msgMeta">'+meta+'</div></div></div>';
   }).join("");
 
   const idlePresence=peerProfile?.online?uiText("● онлайн"):chatConnectionLabel();
+  if(keepDom){
+    const template=document.createElement('template');template.innerHTML=msgs;
+    const box=$("chatMessages"),ids=new Set(messages.map(m=>String(m.id)));
+    box.querySelector('.chatEmpty')?.remove();
+    box.querySelectorAll('.msgRow').forEach(row=>{if(!ids.has(row.dataset.messageId)){row.querySelectorAll('audio,video').forEach(p=>p.pause());row.remove()}});
+    const existing=new Map([...box.querySelectorAll('.msgRow')].map(row=>[row.dataset.messageId,row]));
+    for(const row of template.content.children){const old=existing.get(row.dataset.messageId);if(old)old.querySelector('.msgMeta').innerHTML=row.querySelector('.msgMeta').innerHTML;else box.append(row.cloneNode(true))}
+    if(!messages.length)box.innerHTML='<div class="chatEmpty">'+uiText('Почни розмову 👋')+'</div>';
+  }else{
+    chatMedia?.disposeRecording();
   content.innerHTML='<div class="chatHeader"><button id="chatPeerBtn" class="chatPeer" type="button">'+avatarMarkup(peerPhoto,peerName,'chatAvatar')+'<div class="chatTitle"><h2>'+escapeHtml(peerName)+'</h2><small><span id="chatPresence" data-idle-label="'+escapeHtml(idlePresence)+'">'+escapeHtml(idlePresence)+'</span></small></div></button><button id="chatSafetyBtn" class="chatSafety" aria-label="Безпека">⋯</button></div><button id="chatProfileBtn" class="chatProfileAction" type="button"><span>'+uiIcon("user")+uiText("Переглянути анкету")+'</span>'+uiIcon("chevron")+'</button><div id="chatMessages" class="chatMessages">'+(msgs||'<div class="chatEmpty">Почни розмову 👋</div>')+'</div><div class="chatComposer"><textarea id="chatMessage" class="field" maxlength="2000" placeholder="Напиши повідомлення…"></textarea><button id="sendMessage" class="primary sendButton" aria-label="'+escapeHtml(uiText("Надіслати"))+'" title="'+escapeHtml(uiText("Надіслати"))+'">'+uiIcon("send")+'</button></div>';
+  }
   sheet.classList.add("sheetChat");
   sheet.classList.remove("hidden");
+  chatMedia?.mount();
   bindAvatarFallbacks(content);
 
   const openPeerProfile=()=>openPublicProfile(userId,{returnChat:{matchId,name:peerName,userId}});
@@ -1528,14 +1549,17 @@ async function openChat(matchId,name,userId,options={}){
   if(!options.noMatchRefresh)loadMatches();
 
   $("sendMessage").onclick=async()=>{
-    const message=$("chatMessage").value.trim();if(!message)return;
+    const composerField=$("chatMessage"),sendBtn=$("sendMessage");
+    const message=composerField.value.trim();if(!message)return;
     sendTyping(key,false);clearTimeout(typingStopTimer);
     $("sendMessage").disabled=true;
     const x=await secureApi("message_send",{match_id:matchId,message});
-    if(!x.ok){$("sendMessage").disabled=false;showAlert("Не вдалося надіслати повідомлення.");return}
-    if($("chatMessage"))$("chatMessage").value="";
+    sendBtn.disabled=false;
+    if(!x.ok){showAlert("Не вдалося надіслати повідомлення.");return}
+    if(composerField.isConnected&&composerField.value.trim()===message)composerField.value="";
+    if(activeChat?.matchId!==key){loadMatches();return}
     analyticsCapture("message_sent");
-    await openChat(matchId,name,userId,{noMatchRefresh:true});
+    await openChat(matchId,name,userId,{silent:true,preserveDraft:true,noMatchRefresh:true});
     loadMatches();
     tg?.HapticFeedback?.notificationOccurred("success");
   };
@@ -2154,3 +2178,5 @@ const mapLifecycleObserver=new MutationObserver(()=>{
 });
 mapLifecycleObserver.observe(content,{childList:true});
 mapLifecycleObserver.observe(sheet,{attributes:true,attributeFilter:["class"]});
+
+chatMedia=window.VybeMedia.create({api:secureApi,escape:escapeHtml,language:()=>currentLang,userId:()=>profile?.user_id,allowed:()=>accountStatus==="active"&&window.__vybeAuth?.ok,chat:()=>activeChat,alert:showAlert,content,refreshChat:async()=>{const c=activeChat;if(c)await openChat(c.matchId,c.name,c.userId,{silent:true,preserveDraft:true,noMatchRefresh:true});loadMatches()}});
