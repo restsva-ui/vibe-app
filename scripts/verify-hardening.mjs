@@ -19,7 +19,12 @@ const secretPatterns = [
 ];
 
 for (const [label, pattern] of secretPatterns) {
-  for (const [name, source] of [["app.js", app], ["telegram-auth", auth], ["telegram-bot", bot]]) {
+  for (const [name, source] of [
+    ["app.js", app],
+    ["telegram-auth", auth],
+    ["telegram-bot", bot],
+    ["telegram-init-data", telegramInitData],
+  ]) {
     if (pattern.test(source)) fail(`${label} found in ${name}`);
     pattern.lastIndex = 0;
   }
@@ -36,6 +41,13 @@ for (const [name, source, expected] of [
   if (/^\s*Authorization:\s*`Bearer \$\{key\}`,/m.test(source)) {
     fail(`${name}: unguarded Supabase key is still sent as Bearer Authorization`);
   }
+}
+
+if (!auth.includes('import { validateTelegramInitData } from "../_shared/telegram-init-data.ts";')) {
+  fail("telegram-auth: Telegram initData validator is not using the shared tested module");
+}
+if (!telegramInitData.includes("export async function validateTelegramInitData")) {
+  fail("shared Telegram initData validator is missing");
 }
 
 if (!auth.includes('"Access-Control-Max-Age": "86400"')) {
