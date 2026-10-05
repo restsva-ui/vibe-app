@@ -4,6 +4,7 @@ const app = fs.readFileSync("app.js", "utf8");
 const index = fs.readFileSync("index.html", "utf8");
 const auth = fs.readFileSync("supabase/functions/telegram-auth/index.ts", "utf8");
 const bot = fs.readFileSync("supabase/functions/telegram-bot/index.ts", "utf8");
+const telegramInitData = fs.readFileSync("supabase/functions/_shared/telegram-init-data.ts", "utf8");
 
 const fail = (message) => {
   console.error("HARDENING CHECK FAILED:", message);
@@ -65,9 +66,9 @@ for (const token of referralChecks) {
   if (!app.includes(token)) fail(`app.js: referral HTML is missing ${token}`);
 }
 
-if (!index.includes("VYBE 0.9.47")) fail("index.html: version is not 0.9.47");
+if (!index.includes("VYBE 0.9.48")) fail("index.html: version is not 0.9.48");
 if (!index.includes("@supabase/supabase-js@2.117.2")) fail("index.html: Supabase JS dependency is not pinned to 2.117.2");
-if (!app.includes('app_version:"0.9.47"')) fail("app.js: analytics version is not 0.9.47");
+if (!app.includes('app_version:"0.9.48"')) fail("app.js: analytics version is not 0.9.48");
 
 if (process.exitCode) process.exit(process.exitCode);
 console.log("VYBE hardening checks passed.");
