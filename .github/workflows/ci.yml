@@ -52,5 +52,8 @@ jobs:
       - name: Parse and transpile telegram-auth
         run: npx --yes esbuild@0.25.11 supabase/functions/telegram-auth/index.ts --platform=neutral --format=esm --outfile=/tmp/telegram-auth.js
 
+      - name: Type-check telegram-bot
+        run: deno check supabase/functions/telegram-bot/index.ts
+
       - name: Parse and transpile telegram-bot
         run: npx --yes esbuild@0.25.11 supabase/functions/telegram-bot/index.ts --platform=neutral --format=esm --outfile=/tmp/telegram-bot.js
