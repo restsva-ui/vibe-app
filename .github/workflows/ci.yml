@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: vybe-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   static-and-security:
     runs-on: ubuntu-latest
@@ -28,6 +32,9 @@ jobs:
 
       - name: Run hardening invariants
         run: node scripts/verify-hardening.mjs
+
+      - name: Verify migration catalog
+        run: node scripts/verify-migrations.mjs
 
       - name: Parse and transpile telegram-auth
         run: npx --yes esbuild@0.25.11 supabase/functions/telegram-auth/index.ts --platform=neutral --format=esm --outfile=/tmp/telegram-auth.js
