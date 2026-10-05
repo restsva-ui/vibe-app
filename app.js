@@ -11,6 +11,7 @@ function syncTelegramViewport(){
   root.style.setProperty("--tg-safe-bottom",bottom+"px");
   root.style.setProperty("--tg-sheet-top",sheetTop+"px");
   root.style.setProperty("--tg-viewport-height",stable+"px");
+  root.style.setProperty("--chat-viewport-height",Math.min(stable,window.visualViewport?.height||window.innerHeight||stable)+"px");
 }
 if(tg){
   tg.ready();tg.expand();tg.setHeaderColor("#0b0b12");tg.setBackgroundColor("#0b0b12");
@@ -20,10 +21,19 @@ if(tg){
   tg.onEvent?.("viewportChanged",syncTelegramViewport);
 }
 window.addEventListener("resize",syncTelegramViewport);
+window.visualViewport?.addEventListener("resize",syncTelegramViewport);
 const tuser=tg?.initDataUnsafe?.user;const $=id=>document.getElementById(id),store=(k,v)=>localStorage.setItem(k,JSON.stringify(v)),load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}};
 
 
 const I18N_PAIRS=[
+  ["Твій вайб зараз","Your vibe right now"],["Зберегти","Save"],
+  ["Запросити друзів","Invite friends"],["Безпека та приватність","Safety & privacy"],
+  ["Заблоковані користувачі","Blocked users"],["Підтримка VYBE","VYBE Support"],
+  ["Налаштування","Settings"],["Фінанси VYBE","VYBE Finance"],["Модерація VYBE","VYBE Moderation"],
+  ["Мої бонуси","My bonuses"],["Обери вайб","Choose your vibe"],["Навігація","Navigation"],
+  ["Приватний чат","Private chat"],["Закрити","Close"],["Сповіщення","Notifications"],
+  ["Лайкни анкету — взаємний VYBE відкриє чат.","Like a profile — a mutual VYBE opens a chat."],
+  ["Тут будуть твої розмови після взаємного VYBE.","Your conversations will appear here after a mutual VYBE."],
   ["Знайомства, флірт, дружба та приватне спілкування для дорослих.","Dating, flirting, friendship and private communication for adults."],
   ["Мені виповнилося 18 років, я приймаю правила спільноти.","I am 18 or older and I accept the community rules."],
   ["Заборонені неповнолітні, примус, шантаж, продаж сексуальних послуг і незаконний контент.","Minors, coercion, blackmail, sexual services and illegal content are prohibited."],
@@ -168,7 +178,7 @@ function setLanguage(next){
   renderMatches();
   renderChats();
   setRealtimeBadge(realtimeConnected);
-  $("hello").textContent=uiText("Привіт, ")+(tuser?.first_name||profile?.name||"")+" 👋";
+  $("hello").textContent=uiText("Привіт, ")+(tuser?.first_name||profile?.name||"");
   if(!sheet.classList.contains("hidden"))openSettings();
 }
 const languageObserver=new MutationObserver(records=>{
@@ -329,7 +339,7 @@ function setRealtimeBadge(live){
   el.textContent=realtimeConnected?"● realtime":"● автооновлення";
   el.classList.toggle("offline",!realtimeConnected);
 }
-function chatConnectionLabel(){return realtimeConnected?"realtime • приватний чат":"автооновлення • приватний чат"}
+function chatConnectionLabel(){return uiText("Приватний чат")}
 function setupUserRealtime(topic){
   if(accountStatus!=="active"){teardownSocialRealtime();return}
   if(!realtimeClient||!topic){setRealtimeBadge(false);return}
@@ -866,7 +876,7 @@ async function renderPremiumShop(resetScroll=true){
 
 
 const intentIcon=x=>({"Поговорити":"💬","Флірт":"🔥","Вірт":"🌙","Дружба":"🫶","Голос":"🎙","Зустріч":"☕"}[x]||"⚡");
-$("hello").textContent=uiText("Привіт, ")+(tuser?.first_name||profile?.name||"")+" 👋";
+$("hello").textContent=uiText("Привіт, ")+(tuser?.first_name||profile?.name||"");
 
 async function syncProfile(){
   if(!profile)return false;
@@ -1058,7 +1068,7 @@ function renderProfile(){
       avatar.classList.add("hasPhoto");
     }else{
       avatar.style.backgroundImage="";
-      avatar.textContent="👤";
+      avatar.textContent=(profile.name||"V").trim().charAt(0).toUpperCase()||"V";
       avatar.classList.remove("hasPhoto");
     }
   }
@@ -1159,18 +1169,23 @@ async function resetDiscoveryFilters(){
 function validNow(){return now&&now.expires>Date.now()}
 function renderNow(){
   const setNowBtn=$("setNow");
+  document.querySelector(".nowCard")?.classList.toggle("isActive",!!validNow());
   if(!validNow()){
     now=null;localStorage.removeItem("vybeNow");
-    $("nowLabel").textContent=uiText("⚡ VYBE NOW не задано");
+    $("nowLabel").textContent=uiText("Твій вайб зараз");
     $("nowTime").textContent=uiText("Покажи, чого хочеш саме зараз");
     if(setNowBtn)setNowBtn.textContent=uiText("Задати");
     return
   }
   $("nowLabel").textContent=now.icon+" "+uiText(now.intent);
-  $("nowTime").textContent=uiText("Активний ще ")+Math.max(1,Math.ceil((now.expires-Date.now())/3600000))+uiText(" год.");
+  $("nowTime").textContent=vibeTimeLeft(new Date(now.expires).toISOString());
   if(setNowBtn)setNowBtn.textContent=uiText("Змінити");
 }
 const sheet=$("sheet"),content=$("sheetContent");
+const sheetPresentationObserver=new MutationObserver(()=>{
+  sheet.classList.toggle("sheetChat",!!content.querySelector(".chatComposer"));
+});
+sheetPresentationObserver.observe(content,{childList:true});
 function setSheetFullscreen(enabled){
   sheet.classList.toggle("sheetFullscreen",enabled===true);
 }
@@ -1223,7 +1238,7 @@ function renderCard(){
     if(discoverHasMore){
       if(actions)actions.classList.add("hidden");
       stack.classList.add("emptyStack");
-      stack.innerHTML='<div class="discoverEmpty"><div class="discoverEmptyIcon">⚡</div><h3>'+uiText("Завантаження…")+'</h3></div>';
+      stack.innerHTML='<div class="discoverEmpty"><div class="discoverEmptyIcon">'+uiIcon("discover")+'</div><h3>'+uiText("Завантаження…")+'</h3></div>';
       if(!discoverLoading)void loadMorePeople();
       return
     }
@@ -1234,7 +1249,7 @@ function renderCard(){
     const emptyTitle=hasVibe?uiText("Зараз нікого з таким вайбом немає."):uiText("Зараз немає активних анкет.");
     const emptyText=hasVibe?uiText("Зміни VYBE NOW або спробуй інші умови."):uiText("Нові активні VYBE NOW з’являться тут.");
     const secondary=hasFilters?uiText("↺ Скинути фільтри"):uiText("↻ Оновити пошук");
-    stack.innerHTML='<div class="discoverEmpty"><div class="discoverEmptyIcon">⚡</div><h3>'+emptyTitle+'</h3><p>'+emptyText+'</p><div class="discoverEmptyActions"><button id="emptySecondary" class="primary">'+secondary+'</button></div></div>';
+    stack.innerHTML='<div class="discoverEmpty"><div class="discoverEmptyIcon">'+uiIcon("discover")+'</div><h3>'+emptyTitle+'</h3><p>'+emptyText+'</p><div class="discoverEmptyActions"><button id="emptySecondary" class="primary">'+secondary+'</button></div></div>';
     const secondaryBtn=$("emptySecondary");if(secondaryBtn)secondaryBtn.onclick=async()=>{secondaryBtn.disabled=true;try{if(hasFilters)await resetDiscoveryFilters();else await loadPeople()}finally{if($("emptySecondary"))$("emptySecondary").disabled=false}};
     return
   }
@@ -1245,7 +1260,7 @@ function renderCard(){
   const liveBadges='<div class="discoveryBadges">'+(p.spotlight_active?'<span class="discoveryBadge spotlightBadge">✦ Spotlight</span>':'')+(p.online?'<span class="discoveryBadge onlineBadge">● '+uiText("онлайн")+'</span>':'')+'</div>';
   const timeLeft=vibeTimeLeft(p.expires_at);
   const vibeLive='<div class="vibeNowLive"><span><b>VYBE NOW</b> '+escapeHtml(p.icon)+" "+escapeHtml(p.intent)+'</span>'+(timeLeft?'<small>'+escapeHtml(timeLeft)+'</small>':'')+'</div>';
-  const facts='<div class="profileFacts">'+(p.city?'<span>📍 '+escapeHtml(p.city)+'</span>':'')+(p.verified?'<span class="verifiedFact">✓ '+uiText("Верифіковано")+'</span>':'')+'</div>';
+  const facts='<div class="profileFacts">'+(p.city?'<span>'+uiIcon("location")+escapeHtml(p.city)+'</span>':'')+(p.verified?'<span class="verifiedFact">'+uiIcon("check")+uiText("Верифіковано")+'</span>':'')+'</div>';
   $("cardStack").innerHTML='<article class="personCard '+(p.spotlight_active?"spotlightCard":"")+'">'+visual+liveBadges+'<button id="cardSafetyBtn" class="cardSafety" aria-label="Безпека">⋯</button><div class="gradient"></div><div class="personMeta"><div class="nameRow"><h2>'+escapeHtml(p.name)+", "+escapeHtml(p.age)+'</h2></div>'+vibeLive+'<p class="bio">'+escapeHtml(p.bio)+'</p>'+facts+'<button id="cardProfileBtn" class="profilePeek">'+uiText("Переглянути анкету")+'</button></div></article>';
   const safety=$("cardSafetyBtn");if(safety)safety.onclick=e=>{e.stopPropagation();openUserSafety(p.id,p.name)};
   const profileBtn=$("cardProfileBtn");if(profileBtn)profileBtn.onclick=e=>{e.stopPropagation();openPublicProfile(p.id)};
@@ -1326,6 +1341,8 @@ async function next(kind){
 }
 $("skipBtn").onclick=()=>next("skip");$("likeBtn").onclick=()=>next("like");$("sparkBtn").onclick=()=>next("super");document.querySelectorAll(".mood").forEach(b=>b.onclick=async()=>{document.querySelectorAll(".mood").forEach(x=>x.classList.remove("active"));b.classList.add("active");filter=b.dataset.mood;index=0;await loadPeople()});
 
+function uiIcon(name){return '<svg class="uiIcon" aria-hidden="true"><use href="#ui-'+name+'"></use></svg>'}
+function emptyStateMarkup(icon,title,hint){return '<div class="emptyState"><div class="emptyStateIcon">'+uiIcon(icon)+'</div><h3>'+escapeHtml(uiText(title))+'</h3><p>'+escapeHtml(uiText(hint))+'</p></div>'}
 function avatarMarkup(photo,name,className="avatar"){
   const initial=escapeHtml((name||"V").trim().charAt(0).toUpperCase()||"V");
   return '<span class="'+className+' avatarShell"><span class="avatarInitial">'+initial+'</span>'+(photo?'<img data-avatar-img src="'+escapeHtml(photo)+'" alt="">':"")+'</span>';
@@ -1342,8 +1359,8 @@ function renderMatches(){
   const list=$("matchesList");
   $("matchCount").textContent=matches.length;
   list.innerHTML=matches.length
-    ? matches.map((p,i)=>'<button type="button" class="listItem matchOpen" data-index="'+i+'">'+avatarMarkup(p.photo_url,p.name,'avatar')+'<div class="itemMain"><b>'+escapeHtml(p.name)+(p.age?", "+escapeHtml(p.age):"")+(p.verified?' ✓':'')+'</b><small>'+uiText("Взаємний VYBE")+(p.city?" • "+escapeHtml(p.city):"")+(p.online?" • "+uiText("● онлайн"):"")+'</small></div><span>›</span></button>').join("")
-    : '<div class="empty">Поки немає взаємних збігів.</div>';
+    ? matches.map((p,i)=>'<button type="button" class="listItem matchOpen" data-index="'+i+'">'+avatarMarkup(p.photo_url,p.name,'avatar matchAvatar')+'<span class="matchMark">'+uiIcon("heart")+'</span><div class="itemMain"><b>'+escapeHtml(p.name)+(p.age?", "+escapeHtml(p.age):"")+(p.verified?' ✓':'')+'</b><small>'+uiText("Взаємний VYBE")+'</small>'+(p.city?'<small class="matchCity">'+escapeHtml(p.city)+(p.online?" • "+uiText("● онлайн"):"")+'</small>':p.online?'<small class="matchCity">'+uiText("● онлайн")+'</small>':'')+'</div></button>').join("")
+    : emptyStateMarkup("heart","Поки немає взаємних збігів.","Лайкни анкету — взаємний VYBE відкриє чат.");
   bindAvatarFallbacks(list);
   list.querySelectorAll(".matchOpen").forEach(b=>{
     b.onclick=()=>{
@@ -1366,7 +1383,7 @@ function renderChats(){
     const subtitle=p.last_message?escapeHtml(p.last_message):uiText("Новий взаємний VYBE ✨");
     const time=formatChatListTime(p.last_message_at||p.created_at);
     return '<div class="listItem chatRow '+(unread?"hasUnread ":"")+(isNewMatch?"newMatchRow":"")+'"><button type="button" class="chatAvatarOpen" data-index="'+i+'" aria-label="'+escapeHtml(uiText("Переглянути анкету"))+'">'+avatarMarkup(p.photo_url,p.name,'avatar')+'</button><button type="button" class="chatOpen chatMainOpen" data-index="'+i+'"><div class="itemMain"><b>'+escapeHtml(p.name)+(p.age?", "+escapeHtml(p.age):"")+(p.online?' <span class="onlineMini">●</span>':'')+'</b><small>'+subtitle+'</small></div><div class="chatTail">'+(time?'<small class="chatTime">'+escapeHtml(time)+'</small>':'')+(unread?'<span class="unreadBadge">'+unread+'</span>':isNewMatch?'<span class="newMatchDot">✨</span>':'')+'</div><span class="chevron">›</span></button></div>';
-  }).join(""):'<div class="empty">Чати з’являться після взаємних збігів.</div>';
+  }).join(""):emptyStateMarkup("chat","Чати з’являться після взаємних збігів.","Тут будуть твої розмови після взаємного VYBE.");
   bindAvatarFallbacks(list);
   list.querySelectorAll(".chatOpen").forEach(b=>b.onclick=()=>{
     const p=rows[Number(b.dataset.index)];if(p)openChat(p.match_id,p.name,p.id);
@@ -1413,7 +1430,8 @@ async function openChat(matchId,name,userId,options={}){
   }).join("");
 
   const idlePresence=peerProfile?.online?uiText("● онлайн"):chatConnectionLabel();
-  content.innerHTML='<div class="chatHeader"><button id="chatPeerBtn" class="chatPeer" type="button">'+avatarMarkup(peerPhoto,peerName,'chatAvatar')+'<div class="chatTitle"><h2>'+escapeHtml(peerName)+'</h2><small><span id="chatPresence" data-idle-label="'+escapeHtml(idlePresence)+'">'+escapeHtml(idlePresence)+'</span></small></div></button><button id="chatSafetyBtn" class="chatSafety" aria-label="Безпека">⋯</button></div><button id="chatProfileBtn" class="chatProfileAction" type="button">👤 '+uiText("Переглянути анкету")+' <span>›</span></button><div id="chatMessages" class="chatMessages">'+(msgs||'<div class="chatEmpty">Почни розмову 👋</div>')+'</div><div class="chatComposer"><textarea id="chatMessage" class="field" maxlength="2000" placeholder="Напиши повідомлення…"></textarea><button id="sendMessage" class="primary">Надіслати</button></div>';
+  content.innerHTML='<div class="chatHeader"><button id="chatPeerBtn" class="chatPeer" type="button">'+avatarMarkup(peerPhoto,peerName,'chatAvatar')+'<div class="chatTitle"><h2>'+escapeHtml(peerName)+'</h2><small><span id="chatPresence" data-idle-label="'+escapeHtml(idlePresence)+'">'+escapeHtml(idlePresence)+'</span></small></div></button><button id="chatSafetyBtn" class="chatSafety" aria-label="Безпека">⋯</button></div><button id="chatProfileBtn" class="chatProfileAction" type="button"><span>'+uiIcon("user")+uiText("Переглянути анкету")+'</span>'+uiIcon("chevron")+'</button><div id="chatMessages" class="chatMessages">'+(msgs||'<div class="chatEmpty">Почни розмову 👋</div>')+'</div><div class="chatComposer"><textarea id="chatMessage" class="field" maxlength="2000" placeholder="Напиши повідомлення…"></textarea><button id="sendMessage" class="primary sendButton" aria-label="'+escapeHtml(uiText("Надіслати"))+'" title="'+escapeHtml(uiText("Надіслати"))+'">'+uiIcon("send")+'</button></div>';
+  sheet.classList.add("sheetChat");
   sheet.classList.remove("hidden");
   bindAvatarFallbacks(content);
 

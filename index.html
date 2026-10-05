@@ -1,19 +1,422 @@
-<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b0b12"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><title>VYBE 0.9.48</title><link rel="stylesheet" href="./styles.css?v=20261004-financeui0944"><script src="https://telegram.org/js/telegram-web-app.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script><style>.navItem{position:relative}.navUnread{position:absolute;top:-3px;right:12px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;display:grid;place-items:center;background:#ff3f81;color:white;font-size:10px;font-weight:900;line-height:1}.navUnread.hidden{display:none!important}</style><style>
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b12">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>VYBE 0.9.48</title>
+<link rel="stylesheet" href="./styles.css?v=20261004-financeui0944">
+<link rel="stylesheet" href="./visual.css?v=20261005-visual1">
+<script src="https://telegram.org/js/telegram-web-app.js">
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2">
+</script>
+<style>
 #vibeSplash{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(circle at 50% 45%,#19182a 0,#0b0b12 55%,#07070b 100%);opacity:1;visibility:visible;transition:opacity .35s ease,visibility .35s ease}
 #vibeSplash.done{opacity:0;visibility:hidden;pointer-events:none}
 .vibeSplashLogo{width:min(92vw,520px);perspective:900px;transform-style:preserve-3d}
 .vibeSplashArt{display:block;width:100%;height:auto;transform-origin:50% 50%;will-change:transform,opacity;animation:vibeLogo3D 1.9s cubic-bezier(.16,.84,.24,1) both}
 @keyframes vibeLogo3D{0%{opacity:0;transform:translateY(20px) scale(.68) rotateX(18deg) rotateY(-24deg)}28%{opacity:1;transform:translateY(0) scale(1.06) rotateX(-5deg) rotateY(10deg)}58%{transform:scale(.99) rotateX(4deg) rotateY(-8deg)}82%{transform:scale(1.025) rotateX(-2deg) rotateY(4deg)}100%{opacity:1;transform:scale(1) rotateX(0) rotateY(0)}}
 @media (prefers-reduced-motion:reduce){.vibeSplashArt{animation:vibeLogoFade .8s ease both}@keyframes vibeLogoFade{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}}
-</style></head><body>\n<div id="vibeSplash" aria-hidden="true"><div class="vibeSplashLogo"><img class="vibeSplashArt" src="./assets/vibe-logo-3d.svg?v=20261005-1138" alt=""></div></div>
-<div id="ageGate" class="overlay"><div class="modal"><div class="logoMark">V</div><h1>VYBE</h1><p>Знайомства, флірт, дружба та приватне спілкування для дорослих.</p><div class="ageBadge">18+</div><label class="checkRow"><input id="ageConfirm" type="checkbox"><span>Мені виповнилося 18 років, я приймаю правила спільноти.</span></label><button id="enterBtn" class="primary" disabled>Увійти</button><div class="ageLegalLinks"><button id="ageTermsBtn" type="button">Умови</button><button id="agePrivacyBtn" type="button">Приватність</button><button id="ageRulesBtn" type="button">Правила</button></div><small>Заборонені неповнолітні, примус, шантаж, продаж сексуальних послуг і незаконний контент.</small></div></div>
-<div id="onboarding" class="overlay hidden"><div class="modal onboarding"><div class="stepDots"><i class="on"></i><i></i><i></i></div><h2>Створи свою анкету</h2><p>Анкета синхронізується з VYBE. Не додавай приватні контактні дані в опис.</p><label>Ім’я<input id="obName" class="field" maxlength="30"></label><div class="two"><label>Вік<input id="obAge" class="field" type="number" min="18" max="99"></label><label>Місто<input id="obCity" class="field" maxlength="40" placeholder="Київ"></label></div><label>Я<input id="obGender" class="field" maxlength="30" placeholder="Чоловік / Жінка / Інше"></label><label>Кого шукаю<input id="obLooking" class="field" maxlength="50" placeholder="Напр. жінок 25–40"></label><label>Про себе<textarea id="obBio" class="field" maxlength="180" placeholder="Коротко й живо — що варто знати про тебе?"></textarea></label><button id="saveProfile" class="primary">Зберегти →</button></div></div>
-<main class="app"><header class="topbar"><div><div class="eyebrow">VYBE 0.9.48 • LIVE DISCOVERY</div><div id="hello" class="hello">Привіт 👋</div></div><div class="topbarActions"><button class="iconBtn notificationIconBtn" id="notificationBtn" aria-label="Сповіщення">🔔<b id="notificationBadge" class="notificationBadge hidden">0</b></button><button class="iconBtn" id="premiumBtn">✦</button></div></header>
-<section class="nowCard"><div><b id="nowLabel">⚡ VYBE NOW не задано</b><small id="nowTime">Покажи, чого хочеш саме зараз</small></div><button id="setNow">Задати</button></section>
-<section class="moodStrip"><button class="mood active" data-mood="Усе">Усе</button><button class="mood" data-mood="Поговорити">💬 Поговорити</button><button class="mood" data-mood="Флірт">🔥 Флірт</button><button class="mood" data-mood="Вірт">🌙 Вірт</button><button class="mood" data-mood="Дружба">🫶 Дружба</button><button class="mood" data-mood="Голос">🎙 Голос</button><button class="mood" data-mood="Зустріч">☕ Зустріч</button></section>
-<section id="discoverView" class="view active"><div class="sectionTitle"><span>Люди по твоєму вайбу</span><button class="textBtn" id="filterBtn">Фільтри</button></div><div id="cardStack" class="cardStack"></div><div class="actions" id="discoverActions"><div class="actionGroup"><button class="action" id="skipBtn" aria-label="Пропустити">✕</button><small>Пропустити</small></div><div class="actionGroup superGroup"><button class="action super" id="sparkBtn" aria-label="SuperVYBE">✦</button><small>SuperVYBE</small></div><div class="actionGroup"><button class="action like" id="likeBtn" aria-label="VYBE">♥</button><small>VYBE</small></div></div></section>
-<section id="matchesView" class="view"><div class="sectionTitle"><span>Мої збіги</span><span id="matchCount" class="pill">0</span></div><div id="matchesList" class="list"></div></section><section id="chatView" class="view"><div class="sectionTitle"><span>Чати</span><span id="realtimeStatus" class="statusDot offline">● автооновлення</span></div><div id="chatList" class="list"></div></section>
-<section id="profileView" class="view"><div class="profileCard"><div id="profileAvatar" class="avatar big">👤</div><div class="profilePhotoActions"><button id="photoBtn" class="choice profilePhotoBtn">Додати фото</button><button id="removePhotoBtn" class="textBtn hidden">Видалити</button></div><h2 id="profileName">Твій профіль</h2><p id="profileMeta"></p><p id="profileBio">Заповни анкету.</p><button id="editProfile" class="primary">Редагувати профіль</button></div><div class="menuCard"><button id="referralBtn">🔗 Запросити друзів <span>›</span></button><button id="safetyBtn">🛡 Безпека та приватність <span>›</span></button><button id="blockedUsersBtn">🚫 Заблоковані користувачі <span>›</span></button><button id="supportBtn">⚑ Підтримка VYBE <span>›</span></button><button id="settingsBtn">⚙ Налаштування <span>›</span></button><button id="adminFinanceBtn" class="hidden adminMenuBtn">💼 Фінанси VYBE ⭐ <span>›</span></button><button id="adminSupportBtn" class="hidden adminMenuBtn">⚑ Підтримка VYBE <span>›</span></button><button id="adminModerationBtn" class="hidden adminMenuBtn">🛡 Модерація VYBE <span>›</span></button></div></section>
-<nav class="nav"><button class="navItem active" data-target="discoverView"><span>◉</span><small>Вайб</small></button><button class="navItem" data-target="matchesView"><span>♡</span><small>Збіги</small></button><button class="navItem" data-target="chatView"><span>✉</span><small>Чати</small></button><button class="navItem" data-target="profileView"><span>◎</span><small>Профіль</small></button></nav></main><div id="sheet" class="sheet hidden"><div class="sheetCard"><div class="handle"></div><button id="closeSheet" class="close">×</button><div id="sheetContent"></div></div></div><script src="./app.js?v=20261005-hardening0948"></script><script>
+</style>
+</head>
+<body>
+<svg class="iconSprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+<symbol id="ui-discover" viewBox="0 0 24 24">
+<circle cx="12" cy="12" r="9"/>
+<path d="m16 8-2.5 5.5L8 16l2.5-5.5L16 8Z"/>
+</symbol>
+<symbol id="ui-heart" viewBox="0 0 24 24">
+<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.9-8.6a5.5 5.5 0 0 0-.1-7.8Z"/>
+</symbol>
+<symbol id="ui-chat" viewBox="0 0 24 24">
+<path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H5l-3 2V11.5A8.5 8.5 0 0 1 10.5 3h2a8.5 8.5 0 0 1 8.5 8.5Z"/>
+<path d="M7 10h9M7 14h6"/>
+</symbol>
+<symbol id="ui-user" viewBox="0 0 24 24">
+<circle cx="12" cy="8" r="4"/>
+<path d="M4 21v-2a8 8 0 0 1 16 0v2"/>
+</symbol>
+<symbol id="ui-bell" viewBox="0 0 24 24">
+<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>
+</symbol>
+<symbol id="ui-spark" viewBox="0 0 24 24">
+<path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3Z"/>
+</symbol>
+<symbol id="ui-bolt" viewBox="0 0 24 24">
+<path d="m13 2-9 12h7l-1 8 10-12h-7l1-8Z"/>
+</symbol>
+<symbol id="ui-close" viewBox="0 0 24 24">
+<path d="m6 6 12 12M18 6 6 18"/>
+</symbol>
+<symbol id="ui-filter" viewBox="0 0 24 24">
+<path d="M4 7h3m4 0h9M4 17h9m4 0h3"/>
+<circle cx="9" cy="7" r="2"/>
+<circle cx="15" cy="17" r="2"/>
+</symbol>
+<symbol id="ui-location" viewBox="0 0 24 24">
+<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/>
+<circle cx="12" cy="10" r="2.5"/>
+</symbol>
+<symbol id="ui-shield" viewBox="0 0 24 24">
+<path d="m12 3 9 4v6c0 5-9 9-9 9s-9-4-9-9V7l9-4Z"/>
+<path d="m8 12 3 3 5-6"/>
+</symbol>
+<symbol id="ui-share" viewBox="0 0 24 24">
+<circle cx="18" cy="5" r="3"/>
+<circle cx="6" cy="12" r="3"/>
+<circle cx="18" cy="19" r="3"/>
+<path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"/>
+</symbol>
+<symbol id="ui-settings" viewBox="0 0 24 24">
+<path d="m9 3-1 3-3 1-2 3 2 2-1 3 2 3 3-1 3 3 3-3 3 1 2-3-1-3 2-2-2-3-3-1-1-3H9Z"/>
+<circle cx="12" cy="12" r="3"/>
+</symbol>
+<symbol id="ui-block" viewBox="0 0 24 24">
+<circle cx="12" cy="12" r="9"/>
+<path d="m6 6 12 12"/>
+</symbol>
+<symbol id="ui-support" viewBox="0 0 24 24">
+<path d="M4 14v-3a8 8 0 0 1 16 0v3M20 17v2a2 2 0 0 1-2 2h-4"/>
+<rect x="2" y="11" width="5" height="7" rx="2"/>
+<rect x="17" y="11" width="5" height="7" rx="2"/>
+</symbol>
+<symbol id="ui-wallet" viewBox="0 0 24 24">
+<path d="M20 8V5a2 2 0 0 0-2-2H5a3 3 0 0 0 0 6h15v12H5a3 3 0 0 1-3-3V6"/>
+<path d="M20 12h-5v5h5"/>
+</symbol>
+<symbol id="ui-chevron" viewBox="0 0 24 24">
+<path d="m9 5 7 7-7 7"/>
+</symbol>
+<symbol id="ui-back" viewBox="0 0 24 24">
+<path d="m15 5-7 7 7 7"/>
+</symbol>
+<symbol id="ui-send" viewBox="0 0 24 24">
+<path d="m22 2-7 20-4-9-9-4 20-7ZM22 2 11 13"/>
+</symbol>
+<symbol id="ui-check" viewBox="0 0 24 24">
+<path d="m5 12 4 4L19 6"/>
+</symbol>
+</svg>
+<div id="vibeSplash" aria-hidden="true">
+<div class="vibeSplashLogo">
+<img class="vibeSplashArt" src="./assets/vibe-logo-3d.svg?v=20261005-1138" alt="">
+</div>
+</div>
+<div id="ageGate" class="overlay">
+<div class="modal ageModal">
+<div class="logoMark">V</div>
+<h1>VYBE</h1>
+<p>Знайомства, флірт, дружба та приватне спілкування для дорослих.</p>
+<div class="ageBadge">18+</div>
+<label class="checkRow">
+<input id="ageConfirm" type="checkbox">
+<span>Мені виповнилося 18 років, я приймаю правила спільноти.</span>
+</label>
+<button id="enterBtn" class="primary" disabled>Увійти</button>
+<div class="ageLegalLinks">
+<button id="ageTermsBtn" type="button">Умови</button>
+<button id="agePrivacyBtn" type="button">Приватність</button>
+<button id="ageRulesBtn" type="button">Правила</button>
+</div>
+<small>Заборонені неповнолітні, примус, шантаж, продаж сексуальних послуг і незаконний контент.</small>
+</div>
+</div>
+<div id="onboarding" class="overlay hidden">
+<div class="modal onboarding">
+<h2>Створи свою анкету</h2>
+<p>Анкета синхронізується з VYBE. Не додавай приватні контактні дані в опис.</p>
+<label>Ім’я<input id="obName" class="field" maxlength="30">
+</label>
+<div class="two">
+<label>Вік<input id="obAge" class="field" type="number" min="18" max="99">
+</label>
+<label>Місто<input id="obCity" class="field" maxlength="40" placeholder="Київ">
+</label>
+</div>
+<label>Я<input id="obGender" class="field" maxlength="30" placeholder="Чоловік / Жінка / Інше">
+</label>
+<label>Кого шукаю<input id="obLooking" class="field" maxlength="50" placeholder="Напр. жінок 25–40">
+</label>
+<label>Про себе<textarea id="obBio" class="field" maxlength="180" placeholder="Коротко й живо — що варто знати про тебе?">
+</textarea>
+</label>
+<button id="saveProfile" class="primary">Зберегти</button>
+</div>
+</div>
+<main class="app">
+<header class="topbar">
+<div class="topbarCopy">
+<div class="eyebrow">
+<span class="brandWord">vibe</span>
+<span class="brandEdition">beta</span>
+</div>
+<div id="hello" class="hello">Привіт 👋</div>
+</div>
+<div class="topbarActions">
+<button class="iconBtn notificationIconBtn" id="notificationBtn" aria-label="Сповіщення">
+<svg class="uiIcon " aria-hidden="true">
+<use href="#ui-bell">
+</use>
+</svg>
+<b id="notificationBadge" class="notificationBadge hidden">0</b>
+</button>
+<button class="iconBtn premiumIconBtn" id="premiumBtn" aria-label="Мої бонуси">
+<svg class="uiIcon " aria-hidden="true">
+<use href="#ui-spark">
+</use>
+</svg>
+</button>
+</div>
+</header>
+<section class="nowCard">
+<span class="nowIcon" aria-hidden="true">
+<svg class="uiIcon " aria-hidden="true">
+<use href="#ui-bolt">
+</use>
+</svg>
+</span>
+<div class="nowCopy">
+<span class="nowEyebrow">VYBE NOW</span>
+<b id="nowLabel">Твій вайб зараз</b>
+<small id="nowTime">Покажи, чого хочеш саме зараз</small>
+</div>
+<button id="setNow">Задати</button>
+</section>
+<section class="moodStrip" aria-label="Обери вайб">
+<button class="mood active" data-mood="Усе">Усе</button>
+<button class="mood" data-mood="Поговорити">💬 Поговорити</button>
+<button class="mood" data-mood="Флірт">🔥 Флірт</button>
+<button class="mood" data-mood="Вірт">🌙 Вірт</button>
+<button class="mood" data-mood="Дружба">🫶 Дружба</button>
+<button class="mood" data-mood="Голос">🎙 Голос</button>
+<button class="mood" data-mood="Зустріч">☕ Зустріч</button>
+</section>
+<section id="discoverView" class="view active">
+<div class="sectionTitle">
+<span>Люди по твоєму вайбу</span>
+<button class="textBtn filterButton" id="filterBtn">
+<svg class="uiIcon " aria-hidden="true">
+<use href="#ui-filter">
+</use>
+</svg>
+<span>Фільтри</span>
+</button>
+</div>
+<div id="cardStack" class="cardStack">
+</div>
+<div class="actions" id="discoverActions">
+<div class="actionGroup">
+<button class="action" id="skipBtn" aria-label="Пропустити">
+<svg class="uiIcon " aria-hidden="true">
+<use href="#ui-close">
+</use>
+</svg>
+</button>
+<small>Пропустити</small>
+</div>
+<div class="actionGroup superGroup">
+<button class="action super" id="sparkBtn" aria-label="SuperVYBE">
+<svg class="uiIcon " aria-hidden="true">
+<use href="#ui-spark">
+</use>
+</svg>
+</button>
+<small>SuperVYBE</small>
+</div>
+<div class="actionGroup">
+<button class="action like" id="likeBtn" aria-label="VYBE">
+<svg class="uiIcon " aria-hidden="true">
+<use href="#ui-heart">
+</use>
+</svg>
+</button>
+<small>VYBE</small>
+</div>
+</div>
+</section>
+<section id="matchesView" class="view">
+<div class="sectionTitle">
+<span>Мої збіги</span>
+<span id="matchCount" class="pill">0</span>
+</div>
+<div id="matchesList" class="list">
+</div>
+</section>
+<section id="chatView" class="view">
+<div class="sectionTitle">
+<span>Чати</span>
+<span id="realtimeStatus" class="statusDot offline">● автооновлення</span>
+</div>
+<div id="chatList" class="list">
+</div>
+</section>
+<section id="profileView" class="view">
+<div class="profileCard">
+<div id="profileAvatar" class="avatar big">👤</div>
+<div class="profilePhotoActions">
+<button id="photoBtn" class="choice profilePhotoBtn">Додати фото</button>
+<button id="removePhotoBtn" class="textBtn hidden">Видалити</button>
+</div>
+<h2 id="profileName">Твій профіль</h2>
+<p id="profileMeta">
+</p>
+<p id="profileBio">Заповни анкету.</p>
+<button id="editProfile" class="primary">Редагувати профіль</button>
+</div>
+<div class="menuCard">
+<button id="referralBtn">
+<svg class="uiIcon menuIcon" aria-hidden="true">
+<use href="#ui-share">
+</use>
+</svg>
+<span class="menuLabel">Запросити друзів</span>
+<svg class="uiIcon menuChevron" aria-hidden="true">
+<use href="#ui-chevron">
+</use>
+</svg>
+</button>
+<button id="safetyBtn">
+<svg class="uiIcon menuIcon" aria-hidden="true">
+<use href="#ui-shield">
+</use>
+</svg>
+<span class="menuLabel">Безпека та приватність</span>
+<svg class="uiIcon menuChevron" aria-hidden="true">
+<use href="#ui-chevron">
+</use>
+</svg>
+</button>
+<button id="blockedUsersBtn">
+<svg class="uiIcon menuIcon" aria-hidden="true">
+<use href="#ui-block">
+</use>
+</svg>
+<span class="menuLabel">Заблоковані користувачі</span>
+<svg class="uiIcon menuChevron" aria-hidden="true">
+<use href="#ui-chevron">
+</use>
+</svg>
+</button>
+<button id="supportBtn">
+<svg class="uiIcon menuIcon" aria-hidden="true">
+<use href="#ui-support">
+</use>
+</svg>
+<span class="menuLabel">Підтримка VYBE</span>
+<svg class="uiIcon menuChevron" aria-hidden="true">
+<use href="#ui-chevron">
+</use>
+</svg>
+</button>
+<button id="settingsBtn">
+<svg class="uiIcon menuIcon" aria-hidden="true">
+<use href="#ui-settings">
+</use>
+</svg>
+<span class="menuLabel">Налаштування</span>
+<svg class="uiIcon menuChevron" aria-hidden="true">
+<use href="#ui-chevron">
+</use>
+</svg>
+</button>
+<button id="adminFinanceBtn" class="hidden adminMenuBtn">
+<svg class="uiIcon menuIcon" aria-hidden="true">
+<use href="#ui-wallet">
+</use>
+</svg>
+<span class="menuLabel">Фінанси VYBE</span>
+<svg class="uiIcon menuChevron" aria-hidden="true">
+<use href="#ui-chevron">
+</use>
+</svg>
+</button>
+<button id="adminSupportBtn" class="hidden adminMenuBtn">
+<svg class="uiIcon menuIcon" aria-hidden="true">
+<use href="#ui-support">
+</use>
+</svg>
+<span class="menuLabel">Підтримка VYBE</span>
+<svg class="uiIcon menuChevron" aria-hidden="true">
+<use href="#ui-chevron">
+</use>
+</svg>
+</button>
+<button id="adminModerationBtn" class="hidden adminMenuBtn">
+<svg class="uiIcon menuIcon" aria-hidden="true">
+<use href="#ui-shield">
+</use>
+</svg>
+<span class="menuLabel">Модерація VYBE</span>
+<svg class="uiIcon menuChevron" aria-hidden="true">
+<use href="#ui-chevron">
+</use>
+</svg>
+</button>
+</div>
+</section>
+<nav class="nav" aria-label="Навігація">
+<button class="navItem active" data-target="discoverView">
+<span class="navIcon">
+<svg class="uiIcon " aria-hidden="true">
+<use href="#ui-discover">
+</use>
+</svg>
+</span>
+<small>Вайб</small>
+</button>
+<button class="navItem" data-target="matchesView">
+<span class="navIcon">
+<svg class="uiIcon " aria-hidden="true">
+<use href="#ui-heart">
+</use>
+</svg>
+</span>
+<small>Збіги</small>
+</button>
+<button class="navItem" data-target="chatView">
+<span class="navIcon">
+<svg class="uiIcon " aria-hidden="true">
+<use href="#ui-chat">
+</use>
+</svg>
+</span>
+<small>Чати</small>
+</button>
+<button class="navItem" data-target="profileView">
+<span class="navIcon">
+<svg class="uiIcon " aria-hidden="true">
+<use href="#ui-user">
+</use>
+</svg>
+</span>
+<small>Профіль</small>
+</button>
+</nav>
+</main>
+<div id="sheet" class="sheet hidden">
+<div class="sheetCard">
+<div class="handle">
+</div>
+<button id="closeSheet" class="close" aria-label="Закрити">
+<svg class="uiIcon closeIcon" aria-hidden="true">
+<use href="#ui-close">
+</use>
+</svg>
+<svg class="uiIcon backIcon" aria-hidden="true">
+<use href="#ui-back">
+</use>
+</svg>
+</button>
+<div id="sheetContent">
+</div>
+</div>
+</div>
+<script src="./app.js?v=20261005-visual1">
+</script>
+<script>
 (()=>{const splash=document.getElementById("vibeSplash");if(!splash)return;let closed=false;const close=()=>{if(closed)return;closed=true;splash.classList.add("done");setTimeout(()=>splash.remove(),450)};const start=()=>setTimeout(close,2050);if(document.readyState==="complete")start();else window.addEventListener("load",start,{once:true});setTimeout(close,3200)})();
-</script></body></html>
+</script>
+</body>
+</html>
