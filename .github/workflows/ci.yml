@@ -30,6 +30,11 @@ jobs:
       - name: Check browser JavaScript syntax
         run: node --check app.js
 
+      - name: Test Telegram initData validation
+        run: |
+          npx --yes esbuild@0.25.11 scripts/test-telegram-init-data.ts --bundle --platform=node --format=esm --outfile=/tmp/test-telegram-init-data.mjs
+          node /tmp/test-telegram-init-data.mjs
+
       - name: Run hardening invariants
         run: node scripts/verify-hardening.mjs
 
