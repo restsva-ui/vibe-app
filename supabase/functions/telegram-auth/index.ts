@@ -156,6 +156,10 @@ async function telegramApi(botToken: string, method: string, payload: Record<str
 }
 
 
+function hex(buffer: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buffer)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 async function resolveTelegramWebhookSecret(botToken: string) {
   const configured = (Deno.env.get("TELEGRAM_WEBHOOK_SECRET") ?? "").trim();
   if (configured) return configured;
@@ -300,7 +304,7 @@ async function getAdminRole(db: ReturnType<typeof dbClient>, userId: string): Pr
 async function notifySupportAdmins(db: ReturnType<typeof dbClient>, botToken: string, ticketId: string, category: string) {
   try {
     const admins = await db("admin_users?select=user_id&limit=20") ?? [];
-    const ids = [...new Set(admins.map((x: any) => String(x.user_id || "")).filter(Boolean))];
+    const ids: string[] = [...new Set<string>(admins.map((x: any) => String(x.user_id || "")).filter(Boolean))];
     if (!ids.length) return;
     const users = await db(`users?id=in.(${ids.map((x) => encodeURIComponent(x)).join(",")})&select=telegram_id`) ?? [];
     const label = category === "payment" ? "payment / оплата" : "general / загальне";
@@ -330,7 +334,7 @@ async function notifySupportAdmins(db: ReturnType<typeof dbClient>, botToken: st
 async function notifyModerationAdmins(db: ReturnType<typeof dbClient>, botToken: string, reportId: string, reason: string) {
   try {
     const admins = await db("admin_users?select=user_id&limit=20") ?? [];
-    const ids = [...new Set(admins.map((x: any) => String(x.user_id || "")).filter(Boolean))];
+    const ids: string[] = [...new Set<string>(admins.map((x: any) => String(x.user_id || "")).filter(Boolean))];
     if (!ids.length) return;
     const users = await db(`users?id=in.(${ids.map((x) => encodeURIComponent(x)).join(",")})&select=telegram_id`) ?? [];
     const urgent = reason === "underage" || reason === "illegal_content";
@@ -1753,8 +1757,8 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "support_mark_seen") {
-      const ids = Array.isArray(body.ticket_ids)
-        ? [...new Set(body.ticket_ids.map((x: unknown) => clean(x, 80)).filter(Boolean))].slice(0, 20)
+      const ids: string[] = Array.isArray(body.ticket_ids)
+        ? [...new Set<string>(body.ticket_ids.map((x: unknown) => clean(x, 80)).filter((x: string) => Boolean(x)))].slice(0, 20)
         : [];
       if (!ids.length) return json({ ok: true, marked: 0 });
 
@@ -1812,7 +1816,7 @@ Deno.serve(async (req: Request) => {
       const reports = await db(
         "reports?select=id,reporter_id,reported_id,reason,details,status,created_at,reviewed_at,resolved_at,updated_at,admin_note,resolved_by,admin_seen_at,block_requested&order=created_at.desc&limit=500",
       ) ?? [];
-      const userIds = [...new Set((reports ?? []).flatMap((r: any) => [String(r.reporter_id || ""), String(r.reported_id || "")]).filter(Boolean))];
+      const userIds: string[] = [...new Set<string>((reports ?? []).flatMap((r: any) => [String(r.reporter_id || ""), String(r.reported_id || "")]).filter(Boolean))];
       const [users, profiles] = await Promise.all([
         userIds.length
           ? db(`users?id=in.(${userIds.map((x) => encodeURIComponent(x)).join(",")})&select=id,telegram_id,username,first_name,account_status,restricted_at,restriction_reason`) ?? []
@@ -1823,8 +1827,8 @@ Deno.serve(async (req: Request) => {
       ]);
       const moderationPhotos = await signProfilePhotoUrls((profiles ?? []).map((x: any) => x.photo_url ?? null));
       const signedProfiles = (profiles ?? []).map((p: any) => withSignedProfilePhoto(p, moderationPhotos));
-      const userById = new Map((users ?? []).map((x: any) => [String(x.id), x]));
-      const profileById = new Map((signedProfiles ?? []).map((x: any) => [String(x.user_id), x]));
+      const userById = new Map<string, any>((users ?? []).map((x: any): [string, any] => [String(x.id), x]));
+      const profileById = new Map<string, any>((signedProfiles ?? []).map((x: any): [string, any] => [String(x.user_id), x]));
       const decorate = (id: string) => {
         const u = userById.get(id) ?? {};
         const p = profileById.get(id) ?? {};
@@ -2051,7 +2055,7 @@ Deno.serve(async (req: Request) => {
         db("star_orders?select=id,user_id,telegram_id,product_key,status,total_amount,created_at,paid_at,refunded_at&order=created_at.desc&limit=1000") ?? [],
       ]);
 
-      const userIds = [...new Set((tickets ?? []).map((t: any) => String(t.user_id || "")).filter(Boolean))];
+      const userIds: string[] = [...new Set<string>((tickets ?? []).map((t: any) => String(t.user_id || "")).filter(Boolean))];
       const users = userIds.length
         ? await db(`users?id=in.(${userIds.map((x) => encodeURIComponent(x)).join(",")})&select=id,username,first_name`) ?? []
         : [];
@@ -2059,8 +2063,8 @@ Deno.serve(async (req: Request) => {
         ? await db(`profiles?user_id=in.(${userIds.map((x) => encodeURIComponent(x)).join(",")})&select=user_id,name`) ?? []
         : [];
 
-      const userById = new Map((users ?? []).map((x: any) => [String(x.id), x]));
-      const profileById = new Map((profiles ?? []).map((x: any) => [String(x.user_id), x]));
+      const userById = new Map<string, any>((users ?? []).map((x: any): [string, any] => [String(x.id), x]));
+      const profileById = new Map<string, any>((profiles ?? []).map((x: any): [string, any] => [String(x.user_id), x]));
       const latestOrderByTelegram = new Map<string, any>();
       for (const o of orders ?? []) {
         const key = String(o.telegram_id);
@@ -2264,7 +2268,7 @@ Deno.serve(async (req: Request) => {
         db("admin_audit_log?action=eq.refund_star_order&select=id,target_order_id,metadata,created_at&order=created_at.desc&limit=100") ?? [],
       ]);
 
-      const productByKey = new Map((products ?? []).map((p: any) => [String(p.product_key), p]));
+      const productByKey = new Map<string, any>((products ?? []).map((p: any): [string, any] => [String(p.product_key), p]));
       const rawTransactions = Array.isArray(telegramTransactions?.transactions)
         ? telegramTransactions.transactions
         : [];
@@ -2357,7 +2361,7 @@ Deno.serve(async (req: Request) => {
         productStats.set(key, stat);
       }
 
-      const auditByOrder = new Map((auditRows ?? []).map((x: any) => [String(x.target_order_id), x]));
+      const auditByOrder = new Map<string, any>((auditRows ?? []).map((x: any): [string, any] => [String(x.target_order_id), x]));
       const refundHistory = (orders ?? [])
         .filter((o: any) => o.status === "refunded")
         .slice(0, 50)
@@ -2665,7 +2669,7 @@ Deno.serve(async (req: Request) => {
         reconciling: refund?.reconciling === true,
       });
 
-      return json({ ok: true, ...refund });
+      return json({ ...refund, ok: true });
     }
 
     if (action === "star_catalog") {
@@ -2839,10 +2843,10 @@ Deno.serve(async (req: Request) => {
         getBlockedUserIds(db, user.id),
         db(`matches?or=(user_a_id.eq.${encodeURIComponent(user.id)},user_b_id.eq.${encodeURIComponent(user.id)})&select=user_a_id,user_b_id&limit=500`) ?? [],
       ]);
-      const matchedIds = new Set((currentMatches ?? []).map((m: any) =>
+      const matchedIds = new Set<string>((currentMatches ?? []).map((m: any) =>
         String(m.user_a_id) === String(user.id) ? String(m.user_b_id) : String(m.user_a_id)
       ));
-      const senderIds = [...new Set((likes ?? [])
+      const senderIds: string[] = [...new Set<string>((likes ?? [])
         .map((x: any) => String(x.from_user_id))
         .filter((id: string) => !blockedIds.has(id) && !matchedIds.has(id)))];
 
@@ -2856,8 +2860,8 @@ Deno.serve(async (req: Request) => {
       ]);
       const likesPhotos = await signProfilePhotoUrls((profiles ?? []).map((p: any) => p.photo_url ?? null));
       const signedLikeProfiles = (profiles ?? []).map((p: any) => withSignedProfilePhoto(p, likesPhotos));
-      const profileById = new Map(signedLikeProfiles.map((p: any) => [String(p.user_id), p]));
-      const statusById = new Map(statuses.map((x: any) => [String(x.id), x]));
+      const profileById = new Map<string, any>(signedLikeProfiles.map((p: any): [string, any] => [String(p.user_id), p]));
+      const statusById = new Map<string, any>(statuses.map((x: any): [string, any] => [String(x.id), x]));
       const activeSenderIds = senderIds.filter((id) => statusById.get(id)?.account_status !== "restricted");
       const latestLikeByUser = new Map<string, any>();
       for (const like of likes ?? []) {
@@ -2931,14 +2935,14 @@ Deno.serve(async (req: Request) => {
       const rows = await db(
         `blocks?blocker_id=eq.${encodeURIComponent(user.id)}&select=id,blocked_id,created_at&order=created_at.desc&limit=500`,
       ) ?? [];
-      const ids = [...new Set(rows.map((x: any) => String(x.blocked_id)))];
+      const ids: string[] = [...new Set<string>(rows.map((x: any) => String(x.blocked_id)))];
       let profiles: any[] = [];
       if (ids.length) {
         profiles = await db(
           `profiles?user_id=in.(${ids.map((x) => encodeURIComponent(x)).join(",")})&select=user_id,name,age,city`,
         ) ?? [];
       }
-      const byId = new Map(profiles.map((p: any) => [String(p.user_id), p]));
+      const byId = new Map<string, any>(profiles.map((p: any): [string, any] => [String(p.user_id), p]));
       return json({
         ok: true,
         blocked: rows.map((row: any) => ({

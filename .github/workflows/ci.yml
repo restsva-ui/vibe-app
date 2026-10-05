@@ -27,6 +27,11 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.1.4
+
       - name: Check browser JavaScript syntax
         run: node --check app.js
 
@@ -41,8 +46,14 @@ jobs:
       - name: Verify migration catalog
         run: node scripts/verify-migrations.mjs
 
+      - name: Type-check telegram-auth
+        run: deno check supabase/functions/telegram-auth/index.ts
+
       - name: Parse and transpile telegram-auth
         run: npx --yes esbuild@0.25.11 supabase/functions/telegram-auth/index.ts --platform=neutral --format=esm --outfile=/tmp/telegram-auth.js
+
+      - name: Type-check telegram-bot
+        run: deno check supabase/functions/telegram-bot/index.ts
 
       - name: Parse and transpile telegram-bot
         run: npx --yes esbuild@0.25.11 supabase/functions/telegram-bot/index.ts --platform=neutral --format=esm --outfile=/tmp/telegram-bot.js

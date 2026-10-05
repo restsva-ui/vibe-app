@@ -334,7 +334,7 @@ async function createSupportTicket(msg: any, category: "general" | "payment", te
   if (ticket?.id) {
     try {
       const admins = await db("admin_users?select=user_id&limit=20") ?? [];
-      const ids = [...new Set(admins.map((x: any) => String(x.user_id || "")).filter(Boolean))];
+      const ids: string[] = [...new Set<string>(admins.map((x: any) => String(x.user_id || "")).filter(Boolean))];
       const adminUsers = ids.length
         ? await db(`users?id=in.(${ids.map((x) => encodeURIComponent(x)).join(",")})&select=telegram_id`) ?? []
         : [];
