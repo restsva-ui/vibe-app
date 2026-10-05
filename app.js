@@ -199,7 +199,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.46",
+      app_version:"0.9.47",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -400,11 +400,12 @@ function syncMatchRealtimeChannels(){
     });
   realtimeMatchChannels.set(wantedId,{channel,topic:m.realtime_topic});
 }
+const SOCIAL_RECONCILE_INTERVAL_MS=120000;
 setInterval(()=>{
-  if(document.visibilityState!=="visible"||accountStatus!=="active")return;
+  if(document.visibilityState!=="visible"||accountStatus!=="active"||realtimeConnected)return;
   loadMatches();
   if(activeChat)scheduleActiveChatRefresh(0);
-},15000);
+},SOCIAL_RECONCILE_INTERVAL_MS);
 async function claimReferral(){
   const initParams=new URLSearchParams(tg?.initData||"");
   const pageParams=new URLSearchParams(location.search);
@@ -417,8 +418,8 @@ async function claimReferral(){
 async function openReferral(){
   const r=await secureApi("referral_stats");if(!r.ok){showAlert("Не вдалося завантажити реферальну статистику.");return}
   const link="https://t.me/vybe_now_bot?start="+encodeURIComponent("ref_"+r.code);
-  const rewards=(r.rewards||[]).map(x=>'<div class="choice" style="margin-top:8px;opacity:'+(x.unlocked?'1':'.72')+'"><b>'+(x.unlocked?'✅ ':'🔒 ')+x.milestone+' активн.</b> — '+x.label+'<br><small>'+(x.unlocked?'Отримано':'Прогрес: '+x.progress+'/'+x.milestone)+'</small></div>').join("");
-  content.innerHTML='<h2>Запросити друзів 🔗</h2><p>Запрошено: <b>'+r.invited+'</b> • Активували анкету: <b>'+r.activated+'</b></p><h3 style="margin:14px 0 6px">Нагороди 🎁</h3>'+rewards+'<p style="margin-top:12px">Зараховуються лише друзі, які створили анкету 18+.</p><button id="shareReferral" class="primary">Поділитися запрошенням</button><button id="copyReferral" class="choice" style="width:100%;margin-top:10px">Скопіювати посилання</button>';
+  const rewards=(r.rewards||[]).map(x=>'<div class="choice" style="margin-top:8px;opacity:'+(x.unlocked?'1':'.72')+'"><b>'+(x.unlocked?'✅ ':'🔒 ')+escapeHtml(x.milestone)+' активн.</b> — '+escapeHtml(x.label)+'<br><small>'+(x.unlocked?'Отримано':'Прогрес: '+escapeHtml(x.progress)+'/'+escapeHtml(x.milestone))+'</small></div>').join("");
+  content.innerHTML='<h2>Запросити друзів 🔗</h2><p>Запрошено: <b>'+escapeHtml(r.invited)+'</b> • Активували анкету: <b>'+escapeHtml(r.activated)+'</b></p><h3 style="margin:14px 0 6px">Нагороди 🎁</h3>'+rewards+'<p style="margin-top:12px">Зараховуються лише друзі, які створили анкету 18+.</p><button id="shareReferral" class="primary">Поділитися запрошенням</button><button id="copyReferral" class="choice" style="width:100%;margin-top:10px">Скопіювати посилання</button>';
   sheet.classList.remove("hidden");
   $("shareReferral").onclick=()=>{const u="https://t.me/share/url?url="+encodeURIComponent(link)+"&text="+encodeURIComponent(uiText("Приєднуйся до VYBE 💜. Відкрий бота та натисни кнопку запуску VYBE."));analyticsCapture("referral_shared");tg?.openTelegramLink?.(u)};
   $("copyReferral").onclick=async()=>{try{await navigator.clipboard.writeText(link);showAlert("Посилання скопійовано ✅")}catch{showAlert(link)}};
