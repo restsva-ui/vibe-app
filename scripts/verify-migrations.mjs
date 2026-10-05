@@ -45,13 +45,48 @@ const productionBaseline = [
   "20261004161109",
   "20261004172219",
   "20261004174853",
-  "20261004180004"
+  "20261004180004",
 ];
 
-const missing = productionBaseline.filter((version) => !versions.includes(version));
-if (missing.length) {
-  console.error("Production baseline migration versions missing from repository:", missing);
+const knownRepositoryOnly = [
+  "20260919060000",
+  "20260919103000",
+  "20260919140000",
+  "20260919173000",
+  "20260919174500",
+  "20260920171000",
+  "20260920183500",
+  "20260926161500",
+  "20261004170000",
+  "20261004171500",
+  "20261004174500",
+  "20261004183000",
+  "20261004185000",
+];
+
+const missingBaseline = productionBaseline.filter((version) => !versions.includes(version));
+if (missingBaseline.length) {
+  console.error("Production baseline migration versions missing from repository:", missingBaseline);
   process.exit(1);
 }
 
-console.log(`Migration catalog OK: ${files.length} files, ${productionBaseline.length} production baseline versions represented, no duplicate versions.`);
+const missingKnownRepoOnly = knownRepositoryOnly.filter((version) => !versions.includes(version));
+if (missingKnownRepoOnly.length) {
+  console.error("Known repository-only migrations disappeared without baseline reconciliation:", missingKnownRepoOnly);
+  process.exit(1);
+}
+
+const latestProductionVersion = productionBaseline.reduce((max, version) => version > max ? version : max, "");
+const known = new Set([...productionBaseline, ...knownRepositoryOnly]);
+const unexpectedHistorical = versions.filter((version) => !known.has(version) && version <= latestProductionVersion);
+if (unexpectedHistorical.length) {
+  console.error("Unexpected untracked historical migrations require explicit reconciliation:", unexpectedHistorical);
+  process.exit(1);
+}
+
+const pendingForward = versions.filter((version) => !known.has(version) && version > latestProductionVersion);
+
+console.log(
+  `Migration catalog OK: ${files.length} executable files; ${productionBaseline.length} production versions; ` +
+  `${knownRepositoryOnly.length} explicitly tracked repo-only versions; ${pendingForward.length} forward-pending migration(s); no duplicates.`,
+);
