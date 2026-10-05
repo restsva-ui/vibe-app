@@ -1,6 +1,7 @@
 const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
-const WEBHOOK_SECRET = Deno.env.get("TELEGRAM_WEBHOOK_SECRET") ?? "";
+const CONFIGURED_WEBHOOK_SECRET = (Deno.env.get("TELEGRAM_WEBHOOK_SECRET") ?? "").trim();
 const APP_URL = "https://restsva-ui.github.io/vibe-app/";
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -22,6 +23,48 @@ async function telegram(method: string, body: unknown) {
     throw new Error(`Telegram API ${method} failed: ${description}`);
   }
   return data.result;
+}
+
+function hex(buffer: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buffer))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function resolveWebhookSecret() {
+  if (CONFIGURED_WEBHOOK_SECRET) return CONFIGURED_WEBHOOK_SECRET;
+  if (!BOT_TOKEN) throw new Error("TELEGRAM_BOT_TOKEN missing");
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(`vybe:telegram-webhook:${BOT_TOKEN}`),
+  );
+  return hex(digest);
+}
+
+let derivedWebhookSetup: Promise<void> | null = null;
+
+async function ensureWebhookSecret() {
+  const secret = await resolveWebhookSecret();
+  if (CONFIGURED_WEBHOOK_SECRET) return secret;
+  if (!SUPABASE_URL) throw new Error("SUPABASE_URL missing");
+
+  if (!derivedWebhookSetup) {
+    derivedWebhookSetup = (async () => {
+      await telegram("setWebhook", {
+        url: `${SUPABASE_URL}/functions/v1/telegram-bot`,
+        allowed_updates: ["message", "pre_checkout_query"],
+        drop_pending_updates: false,
+        secret_token: secret,
+      });
+      console.warn("telegram-bot: configured derived webhook secret fallback");
+    })().catch((error) => {
+      derivedWebhookSetup = null;
+      throw error;
+    });
+  }
+
+  await derivedWebhookSetup;
+  return secret;
 }
 
 function dbClient() {
@@ -325,12 +368,15 @@ async function createSupportTicket(msg: any, category: "general" | "payment", te
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ ok: false }, 405);
 
-  if (!WEBHOOK_SECRET) {
-    console.error("telegram-bot: TELEGRAM_WEBHOOK_SECRET missing");
+  let webhookSecret = "";
+  try {
+    webhookSecret = await ensureWebhookSecret();
+  } catch (error) {
+    console.error("telegram-bot: webhook setup failed", error);
     return json({ ok: false, error: "Webhook not configured" }, 503);
   }
   const supplied = req.headers.get("x-telegram-bot-api-secret-token") ?? "";
-  if (supplied !== WEBHOOK_SECRET) return json({ ok: false }, 401);
+  if (supplied !== webhookSecret) return json({ ok: false }, 401);
 
   let update: any;
   try {
