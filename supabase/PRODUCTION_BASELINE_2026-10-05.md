@@ -1,6 +1,6 @@
 # VYBE production migration baseline — 2026-10-05
 
-This file records the migration-history state observed in production Supabase project `qifxxzpnuxchnkowxzgp` during the VYBE 0.9.47 hardening audit.
+This file records the migration-history state observed in production Supabase project `qifxxzpnuxchnkowxzgp` during the VYBE 0.9.47 hardening audit and re-verified during VYBE 0.9.48 hardening.
 
 ## Rules
 
@@ -8,8 +8,9 @@ This file records the migration-history state observed in production Supabase pr
 - Migration filenames were normalized to the production version timestamps without changing their SQL blob contents.
 - Do not edit `supabase_migrations.schema_migrations` manually to hide drift.
 - New production DDL must be introduced as a migration first; avoid out-of-band schema changes.
-- The repository also contains bootstrap migrations created before production migration history was tracked and several 2026-10-04 out-of-band hardening migrations. They are retained for clean rebuilds but are not falsely inserted into production history.
+- The repository also contains bootstrap migrations created before production migration history was tracked and several 2026-10-04 out-of-band hardening migrations. Their characteristic tables/functions/indexes were verified as present in the live schema on 2026-10-05, but they are not falsely inserted into production history.
 - `20261003122312` is a no-op marker because production contains a duplicate history entry for the preceding star-order cancel-state migration.
+- The former `20261003131500_enable_one_star_supervybe_test_20261003.sql` was an operational test script, not a durable migration. It has been moved to `supabase/retired/` so a future migration run cannot reactivate the 1-Star test SKU.
 
 ## Production-tracked versions
 
@@ -61,12 +62,26 @@ Bootstrap / pre-history:
 - `20260920183500_atomic_supervybe.sql`
 - `20260926161500_atomic_spotlight.sql`
 
-Other repository-only files:
-- `20261003131500_enable_one_star_supervybe_test_20261003.sql`
+Materialized out-of-band hardening files:
 - `20261004170000_vybe_matches_rpc_optimization.sql`
 - `20261004171500_vybe_discovery_keyset_pagination_20261004.sql`
 - `20261004174500_vybe_atomic_like_match.sql`
 - `20261004183000_vybe_notification_pipeline_scaling.sql`
 - `20261004185000_vybe_notification_pipeline_indexes.sql`
 
-These files must be reconciled deliberately before relying on `supabase db push` as the sole production deployment path.
+These 13 files must be reconciled deliberately before relying on `supabase db push` as the sole production deployment path.
+
+## Live-schema reconciliation — 2026-10-05
+
+Read-only production inspection confirmed the characteristic state from the repository-only files is already materialized:
+
+- Bootstrap tables are present: `likes`, `matches`, `messages`, `referrals`, `referral_rewards`, `reward_uses`, `user_entitlements`, and `match_reads`.
+- `user_entitlements.referral_plus_milestone` is present.
+- Atomic/retrieval RPCs are present: `use_supervybe_and_like`, `use_spotlight`, `vybe_matches_for_user`, `vybe_discover_page`, and `vybe_like_and_match`.
+- Notification RPCs are present: `vybe_notification_unread_count`, `vybe_notifications_for_user`, `vybe_mark_notifications_seen`, and `vybe_claim_notification_delivery`.
+- Characteristic indexes from the bootstrap, discovery, notification, moderation, and restriction migrations are present.
+- RLS is enabled on all eight bootstrap/core tables listed above.
+- The temporary `test_1_star` product exists but is `active=false` in production.
+- The live `use_supervybe_and_like` function is no longer the original 2026-09-20 SECURITY DEFINER implementation; the later atomic-like migration has replaced it. This is why presence verification is evidence of materialized schema state, not proof that every historical SQL file can safely be replayed verbatim.
+
+No production migration-history rows were added or altered during this audit.
