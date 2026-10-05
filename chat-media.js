@@ -7,7 +7,7 @@ window.VybeMedia={base64DataUrl(value){const marker=String(value).indexOf(';base
   const icon=name=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+`<path d="${paths[name]||paths.phone}"/>`+'</svg>';
   const uuid=()=>{if(crypto.randomUUID)return crypto.randomUUID();const b=crypto.getRandomValues(new Uint8Array(16));b[6]=(b[6]&15)|64;b[8]=(b[8]&63)|128;const h=[...b].map(x=>x.toString(16).padStart(2,'0')).join('');return h.slice(0,8)+'-'+h.slice(8,12)+'-'+h.slice(12,16)+'-'+h.slice(16,20)+'-'+h.slice(20)};
   const time=ms=>{const s=Math.max(0,Math.floor(ms/1000));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
-  let recording=null,recordEpoch=0,call=null,callStarting=false,polling=false,pollTimer=null,started=false;
+  let recording=null,recordEpoch=0,call=null,callStarting=false,callEpoch=0,polling=false,pollTimer=null,started=false;
   const tracksOff=stream=>stream?.getTracks().forEach(track=>track.stop());
   const active=()=>config.userId()&&config.allowed();
   const alert=(uk,en)=>config.alert(t(uk,en));
@@ -58,6 +58,7 @@ window.VybeMedia={base64DataUrl(value){const marker=String(value).indexOf(';base
     if(recording||call||callStarting){alert('Заверши поточний запис або дзвінок.','Finish the current recording or call first.');return}
     if(!window.MediaRecorder){alert('Запис недоступний у цій версії Telegram. Онови Telegram або відкрий VYBE у сучасному браузері.','Recording is unavailable in this Telegram version. Update Telegram or use a current browser.');return}
     const chat=config.chat();if(!chat||!active())return;
+    document.querySelectorAll('audio,video').forEach(p=>p.pause());
     const epoch=++recordEpoch;
     recording={epoch,kind,matchId:chat.matchId,state:'requesting',messageId:uuid(),chunks:[]};
     const root=document.createElement('div');root.id='mediaDraft';root.className='mediaShell mediaDraft';$('chatComposerTools')?.before(root);
@@ -172,17 +173,18 @@ window.VybeMedia={base64DataUrl(value){const marker=String(value).indexOf(';base
     if(call||callStarting||recording){alert('Заверши поточний запис або дзвінок.','Finish the current recording or call first.');return}
     const chat=config.chat();if(!chat||!active())return;
     if(!window.RTCPeerConnection){alert('Дзвінки недоступні на цьому пристрої.','Calls are unavailable on this device.');return}
-    callStarting=true;let stream;
+    const epoch=++callEpoch;callStarting=true;let stream;
+    document.querySelectorAll('audio,video').forEach(p=>p.pause());
     try{
       stream=await capture(kind==='video');
-      if(!active()||config.chat()?.matchId!==chat.matchId){tracksOff(stream);return}
+      if(epoch!==callEpoch||!active()||config.chat()?.matchId!==chat.matchId){tracksOff(stream);return}
       if(call){tracksOff(stream);alert('У тебе вже є вхідний дзвінок.','You already have an incoming call.');return}
       const r=await api('call_start',{match_id:chat.matchId,media_kind:kind});
       if(!r.ok){tracksOff(stream);alert(r.error==='CALL_BUSY'?'Хтось із вас уже має активний дзвінок.':'Не вдалося почати дзвінок. Спробуй ще раз.',r.error==='CALL_BUSY'?'One of you already has an active call.':'Could not start the call. Please try again.');return}
-      if(!active()){tracksOff(stream);api('call_action',{call_id:r.call.id,operation:'end'});return}
+      if(epoch!==callEpoch||!active()){tracksOff(stream);api('call_action',{call_id:r.call.id,operation:'end'});return}
       call={data:r.call,name:r.peer_name||chat.name,stream,cursor:0,ice:[],sent:Promise.resolve(),caller:true};
       renderCall();call.clock=setInterval(updateCallStatus,1000);schedulePoll(100);
-    }catch(e){tracksOff(stream);permissionError(e,kind==='video')}finally{callStarting=false}
+    }catch(e){tracksOff(stream);permissionError(e,kind==='video')}finally{if(epoch===callEpoch)callStarting=false}
   }
   async function acceptCall(){
     const c=call;if(!c||c.accepting)return;c.accepting=true;$('callAccept').disabled=true;updateCallStatus();
@@ -265,7 +267,7 @@ window.VybeMedia={base64DataUrl(value){const marker=String(value).indexOf(';base
     finally{polling=false;schedulePoll()}
   }
   function start(){if(started)return;started=true;schedulePoll(200)}
-  function stop(){started=false;clearTimeout(pollTimer);disposeRecording();const c=call;clearCall();if(c)api('call_action',{call_id:c.data.id,operation:'end'})}
+  function stop(){callEpoch++;callStarting=false;started=false;clearTimeout(pollTimer);disposeRecording();const c=call;clearCall();if(c)api('call_action',{call_id:c.data.id,operation:'end'})}
   document.addEventListener('visibilitychange',()=>{
     if(document.visibilityState==='hidden'){if(recording?.state==='recording')stopRecording()}
     else if(started)schedulePoll(100);
