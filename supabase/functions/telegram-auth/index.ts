@@ -2,6 +2,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Max-Age": "86400",
 };
 
 function json(data: unknown, status = 200, extraHeaders: Record<string,string> = {}) {
@@ -71,7 +72,7 @@ function dbClient() {
       ...options,
       headers: {
         apikey: key,
-        Authorization: `Bearer ${key}`,
+        ...(key.startsWith("sb_secret_") ? {} : { Authorization: `Bearer ${key}` }),
         "Content-Type": "application/json",
         Prefer: "return=representation",
         ...(options.headers || {}),
@@ -91,7 +92,7 @@ async function rpc(name: string, payload: Record<string, unknown>) {
     method: "POST",
     headers: {
       apikey: key,
-      Authorization: `Bearer ${key}`,
+      ...(key.startsWith("sb_secret_") ? {} : { Authorization: `Bearer ${key}` }),
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
@@ -1065,7 +1066,7 @@ async function storageRequest(path: string, options: RequestInit = {}) {
     ...options,
     headers: {
       apikey: key,
-      Authorization: `Bearer ${key}`,
+      ...(key.startsWith("sb_secret_") ? {} : { Authorization: `Bearer ${key}` }),
       ...(options.headers || {}),
     },
   });
