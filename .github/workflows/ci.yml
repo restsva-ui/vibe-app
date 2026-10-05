@@ -40,6 +40,11 @@ jobs:
           npx --yes esbuild@0.25.11 scripts/test-telegram-init-data.ts --bundle --platform=node --format=esm --outfile=/tmp/test-telegram-init-data.mjs
           node /tmp/test-telegram-init-data.mjs
 
+      - name: Test Supabase service-key headers
+        run: |
+          npx --yes esbuild@0.25.11 scripts/test-supabase-service-auth.ts --bundle --platform=node --format=esm --outfile=/tmp/test-supabase-service-auth.mjs
+          node /tmp/test-supabase-service-auth.mjs
+
       - name: Run hardening invariants
         run: node scripts/verify-hardening.mjs
 
