@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>VYBE 0.9.48</title>
 <link rel="stylesheet" href="./styles.css?v=20261004-financeui0944">
-<link rel="stylesheet" href="./visual.css?v=20261005-visual1">
+<link rel="stylesheet" href="./visual.css?v=20261005-interests-map1">
 <script src="https://telegram.org/js/telegram-web-app.js">
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2">
@@ -142,6 +142,8 @@
 <label>Про себе<textarea id="obBio" class="field" maxlength="180" placeholder="Коротко й живо — що варто знати про тебе?">
 </textarea>
 </label>
+<div class="profileInterestsEditor"><h3>Мої інтереси</h3><p class="fieldHint">Обери до 8 — так легше знайти своїх людей.</p><div id="obInterests"></div></div>
+<div class="profileMapEditor"><label class="checkRow"><input id="obMapEnabled" type="checkbox"><span>Показувати мій район на карті</span></label><p class="fieldHint">Добровільно. Інші бачитимуть лише приблизний район.</p><button id="obPickArea" type="button" class="choice">Обрати район на карті</button><small id="obMapStatus" role="status"></small></div>
 <button id="saveProfile" class="primary">Зберегти</button>
 </div>
 </div>
@@ -195,6 +197,7 @@
 <section id="discoverView" class="view active">
 <div class="sectionTitle">
 <span>Люди по твоєму вайбу</span>
+<div class="discoveryTools"><button id="mapBtn" class="textBtn filterButton" aria-label="Карта">⌖ <span>Карта</span></button>
 <button class="textBtn filterButton" id="filterBtn">
 <svg class="uiIcon " aria-hidden="true">
 <use href="#ui-filter">
@@ -202,6 +205,7 @@
 </svg>
 <span>Фільтри</span>
 </button>
+</div>
 </div>
 <div id="cardStack" class="cardStack">
 </div>
@@ -262,6 +266,7 @@
 <p id="profileMeta">
 </p>
 <p id="profileBio">Заповни анкету.</p>
+<div id="profileInterests" class="interestTags"></div>
 <button id="editProfile" class="primary">Редагувати профіль</button>
 </div>
 <div class="menuCard">
@@ -412,7 +417,8 @@
 </div>
 </div>
 </div>
-<script src="./app.js?v=20261005-no-virt1">
+<script src="./interests-map.js?v=20261005-interests-map1"></script>
+<script src="./app.js?v=20261005-interests-map1">
 </script>
 <script>
 (()=>{const splash=document.getElementById("vibeSplash");if(!splash)return;let closed=false;const close=()=>{if(closed)return;closed=true;splash.classList.add("done");setTimeout(()=>splash.remove(),450)};const start=()=>setTimeout(close,2050);if(document.readyState==="complete")start();else window.addEventListener("load",start,{once:true});setTimeout(close,3200)})();

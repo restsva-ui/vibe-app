@@ -48,7 +48,7 @@ button:not(:disabled):active{filter:brightness(1.12)}
 .filterButton{display:flex;align-items:center;justify-content:center;gap:5px;min-height:38px;padding:0 1px 0 8px;font-size:0.8125rem;color:#c7b6e4;flex-shrink:0}
 .filterButton .uiIcon{width:17px;height:17px}
 .cardStack{min-height:0}
-.personCard{height:clamp(20rem,calc(var(--tg-viewport-height,100dvh) - var(--tg-safe-top,0px) - var(--tg-safe-bottom,0px) - 490px),33.75rem);border:1px solid #ffffff13;border-radius:27px;background:#242031;box-shadow:0 16px 38px #00000032}
+.personCard{height:clamp(20rem,calc(var(--tg-viewport-height,100dvh) - var(--tg-safe-top,0px) - var(--tg-safe-bottom,0px) - 520px),33.75rem);border:1px solid #ffffff13;border-radius:27px;background:#242031;box-shadow:0 16px 38px #00000032}
 .generatedAvatar{font-size:7.812rem;background:radial-gradient(ellipse at 38% 22%,#66547d,#292335 65%,#17131f);color:#ddc6ef}
 .gradient{pointer-events:none;background:linear-gradient(180deg,#0c07141c 0,transparent 30%,#0c07144d 49%,#100b18de 74%,#100c19 100%)}
 .personMeta{left:18px;right:18px;bottom:17px}
@@ -214,3 +214,42 @@ button:not(:disabled):active{filter:brightness(1.12)}
 @media(min-width:600px){.app{padding-top:26px}.personCard{height:540px}.nav{bottom:18px}.sheetChat .sheetCard{border-left:1px solid #4b2e56;border-right:1px solid #4b2e56}}
 @media(max-width:360px){.app{padding-left:14px;padding-right:14px}.hello{font-size:1.438rem}.topbarActions{gap:6px}.iconBtn{width:40px;height:40px}.nowCard{gap:8px;padding:10px}.nowIcon{width:32px;flex-basis:32px;height:40px}.nowCard small{font-size:0.75rem}.nowCard button{padding:8px;font-size:0.75rem}.sectionTitle{font-size:0.9375rem}.personMeta{left:15px;right:15px}.nameRow h2{font-size:1.75rem}.personCard{height:max(360px,22.5rem)}.actionGroup{min-width:68px}.actions{gap:15px}.matchOpen .itemMain{padding:11px 10px}.matchOpen .itemMain b{font-size:1rem}.menuCard button{padding:13px 10px;gap:10px}.menuLabel{padding-right:15px}.sheetCard{padding-left:18px;padding-right:18px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.view.active{animation:none}button,.mood,.navIcon{transition:none}}
+
+/* Interests and the optional area map. */
+.srOnly{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.discoveryTools{display:flex;gap:8px;flex-shrink:0}.discoveryTools .filterButton{padding-left:0}
+.interestPicker,.interestTags{display:flex;flex-wrap:wrap;gap:7px}
+.interestChoice,.interestTag{border:1px solid #493650;border-radius:999px;background:#261a31;color:#d8c3e5;padding:7px 10px;font-size:.8125rem;line-height:1.3}
+.interestChoice{min-height:38px}.interestChoice.selected,.commonInterest{background:#513059;border-color:#ab74b1;color:#f7e7ff}
+.interestChoice[aria-pressed=true]{box-shadow:inset 0 0 0 1px #ad77b154}
+.interestTag{padding:5px 8px;font-size:.75rem}.interestTags:empty{display:none}
+.profileInterestsEditor{margin:20px 0}.profileInterestsEditor h3{margin:0 0 5px;font-size:1rem}
+.fieldHint{font-size:.8125rem!important;color:#bca5c9;margin:6px 0 12px;line-height:1.45}
+.profileMapEditor{margin:20px 0;padding:15px;border:1px solid #503459;border-radius:18px;background:#281b323b}
+.profileMapEditor .checkRow{margin:0}.profileMapEditor small{display:block;margin-top:10px;color:#c1a9cf;font-size:.75rem}
+.profileMapEditor .choice{width:100%}.onboarding{max-height:calc(var(--chat-viewport-height,100dvh) - 36px);overflow:auto}
+#profileInterests{justify-content:center;margin:15px 0}.publicProfileBody .interestTags{margin:16px 0}
+.cardInterests{margin:8px 0;flex-wrap:nowrap;overflow:hidden}.cardInterests .interestTag{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%;flex:0 1 auto}
+.personCard:has(.cardInterests:not(:empty)) .bio{-webkit-line-clamp:1}
+.sheet.sheetMap{padding:0;place-items:stretch center;height:min(var(--tg-viewport-height,100dvh),var(--chat-viewport-height,100dvh));bottom:auto;overflow:hidden}
+.sheetMap .handle{display:none}.sheet.sheetMap .sheetCard{height:100%;max-height:none;min-height:0;overflow:hidden;width:min(100%,560px);border-radius:0;padding:calc(16px + var(--tg-safe-top,0px)) 16px calc(12px + max(env(safe-area-inset-bottom),var(--tg-safe-bottom,0px)))}
+.sheetMap #sheetContent{height:100%;min-height:0}.sheetMap .close{top:calc(16px + var(--tg-safe-top,0px));right:16px}
+.mapShell{display:flex;flex-direction:column;height:100%;gap:9px;min-height:0}
+.mapShell h2{font-size:1.4375rem;letter-spacing:-.03em;margin:5px 44px 0 0;line-height:1.2}
+.mapPrivacy{font-size:.8125rem!important;color:#c0a9cc;margin:0;line-height:1.4}
+.mapToolbar{display:flex;gap:8px;align-items:center}.mapToolbar .field{margin:0;min-width:0;flex:1;font-size:.8125rem;padding:10px}
+.mapToolbar .choice{font-size:.8125rem;flex-shrink:0}.mapCommon{margin:0;font-size:.8125rem}
+.mapCanvasWrap{position:relative;flex:1;min-height:190px;overflow:hidden;border-radius:20px;border:1px solid #65416c;background:#25222a}
+.mapCanvas{height:100%;min-height:190px;background:#25222a}.mapCrosshair{position:absolute;z-index:450;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;background:#fff2fc;color:#68386e;border:2px solid #754e82;border-radius:50%;padding:9px;box-shadow:0 3px 12px #0006}
+.mapCrosshair .uiIcon{width:22px;height:22px}.mapLoadState{position:absolute;top:10px;left:10px;right:10px;z-index:500;background:#20152ce8;color:#ead7f5;border:1px solid #6e497c;padding:10px 12px;border-radius:12px;font-size:.8125rem;pointer-events:none}
+.mapStatus{color:#ccb3db;font-size:.75rem;line-height:1.35}.mapPeople{max-height:210px;flex:0 1 auto;overflow:auto;display:grid;grid-auto-rows:max-content;align-content:start;gap:8px;overscroll-behavior:contain;min-height:0}
+.mapPerson{display:flex;align-items:center;gap:10px;padding:11px;border:1px solid #4d3458;background:#291b32;border-radius:16px;color:#eadbf2;text-align:left;min-height:70px;width:100%}
+.mapPerson>span:nth-child(2){flex:1;min-width:0}.mapPerson b{display:block;font-size:.9375rem;overflow-wrap:anywhere}.mapPerson small{display:block;font-size:.75rem;color:#bfa4cc;margin:3px 0 5px}
+.mapPersonInitial{width:37px;height:42px;display:grid;place-items:center;flex:0 0 auto;background:#60406e;border-radius:13px;font-size:1.125rem;font-weight:700}
+.mapPerson>.uiIcon{width:16px;height:16px;color:#b798c9}.mapInterestTags{display:flex;flex-wrap:wrap;gap:4px}.mapInterestTags .interestTag{font-size:.6875rem;padding:3px 5px}
+.mapEmpty{padding:15px;font-size:.8125rem;color:#bda5ca;line-height:1.45;text-align:center}
+.mapProviderNotice{font-size:.625rem;color:#ac93ba;line-height:1.4;flex:0 0 auto}
+.peoplePin{background:none!important;border:0!important}.peoplePin span{display:grid;place-items:center;width:42px;height:42px;border-radius:16px 16px 16px 4px;border:2px solid #f4d4f1;background:#83548e;color:white;font-size:1.0625rem;font-weight:800;box-shadow:0 4px 14px #0005}
+.peoplePin:focus-visible{outline:3px solid #30263b;outline-offset:4px}
+.mapCanvas .leaflet-control-attribution{font-size:10px;background:#fffef7ed;color:#333}.mapCanvas .leaflet-control-attribution a{color:#57456b}
+@media(max-width:360px){.sectionTitle{flex-wrap:wrap}.discoveryTools{margin-left:auto}.mapPeople{max-height:145px}.sheet.sheetMap .sheetCard{padding-left:12px;padding-right:12px}.mapPrivacy{font-size:.75rem!important}.mapCanvasWrap,.mapCanvas{min-height:160px}}

@@ -1,5 +1,6 @@
 import { serviceRoleAuthHeaders } from "../_shared/supabase-service-auth.ts";
 import { validateTelegramInitData } from "../_shared/telegram-init-data.ts";
+import { parseInterests, parseMapArea, parseMapBounds } from "../_shared/discovery-preferences.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -94,6 +95,7 @@ const ACTION_RATE_LIMITS: Record<string, RateLimitPolicy> = {
   unblock_user: { windowSeconds: 60, maxHits: 60 },
   report_user: { windowSeconds: 3600, maxHits: 20 },
   set_intent: { windowSeconds: 600, maxHits: 30 },
+  discover_map: { windowSeconds: 600, maxHits: 180 },
   pass: { windowSeconds: 60, maxHits: 180 },
   super_like: { windowSeconds: 60, maxHits: 60 },
   like: { windowSeconds: 60, maxHits: 120 },
@@ -292,7 +294,7 @@ async function ensureUser(db: ReturnType<typeof dbClient>, tgUser: any) {
 }
 
 async function getProfile(db: ReturnType<typeof dbClient>, userId: string) {
-  const rows = await db(`profiles?user_id=eq.${encodeURIComponent(userId)}&select=user_id,name,age,city,gender,looking_for,bio,photo_url,verified&limit=1`);
+  const rows = await db(`profiles?user_id=eq.${encodeURIComponent(userId)}&select=user_id,name,age,city,gender,looking_for,bio,photo_url,verified,interests,map_enabled,map_lat,map_lng&limit=1`);
   return rows?.[0] ?? null;
 }
 
@@ -1535,7 +1537,7 @@ Deno.serve(async (req: Request) => {
       const age = Number(p.age);
       if (!name || !Number.isInteger(age) || age < 18 || age > 99) return json({ ok: false, error: "Invalid profile" }, 400);
 
-      const payload = {
+      const payload: Record<string, unknown> = {
         user_id: user.id,
         name,
         age,
@@ -1544,6 +1546,16 @@ Deno.serve(async (req: Request) => {
         looking_for: clean(p.looking, 50) || null,
         bio: clean(p.bio, 180) || null,
       };
+      if (Object.hasOwn(p, "interests")) {
+        const interests = parseInterests(p.interests);
+        if (!interests) return json({ ok: false, error: "Invalid interests" }, 400);
+        payload.interests = interests;
+      }
+      if (Object.hasOwn(p, "map_enabled")) {
+        const area = parseMapArea(p.map_enabled, p.map_lat, p.map_lng);
+        if (!area) return json({ ok: false, error: "Invalid map area" }, 400);
+        Object.assign(payload, area);
+      }
       const existing = await getProfile(db, user.id);
       const rows = existing
         ? await db(`profiles?user_id=eq.${encodeURIComponent(user.id)}`, { method: "PATCH", body: JSON.stringify(payload) })
@@ -3078,7 +3090,7 @@ Deno.serve(async (req: Request) => {
 
       const [targetRows, profileRows, intentRows, matchRows] = await Promise.all([
         db(`users?id=eq.${encodeURIComponent(targetId)}&select=id,last_seen,account_status&limit=1`) ?? [],
-        db(`profiles?user_id=eq.${encodeURIComponent(targetId)}&select=user_id,name,age,city,gender,looking_for,bio,photo_url,verified&limit=1`) ?? [],
+        db(`profiles?user_id=eq.${encodeURIComponent(targetId)}&select=user_id,name,age,city,gender,looking_for,bio,photo_url,verified,interests&limit=1`) ?? [],
         db(`intents?user_id=eq.${encodeURIComponent(targetId)}&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&select=intent,expires_at&limit=1`) ?? [],
         db(`matches?or=(and(user_a_id.eq.${encodeURIComponent(user.id)},user_b_id.eq.${encodeURIComponent(targetId)}),and(user_a_id.eq.${encodeURIComponent(targetId)},user_b_id.eq.${encodeURIComponent(user.id)}))&select=id,realtime_topic&limit=1`) ?? [],
       ]);
@@ -3151,7 +3163,13 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true, recorded: true, target_intent_expires_at: targetIntentExpiresAt });
     }
 
-    if (action === "discover") {
+    if (action === "discover" || action === "discover_map") {
+      const isMap = action === "discover_map";
+      const mapBounds = isMap ? parseMapBounds(body.bounds) : null;
+      if (isMap && !mapBounds) return json({ ok: false, error: "Invalid map bounds" }, 400);
+      const interestFilter = body.interests === undefined ? [] : parseInterests(body.interests);
+      if (!interestFilter) return json({ ok: false, error: "Invalid interests" }, 400);
+      const commonOnly = body.common_only === true;
       const nowIso = new Date().toISOString();
       const minAgeRaw = Number(body.min_age);
       const maxAgeRaw = Number(body.max_age);
@@ -3164,7 +3182,7 @@ Deno.serve(async (req: Request) => {
       const verifiedOnly = body.verified_only === true;
 
       const pageSizeRaw = Number(body.page_size);
-      const pageSize = Number.isFinite(pageSizeRaw)
+      const pageSize = isMap ? 100 : Number.isFinite(pageSizeRaw)
         ? Math.max(5, Math.min(40, Math.floor(pageSizeRaw)))
         : 100;
 
@@ -3175,43 +3193,46 @@ Deno.serve(async (req: Request) => {
         && snapshotMs >= Date.now() - 30 * 60_000;
       let snapshotAt = snapshotAccepted ? new Date(snapshotMs).toISOString() : nowIso;
 
-      const rawCursor = body.cursor && typeof body.cursor === "object" && !Array.isArray(body.cursor)
+      const rawCursor = !isMap && body.cursor && typeof body.cursor === "object" && !Array.isArray(body.cursor)
         ? body.cursor as Record<string, unknown>
         : null;
       let paginationReset = false;
       let afterSpotlight: number | null = null;
       let afterSpotlightUntil: string | null = null;
       let afterIntentMatch: number | null = null;
+      let afterCommonCount: number | null = null;
       let afterOnline: number | null = null;
       let afterVerified: number | null = null;
       let afterUserId: string | null = null;
 
       if (rawCursor) {
-        if (!snapshotAccepted) {
+        if (!snapshotAccepted || rawCursor.common_count === undefined) {
           paginationReset = true;
         } else {
           const userId = clean(rawCursor.user_id, 80);
           const spotlight = Number(rawCursor.spotlight);
           const intentMatch = Number(rawCursor.intent_match);
+          const commonCount = Number(rawCursor.common_count);
           const online = Number(rawCursor.online);
           const verified = Number(rawCursor.verified);
           const spotlightUntilRaw = clean(rawCursor.spotlight_until, 60);
           const spotlightUntilMs = new Date(spotlightUntilRaw).getTime();
           const uuidOk = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId);
           const bit = (value: number) => value === 0 || value === 1;
-          if (!uuidOk || !bit(spotlight) || !bit(intentMatch) || !bit(online) || !bit(verified) || !Number.isFinite(spotlightUntilMs)) {
+          if (!uuidOk || !bit(spotlight) || !bit(intentMatch) || !bit(online) || !bit(verified) || !Number.isInteger(commonCount) || commonCount < 0 || commonCount > 8 || !Number.isFinite(spotlightUntilMs)) {
             return json({ ok: false, error: "Invalid discovery cursor" }, 400);
           }
           afterSpotlight = spotlight;
           afterSpotlightUntil = new Date(spotlightUntilMs).toISOString();
           afterIntentMatch = intentMatch;
+          afterCommonCount = commonCount;
           afterOnline = online;
           afterVerified = verified;
           afterUserId = userId;
         }
       }
 
-      const rows = await rpc("vybe_discover_page", {
+      const rows = await rpc("vybe_discover_interests_page", {
         p_user_id: user.id,
         p_min_age: minAge,
         p_max_age: maxAge,
@@ -3227,6 +3248,14 @@ Deno.serve(async (req: Request) => {
         p_after_online: afterOnline,
         p_after_verified: afterVerified,
         p_after_user_id: afterUserId,
+        p_after_common_count: afterCommonCount,
+        p_interests: interestFilter,
+        p_common_only: commonOnly,
+        p_map_only: isMap,
+        p_south: mapBounds?.south ?? null,
+        p_north: mapBounds?.north ?? null,
+        p_west: mapBounds?.west ?? null,
+        p_east: mapBounds?.east ?? null,
       }) ?? [];
 
       const hasMore = rows.length > pageSize;
@@ -3236,6 +3265,7 @@ Deno.serve(async (req: Request) => {
         spotlight: Number(last.rank_spotlight || 0),
         spotlight_until: last.rank_spotlight_until,
         intent_match: Number(last.rank_intent_match || 0),
+        common_count: Number(last.rank_common_count || 0),
         online: Number(last.rank_online || 0),
         verified: Number(last.rank_verified || 0),
         user_id: last.rank_user_id,
@@ -3253,6 +3283,10 @@ Deno.serve(async (req: Request) => {
         online: row.online === true,
         intent: row.intent,
         intent_match: row.intent_match === true,
+        interests: row.interests ?? [],
+        common_interests: row.common_interests ?? [],
+        map_lat: isMap ? row.map_lat : undefined,
+        map_lng: isMap ? row.map_lng : undefined,
         expires_at: row.expires_at ?? null,
         spotlight_until: row.spotlight_until ?? null,
         spotlight_active: row.spotlight_active === true,
@@ -3261,7 +3295,10 @@ Deno.serve(async (req: Request) => {
 
       return json({
         ok: true,
+        has_more: hasMore,
         filters: {
+          interests: interestFilter,
+          common_only: commonOnly,
           min_age: minAge,
           max_age: maxAge,
           city,

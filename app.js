@@ -26,6 +26,26 @@ const tuser=tg?.initDataUnsafe?.user;const $=id=>document.getElementById(id),sto
 
 
 const I18N_PAIRS=[
+  ["Інтереси","Interests"],["Мої інтереси","My interests"],["Обери до 8 — так легше знайти своїх людей.","Choose up to 8 to find your people."],
+  ["Можна обрати до 8 інтересів.","You can choose up to 8 interests."],["Показувати мій район на карті","Show my area on the map"],
+  ["Добровільно. Інші бачитимуть лише приблизний район.","Optional. Others will see only an approximate area."],
+  ["Обрати район на карті","Choose an area on the map"],["Район обрано. Позначка приблизна.","Area selected. The marker is approximate."],
+  ["Район ще не обрано.","No area selected yet."],["Обери район на карті або вимкни показ на карті.","Choose an area or turn off map visibility."],
+  ["Не вдалося зберегти анкету. Спробуй ще раз.","Could not save your profile. Please try again."],
+  ["Карта","Map"],["Наблизити","Zoom in"],["Віддалити","Zoom out"],["Обери свій район","Choose your area"],["Люди на карті","People on the map"],
+  ["Наведи карту на район. Інші бачитимуть лише приблизну ділянку в кілька кілометрів.","Move the map to your area. Others will see only an approximate area a few kilometres wide."],
+  ["Позначки добровільні й приблизні. На карті — люди з активним VYBE NOW.","Markers are optional and approximate. The map shows people with an active VYBE NOW."],
+  ["Місто на карті","City on the map"],["Перейти до міста","Go to a city"],["Лише зі спільними інтересами","Shared interests only"],
+  ["Обрати цей район","Choose this area"],["Виділена ділянка — район, який побачать інші.","The highlighted area is what others will see."],
+  ["OpenStreetMap отримує IP-адресу та ділянку карти, яку ти переглядаєш.","OpenStreetMap receives your IP address and the map area you view."],
+  ["Підкладка карти недоступна. Анкети можна відкрити зі списку.","Map tiles are unavailable. You can open profiles from the list."],
+  ["Спільні інтереси: ","Shared interests: "],["Назад до карти","Back to the map"],["Надіслати VYBE","Send VYBE"],["VYBE надіслано","VYBE sent"],
+  ["У цій ділянці поки немає активних анкет. Зміни район або фільтри.","No active profiles in this area yet. Change the area or filters."],
+  ["Не вдалося завантажити карту людей. Спробуй ще раз.","Could not load people on the map. Please try again."],
+  ["Не вдалося відкрити карту. Перевір з’єднання й спробуй ще раз.","Could not open the map. Check your connection and try again."],
+  ["Показано до 100 анкет. Наблизь карту для точнішого пошуку.","Showing up to 100 profiles. Zoom in to narrow the search."],
+  ["Анкет у цій ділянці: ","Profiles in this area: "],["Будь-який з обраних інтересів","Any selected interest"],
+  ["Додай інтереси в анкету, щоб шукати спільні.","Add interests to your profile to find shared ones."],
   ["Твій вайб зараз","Your vibe right now"],["Зберегти","Save"],
   ["Запросити друзів","Invite friends"],["Безпека та приватність","Safety & privacy"],
   ["Заблоковані користувачі","Blocked users"],["Підтримка VYBE","VYBE Support"],
@@ -119,9 +139,11 @@ let currentLang=load("vybeLanguage",null)||(String(tuser?.language_code||"").toL
 currentLang=currentLang==="en"?"en":"uk";
 
 const I18N_SORTED=[...I18N_PAIRS].sort((a,b)=>Math.max(b[0].length,b[1].length)-Math.max(a[0].length,a[1].length));
-const I18N_EXACT=new Set(["Я","до","Ти"]);
+const I18N_EXACT=new Set(["Я","до","Ти","Відкрите","Відкриті"]);
 function uiText(value){
   let out=String(value??"");
+  const exact=I18N_SORTED.find(([uk,en])=>out===uk||out===en);
+  if(exact)return exact[currentLang==="en"?1:0];
   for(const [uk,en] of I18N_SORTED){
     const from=currentLang==="en"?uk:en;
     const to=currentLang==="en"?en:uk;
@@ -137,7 +159,7 @@ function uiText(value){
 function uiLocale(){return currentLang==="en"?"en-US":"uk-UA"}
 function skipI18nElement(el){
   if(!el?.closest)return false;
-  return !!el.closest(".msgBubble,.bio,.meta,#profileBio,#profileMeta,#profileName,#hello,.nameRow h2,.chatTitle h2,.blockedRow b,.chatOpen .itemMain small,.matchOpen .itemMain small,.msgSender,.avatar,.generatedAvatar,.chatAvatar,.msgAvatar,.userNameNoI18n");
+  return !!el.closest(".msgBubble,.bio,.meta,#profileBio,#profileMeta,#profileName,#hello,.nameRow h2,.chatTitle h2,.blockedRow b,.chatOpen .itemMain small,.matchOpen .itemMain small,.msgSender,.avatar,.generatedAvatar,.chatAvatar,.msgAvatar,.userNameNoI18n,.mapShell,.interestPicker,.interestTags");
 }
 function localizeDom(root=document){
   document.documentElement.lang=currentLang==="en"?"en":"uk";
@@ -469,9 +491,15 @@ async function openPublicProfile(userId,options={}){
   const intent=isSupportedIntent(p.intent)?'<div class="intent">'+escapeHtml(intentIcon(p.intent))+' '+escapeHtml(p.intent)+'</div>':"";
   const matched=r.matched?'<div class="publicMatched">♡ '+uiText("У вас вже взаємний VYBE 💜")+'</div>':"";
   const chatButton=r.matched&&r.match_id?'<button id="publicChatBtn" class="primary">'+uiText("Написати повідомлення")+'</button>':"";
+  const mapLikeButton=options.returnMap&&!r.matched?'<button id="publicMapLikeBtn" class="primary">'+uiText("Надіслати VYBE")+'</button>':"";
+  const mapBackButton=options.returnMap?'<button id="publicBackMapBtn" class="choice">'+uiText("Назад до карти")+'</button>':"";
+  const publicInterests='<div class="interestTags">'+interestTags(p.interests,normalizeInterests(p.interests).filter(x=>normalizeInterests(profile?.interests).includes(x)))+'</div>';
   const backButton=options.returnChat?'<button id="publicBackChatBtn" class="choice">'+uiText("Назад до чату")+'</button>':"";
-  content.innerHTML='<div class="publicProfile">'+photo+'<div class="publicProfileBody"><h2>'+escapeHtml(name)+(p.age?", "+escapeHtml(p.age):"")+(p.verified?' ✓':'')+'</h2>'+matched+intent+'<p class="publicMeta">'+escapeHtml(meta)+'</p><p class="publicBio">'+escapeHtml(p.bio||"")+'</p>'+chatButton+backButton+'<div class="publicProfileSafety"><button id="publicReportBtn" class="choice">⚑ '+uiText("Поскаржитися")+'</button><button id="publicBlockBtn" class="choice dangerChoice">🚫 '+uiText("Заблокувати")+'</button></div></div></div>';
+  content.innerHTML='<div class="publicProfile">'+photo+'<div class="publicProfileBody"><h2>'+escapeHtml(name)+(p.age?", "+escapeHtml(p.age):"")+(p.verified?' ✓':'')+'</h2>'+matched+intent+publicInterests+'<p class="publicMeta">'+escapeHtml(meta)+'</p><p class="publicBio">'+escapeHtml(p.bio||"")+'</p>'+chatButton+mapLikeButton+mapBackButton+backButton+'<div class="publicProfileSafety"><button id="publicReportBtn" class="choice">⚑ '+uiText("Поскаржитися")+'</button><button id="publicBlockBtn" class="choice dangerChoice">🚫 '+uiText("Заблокувати")+'</button></div></div></div>';
   sheet.classList.remove("hidden");tg?.BackButton?.show?.();
+  setSheetFullscreen(false);
+  const mapBack=$("publicBackMapBtn");if(mapBack)mapBack.onclick=openPeopleMap;
+  const like=$("publicMapLikeBtn");if(like)like.onclick=async()=>{like.disabled=true;const result=await secureApi("like",{target_user_id:userId,kind:"like"});if(!result.ok){like.disabled=false;showAlert("Не вдалося надіслати VYBE. Спробуй ще раз.");return}analyticsCapture("like_sent");await loadPeople();if(result.matched){await loadMatches();openMatchSuccess({id:userId})}else{like.textContent=uiText("VYBE надіслано")}};
   const report=$("publicReportBtn");if(report)report.onclick=()=>openReport(userId,name);
   const block=$("publicBlockBtn");if(block)block.onclick=()=>blockUser(userId,name);
   const chat=$("publicChatBtn");if(chat)chat.onclick=()=>openChat(r.match_id,name,userId);
@@ -901,6 +929,8 @@ function discoveryRequestPayload(extra={}){
     online_only:discoverFilters.onlineOnly===true,
     verified_only:discoverFilters.verifiedOnly===true,
     intent:filter==="Усе"?"":filter,
+    interests:normalizeInterests(discoverFilters.interests),
+    common_only:discoverFilters.commonOnly===true,
     page_size:DISCOVER_PAGE_SIZE,
     ...extra,
   };
@@ -912,6 +942,8 @@ function mapDiscoveryPeople(rows){
     age:p.age||18,
     intent:p.intent||"Поговорити",
     icon:intentIcon(p.intent),
+    interests:normalizeInterests(p.interests),
+    common_interests:normalizeInterests(p.common_interests),
     bio:p.bio||"Новий користувач VYBE",
     city:p.city||"",
     meta:[p.city||"VYBE",p.online?uiText("● онлайн"):uiText("нещодавно"),p.verified?uiText("✓ верифіковано"):""].filter(Boolean).join(" • "),
@@ -990,7 +1022,7 @@ async function hydrateProfile(){
   accountStatus=r.account_status||"active";
   restrictionReason=r.restriction_reason||null;
   if(r.realtime_topic){realtimeUserTopic=r.realtime_topic;setupUserRealtime(realtimeUserTopic)}
-  if(r.profile){profile={name:r.profile.name,age:r.profile.age,city:r.profile.city||"",gender:r.profile.gender||"",looking:r.profile.looking_for||"",bio:r.profile.bio||"",photo_url:r.profile.photo_url||null,verified:r.profile.verified===true,user_id:r.user_id};store("vybeProfile",profile)}
+  if(r.profile){profile={name:r.profile.name,age:r.profile.age,city:r.profile.city||"",gender:r.profile.gender||"",looking:r.profile.looking_for||"",bio:r.profile.bio||"",photo_url:r.profile.photo_url||null,verified:r.profile.verified===true,user_id:r.user_id,interests:normalizeInterests(r.profile.interests),map_enabled:r.profile.map_enabled===true,map_lat:r.profile.map_lat??null,map_lng:r.profile.map_lng??null};store("vybeProfile",profile)}
 }
 async function begin(){
   if(validNow()){
@@ -1054,14 +1086,40 @@ function scheduleSupportCountRefresh(){
 window.addEventListener("focus",scheduleSupportCountRefresh);
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){scheduleSupportCountRefresh();if(window.__vybeAuth?.ok&&accountStatus==="active"){hydrateProfile().then(()=>renderProfile()).catch(()=>{});loadMatches();loadPeople()}}});
 
-function showOnboarding(){const o=$("onboarding");o.classList.remove("hidden");$("obName").value=profile?.name||tuser?.first_name||"";$("obAge").value=profile?.age||"";$("obCity").value=profile?.city||"";$("obGender").value=profile?.gender||"";$("obLooking").value=profile?.looking||"";$("obBio").value=profile?.bio||""}
-$("saveProfile").onclick=async()=>{const age=+$("obAge").value;if(!$("obName").value.trim()||age<18||age>99){showAlert("Вкажи ім’я та вік 18+.");return}profile={...profile,name:$("obName").value.trim(),age,city:$("obCity").value.trim(),gender:$("obGender").value.trim(),looking:$("obLooking").value.trim(),bio:$("obBio").value.trim()};store("vybeProfile",profile);$("onboarding").classList.add("hidden");renderProfile();const saved=await syncProfile();if(saved)analyticsCapture("profile_saved");await loadPeople();tg?.HapticFeedback?.notificationOccurred("success")};
+let readOnboardingInterests=()=>[],onboardingMapPoint=null,mapController=null,mapViewState=null,mapMountToken=0;
+function showOnboarding(){
+  const o=$("onboarding");o.classList.remove("hidden");
+  $("obName").value=profile?.name||tuser?.first_name||"";$("obAge").value=profile?.age||"";$("obCity").value=profile?.city||"";$("obGender").value=profile?.gender||"";$("obLooking").value=profile?.looking||"";$("obBio").value=profile?.bio||"";
+  $("obInterests").innerHTML=interestPickerMarkup("obInterestChoices",profile?.interests);
+  readOnboardingInterests=bindInterestPicker("obInterestChoices",profile?.interests);
+  onboardingMapPoint=profile?.map_enabled?snapMapPoint(Number(profile.map_lat),Number(profile.map_lng)):null;
+  $("obMapEnabled").checked=profile?.map_enabled===true;updateOnboardingMapStatus();
+}
+function updateOnboardingMapStatus(){$("obMapStatus").textContent=uiText(onboardingMapPoint?"Район обрано. Позначка приблизна.":"Район ще не обрано.")}
+$("obMapEnabled").onchange=()=>{if($("obMapEnabled").checked&&!onboardingMapPoint)pickProfileMapArea();if(!$("obMapEnabled").checked)onboardingMapPoint=null;updateOnboardingMapStatus()};
+$("obPickArea").onclick=pickProfileMapArea;
+$("saveProfile").onclick=async()=>{
+  const age=+$("obAge").value;
+  if(!$("obName").value.trim()||age<18||age>99){showAlert("Вкажи ім’я та вік 18+.");return}
+  const mapEnabled=$("obMapEnabled").checked;
+  if(mapEnabled&&!onboardingMapPoint){showAlert("Обери район на карті або вимкни показ на карті.");return}
+  const candidate={...profile,name:$("obName").value.trim(),age,city:$("obCity").value.trim(),gender:$("obGender").value.trim(),looking:$("obLooking").value.trim(),bio:$("obBio").value.trim(),interests:readOnboardingInterests(),map_enabled:mapEnabled,map_lat:mapEnabled?onboardingMapPoint.lat:null,map_lng:mapEnabled?onboardingMapPoint.lng:null};
+  const button=$("saveProfile");button.disabled=true;
+  try{
+    const r=await secureApi("save_profile",{profile:candidate});
+    if(!r.ok){showAlert("Не вдалося зберегти анкету. Спробуй ще раз.");return}
+    profile={...candidate,user_id:r.user_id};store("vybeProfile",profile);
+    $("onboarding").classList.add("hidden");renderProfile();analyticsCapture("profile_saved",{interests_count:profile.interests.length});
+    await loadPeople();tg?.HapticFeedback?.notificationOccurred("success");
+  }finally{button.disabled=false}
+};
 $("editProfile").onclick=showOnboarding;
 function renderProfile(){
   if(!profile)return;
   $("profileName").textContent=profile.name+", "+profile.age+(profile.verified?" ✓":"");
   $("profileMeta").textContent=[profile.city,profile.gender,profile.looking&&uiText("Шукаю: ")+profile.looking].filter(Boolean).join(" • ");
   $("profileBio").textContent=profile.bio||"Без опису";
+  $("profileInterests").innerHTML=interestTags(profile.interests);
   const avatar=$("profileAvatar");
   if(avatar){
     if(profile.photo_url){
@@ -1139,29 +1197,32 @@ async function removeProfilePhoto(){
   analyticsCapture("photo_removed");
 }
 
-function openDiscoverFilters(){
+function openDiscoverFilters(options={}){
+  setSheetFullscreen(false);
   const f=discoverFilters||{};
-  content.innerHTML='<h2>Фільтри 🔎</h2><div class="filterTwo"><label>Вік від<input id="filterMinAge" class="field" type="number" min="18" max="99" value="'+escapeHtml(f.minAge||18)+'"></label><label>до<input id="filterMaxAge" class="field" type="number" min="18" max="99" value="'+escapeHtml(f.maxAge||99)+'"></label></div><label>Місто<input id="filterCity" class="field" maxlength="40" placeholder="Напр. Київ" value="'+escapeHtml(f.city||"")+'"></label><label class="checkRow filterCheck"><input id="filterOnline" type="checkbox" '+(f.onlineOnly?"checked":"")+'><span>Лише онлайн зараз</span></label><label class="checkRow filterCheck"><input id="filterVerified" type="checkbox" '+(f.verifiedOnly?"checked":"")+'><span>Лише верифіковані</span></label><button id="saveFilters" class="primary">Застосувати</button><button id="resetFilters" class="choice filterReset">Скинути фільтри</button>';
+  content.innerHTML='<h2>Фільтри 🔎</h2><div class="filterTwo"><label>Вік від<input id="filterMinAge" class="field" type="number" min="18" max="99" value="'+escapeHtml(f.minAge||18)+'"></label><label>до<input id="filterMaxAge" class="field" type="number" min="18" max="99" value="'+escapeHtml(f.maxAge||99)+'"></label></div><label>Місто<input id="filterCity" class="field" maxlength="40" placeholder="Напр. Київ" value="'+escapeHtml(f.city||"")+'"></label><label class="checkRow filterCheck"><input id="filterOnline" type="checkbox" '+(f.onlineOnly?"checked":"")+'><span>Лише онлайн зараз</span></label><label class="checkRow filterCheck"><input id="filterVerified" type="checkbox" '+(f.verifiedOnly?"checked":"")+'><span>Лише верифіковані</span></label><h3>'+uiText('Інтереси')+'</h3><p class="fieldHint">'+uiText('Будь-який з обраних інтересів')+'</p>'+interestPickerMarkup('filterInterestChoices',f.interests)+'<label class="checkRow filterCheck"><input id="filterCommon" type="checkbox" '+(f.commonOnly?'checked':'')+'><span>'+uiText('Лише зі спільними інтересами')+'</span></label><button id="saveFilters" class="primary">Застосувати</button><button id="resetFilters" class="choice filterReset">Скинути фільтри</button>';
   sheet.classList.remove("hidden");
+  const readFilterInterests=bindInterestPicker("filterInterestChoices",f.interests);
   $("saveFilters").onclick=async()=>{
+    if($("filterCommon").checked&&!normalizeInterests(profile?.interests).length){showAlert("Додай інтереси в анкету, щоб шукати спільні.");return}
     const minAge=Math.max(18,Math.min(99,Number($("filterMinAge").value)||18));
     const maxAge=Math.max(minAge,Math.min(99,Number($("filterMaxAge").value)||99));
-    discoverFilters={minAge,maxAge,city:$("filterCity").value.trim(),onlineOnly:$("filterOnline").checked,verifiedOnly:$("filterVerified").checked};
+    discoverFilters={minAge,maxAge,city:$("filterCity").value.trim(),onlineOnly:$("filterOnline").checked,verifiedOnly:$("filterVerified").checked,interests:readFilterInterests(),commonOnly:$("filterCommon").checked};
     store("vybeDiscoverFilters",discoverFilters);sheet.classList.add("hidden");
     analyticsCapture("discover_filters_applied",{age_filter:minAge!==18||maxAge!==99,city_filter:!!discoverFilters.city,online_only:discoverFilters.onlineOnly,verified_only:discoverFilters.verifiedOnly});
-    await loadPeople();
+    await loadPeople();if(options.returnMap)openPeopleMap();
   };
   $("resetFilters").onclick=async()=>{
     sheet.classList.add("hidden");
-    await resetDiscoveryFilters();
+    await resetDiscoveryFilters();if(options.returnMap)openPeopleMap();
   };
 }
 function discoveryFiltersActive(){
   const f=discoverFilters||{};
-  return filter!=="Усе"||Number(f.minAge||18)!==18||Number(f.maxAge||99)!==99||!!String(f.city||"").trim()||f.onlineOnly===true||f.verifiedOnly===true;
+  return filter!=="Усе"||Number(f.minAge||18)!==18||Number(f.maxAge||99)!==99||!!String(f.city||"").trim()||f.onlineOnly===true||f.verifiedOnly===true||normalizeInterests(f.interests).length>0||f.commonOnly===true;
 }
 async function resetDiscoveryFilters(){
-  discoverFilters={minAge:18,maxAge:99,city:"",onlineOnly:false,verifiedOnly:false};
+  discoverFilters={minAge:18,maxAge:99,city:"",onlineOnly:false,verifiedOnly:false,interests:[],commonOnly:false};
   store("vybeDiscoverFilters",discoverFilters);
   filter="Усе";
   index=0;
@@ -1198,6 +1259,7 @@ function closeSheetView(){
   clearTimeout(typingStopTimer);
   clearTimeout(incomingTypingTimer);
   sheet.classList.add("hidden");
+  destroyVibeMap();
   setSheetFullscreen(false);
   tg?.BackButton?.hide?.();
 }
@@ -1263,7 +1325,7 @@ function renderCard(){
   const timeLeft=vibeTimeLeft(p.expires_at);
   const vibeLive='<div class="vibeNowLive"><span><b>VYBE NOW</b> '+escapeHtml(p.icon)+" "+escapeHtml(p.intent)+'</span>'+(timeLeft?'<small>'+escapeHtml(timeLeft)+'</small>':'')+'</div>';
   const facts='<div class="profileFacts">'+(p.city?'<span>'+uiIcon("location")+escapeHtml(p.city)+'</span>':'')+(p.verified?'<span class="verifiedFact">'+uiIcon("check")+uiText("Верифіковано")+'</span>':'')+'</div>';
-  $("cardStack").innerHTML='<article class="personCard '+(p.spotlight_active?"spotlightCard":"")+'">'+visual+liveBadges+'<button id="cardSafetyBtn" class="cardSafety" aria-label="Безпека">⋯</button><div class="gradient"></div><div class="personMeta"><div class="nameRow"><h2>'+escapeHtml(p.name)+", "+escapeHtml(p.age)+'</h2></div>'+vibeLive+'<p class="bio">'+escapeHtml(p.bio)+'</p>'+facts+'<button id="cardProfileBtn" class="profilePeek">'+uiText("Переглянути анкету")+'</button></div></article>';
+  $("cardStack").innerHTML='<article class="personCard '+(p.spotlight_active?"spotlightCard":"")+'">'+visual+liveBadges+'<button id="cardSafetyBtn" class="cardSafety" aria-label="Безпека">⋯</button><div class="gradient"></div><div class="personMeta"><div class="nameRow"><h2>'+escapeHtml(p.name)+", "+escapeHtml(p.age)+'</h2></div>'+vibeLive+'<p class="bio">'+escapeHtml(p.bio)+'</p><div class="interestTags cardInterests">'+interestTags(p.interests,p.common_interests,2)+'</div>'+facts+'<button id="cardProfileBtn" class="profilePeek">'+uiText("Переглянути анкету")+'</button></div></article>';
   const safety=$("cardSafetyBtn");if(safety)safety.onclick=e=>{e.stopPropagation();openUserSafety(p.id,p.name)};
   const profileBtn=$("cardProfileBtn");if(profileBtn)profileBtn.onclick=e=>{e.stopPropagation();openPublicProfile(p.id)};
   if(discoverHasMore&&!discoverLoading&&arr.length-index<=3)void loadMorePeople();
@@ -2055,3 +2117,40 @@ if(photoBtn)photoBtn.onclick=()=>{
   input.click();
 };
 if(removePhotoBtn)removePhotoBtn.onclick=removeProfilePhoto;
+
+function destroyVibeMap(){
+  mapMountToken++;
+  mapController?.destroy();mapController=null;
+  if(sheet.classList.contains("sheetMap"))sheet.classList.remove("sheetMap");
+}
+function launchVibeMap(options){
+  const token=++mapMountToken;
+  void mountVibeMap({...options,onReady:controller=>{if(token===mapMountToken)mapController=controller;else controller.destroy()}}).then(controller=>{if(token!==mapMountToken)controller.destroy()});
+}
+function pickProfileMapArea(){
+  destroyVibeMap();setSheetFullscreen(true);
+  content.innerHTML=mapShellMarkup(true);sheet.classList.remove("hidden");sheet.classList.add("sheetMap");tg?.BackButton?.show?.();
+  launchVibeMap({picker:true,center:onboardingMapPoint?[onboardingMapPoint.lat,onboardingMapPoint.lng]:mapCityCenter($("obCity").value),onPick:point=>{if(!point)return;onboardingMapPoint=point;$("obMapEnabled").checked=true;updateOnboardingMapStatus();closeSheetView()}});
+}
+function openPeopleMap(){
+  destroyVibeMap();setSheetFullscreen(true);
+  content.innerHTML=mapShellMarkup();sheet.classList.remove("hidden");sheet.classList.add("sheetMap");tg?.BackButton?.show?.();
+  const ownPoint=profile?.map_enabled?snapMapPoint(Number(profile.map_lat),Number(profile.map_lng)):null;
+  launchVibeMap({
+    center:mapViewState?.center||(ownPoint?[ownPoint.lat,ownPoint.lng]:mapCityCenter(discoverFilters.city||profile?.city)),zoom:mapViewState?.zoom||11,
+    commonOnly:discoverFilters.commonOnly===true,
+    loadPeople:bounds=>secureApi("discover_map",{...discoveryRequestPayload(),bounds}),
+    onProfile:userId=>{mapViewState=mapController?.view();openPublicProfile(userId,{returnMap:true})},
+    onFilter:view=>{mapViewState=view;openDiscoverFilters({returnMap:true})},
+    onCommon:enabled=>{if(enabled&&!normalizeInterests(profile?.interests).length){showAlert("Додай інтереси в анкету, щоб шукати спільні.");return false}discoverFilters.commonOnly=enabled;store("vybeDiscoverFilters",discoverFilters);void loadPeople();return enabled},
+  });
+  analyticsCapture("map_open");
+}
+$("mapBtn").onclick=openPeopleMap;
+const mapLifecycleObserver=new MutationObserver(()=>{
+  const active=!sheet.classList.contains("hidden")&&!!content.querySelector(".mapShell");
+  if(sheet.classList.contains("sheetMap")!==active)sheet.classList.toggle("sheetMap",active);
+  if(!active&&mapController)destroyVibeMap();
+});
+mapLifecycleObserver.observe(content,{childList:true});
+mapLifecycleObserver.observe(sheet,{attributes:true,attributeFilter:["class"]});

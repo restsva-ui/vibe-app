@@ -124,3 +124,13 @@ The Mini App frontend currently uses the lightweight `index.html` / `app.js` / `
 - VYBE 0.9.47 hardens Supabase server-key handling for modern `sb_secret_` keys, caches CORS preflight responses, makes Realtime the primary social/chat transport with a two-minute fallback reconciliation only while Realtime is unavailable, and escapes referral response fields before HTML rendering.
 
 - When `TELEGRAM_WEBHOOK_SECRET` is not configured, VYBE derives a deterministic SHA-256 webhook secret from the private bot token and self-registers the fixed Supabase bot webhook after deploy. The derived secret is never written to Git or logs; an explicitly configured webhook secret still takes precedence.
+
+## Interests and map
+
+Profiles can select up to eight of sixteen interests. Discovery supports an any-selected-interest filter, a shared-interest-only filter, and shared-interest ranking with a compatible keyset cursor.
+
+The map opens from Discovery. It shows up to 100 active VYBE NOW profiles in the current viewport and preserves blocks, restrictions, likes, matches and discovery passes. Users manually choose an approximate area in their profile; visibility is off by default. The server snaps coordinates to a 0.05° grid and disabling visibility removes the coordinates. Device geolocation is not used.
+
+Leaflet 1.9.4 is pinned locally under `vendor/leaflet` with its license. OpenStreetMap tiles load only while the map is open, honor normal browser caching, and display attribution. Profiles and interests are never sent to the tile provider.
+
+Validation: `node scripts/test-discovery-preferences.ts`; `scripts/test-discovery-query.sql` contains rollback-only synthetic database checks for matching, opt-in visibility, restrictions, both block directions, passes, keyset pagination and coarse-coordinate constraints.

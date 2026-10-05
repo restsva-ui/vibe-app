@@ -85,3 +85,9 @@ Read-only production inspection confirmed the characteristic state from the repo
 - The live `use_supervybe_and_like` function is no longer the original 2026-09-20 SECURITY DEFINER implementation; the later atomic-like migration has replaced it. This is why presence verification is evidence of materialized schema state, not proof that every historical SQL file can safely be replayed verbatim.
 
 No production migration-history rows were added or altered during this audit.
+
+## Interests and map update
+
+- `20261005144646` — `vybe_interests_map`, applied and tested on 2026-10-05.
+- Profiles support up to eight catalog interests and an optional manually selected area on a 0.05° grid. Existing profiles remain off-map; no location is inferred.
+- The new discovery RPC keeps block, restriction, like, match and pass exclusions and includes shared-interest ranking in its keyset cursor. Only `service_role` can execute it.
