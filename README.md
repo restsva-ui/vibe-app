@@ -2,7 +2,7 @@
 
 VYBE is an 18+ Telegram Mini App for social discovery, dating, friendship and virtual communication. The core UX is based on a user's current intent ("vybe") rather than endless generic swiping.
 
-## Current beta — 0.9.40
+## Current beta — 0.9.47
 
 Implemented and wired to production Supabase:
 
@@ -120,3 +120,5 @@ The Mini App frontend currently uses the lightweight `index.html` / `app.js` / `
 - Profile-photo uploads are now server-hardened: only normalized 900x900 WebP/JPEG payloads are accepted, EXIF/XMP/animated WebP payloads are rejected, upload rollback removes orphan files on DB failure, and successful replace/remove/account-delete flows clean the whole per-user Storage folder while keeping only the active photo.
 
 - VYBE 0.9.46 uses private profile media: the profile-photos bucket is private, database rows store only object paths, and photos are returned through two-hour signed URLs across Profile, Discovery, Matches, Notifications, Who Liked, Public Profile, and Moderation. Foreground resume refreshes signed profile URLs.
+
+- VYBE 0.9.47 hardens Supabase server-key handling for modern `sb_secret_` keys, caches CORS preflight responses, makes Realtime the primary social/chat transport with a two-minute fallback reconciliation only while Realtime is unavailable, and escapes referral response fields before HTML rendering.
