@@ -53,9 +53,21 @@ jobs:
           test "$status" = "204"
           grep -Eqi '^access-control-max-age:[[:space:]]*86400[[:space:]]*$' "$headers"
 
+          status="$(curl -sS -o "$body" -w "%{http_code}"             -X GET "$AUTH_URL")"
+          test "$status" = "405"
+          grep -Fq 'Method not allowed' "$body"
+
+          status="$(curl -sS -o "$body" -w "%{http_code}"             -X POST "$AUTH_URL"             -H "Content-Type: application/json"             --data '{')"
+          test "$status" = "400"
+          grep -Fq 'Invalid JSON body' "$body"
+
           status="$(curl -sS -o "$body" -w "%{http_code}"             -X POST "$AUTH_URL"             -H "Content-Type: application/json"             --data '{}')"
           test "$status" = "400"
           grep -Fq 'initData is required' "$body"
+
+          status="$(curl -sS -o "$body" -w "%{http_code}"             -X POST "$AUTH_URL"             -H "Content-Type: application/json"             --data '{"initData":"auth_date=1&user=%7B%22id%22%3A1%7D&hash=00"}')"
+          test "$status" = "401"
+          grep -Fq 'Invalid Telegram signature' "$body"
 
           status="$(curl -sS -o "$body" -w "%{http_code}"             -X POST "$BOT_URL"             -H "Content-Type: application/json"             --data '{}')"
           test "$status" = "401"
