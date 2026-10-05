@@ -1,0 +1,1 @@
+-- Production migration-history marker only.\n-- The immediately preceding 20261003122259 migration contains the actual idempotent schema change.\n-- This file intentionally performs no SQL so a clean rebuild does not repeat the same DDL.\n
