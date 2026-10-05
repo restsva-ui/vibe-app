@@ -43,9 +43,8 @@ async function resolveWebhookSecret() {
 
 let derivedWebhookSetup: Promise<void> | null = null;
 
-async function ensureWebhookSecret() {
-  const secret = await resolveWebhookSecret();
-  if (CONFIGURED_WEBHOOK_SECRET) return secret;
+async function ensureDerivedWebhookConfigured(secret: string) {
+  if (CONFIGURED_WEBHOOK_SECRET) return;
   if (!SUPABASE_URL) throw new Error("SUPABASE_URL missing");
 
   if (!derivedWebhookSetup) {
@@ -64,7 +63,6 @@ async function ensureWebhookSecret() {
   }
 
   await derivedWebhookSetup;
-  return secret;
 }
 
 function dbClient() {
@@ -370,13 +368,24 @@ Deno.serve(async (req: Request) => {
 
   let webhookSecret = "";
   try {
-    webhookSecret = await ensureWebhookSecret();
+    webhookSecret = await resolveWebhookSecret();
   } catch (error) {
-    console.error("telegram-bot: webhook setup failed", error);
+    console.error("telegram-bot: webhook secret resolution failed", error);
     return json({ ok: false, error: "Webhook not configured" }, 503);
   }
+
   const supplied = req.headers.get("x-telegram-bot-api-secret-token") ?? "";
-  if (supplied !== webhookSecret) return json({ ok: false }, 401);
+  if (supplied !== webhookSecret) {
+    if (!CONFIGURED_WEBHOOK_SECRET) {
+      try {
+        await ensureDerivedWebhookConfigured(webhookSecret);
+      } catch (error) {
+        console.error("telegram-bot: derived webhook setup failed", error);
+        return json({ ok: false, error: "Webhook not configured" }, 503);
+      }
+    }
+    return json({ ok: false }, 401);
+  }
 
   let update: any;
   try {
