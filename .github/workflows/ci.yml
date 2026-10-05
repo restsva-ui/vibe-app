@@ -1,0 +1,41 @@
+name: VYBE CI
+
+on:
+  push:
+    branches: [main, hardening-0.9.47]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  static-and-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Check browser JavaScript syntax
+        run: node --check app.js
+
+      - name: Run hardening invariants
+        run: node scripts/verify-hardening.mjs
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Type-check telegram-auth
+        run: deno check supabase/functions/telegram-auth/index.ts
+
+      - name: Type-check telegram-bot
+        run: deno check supabase/functions/telegram-bot/index.ts
