@@ -1,6 +1,6 @@
 # VYBE — Telegram Mini App
 
-VYBE is an 18+ Telegram Mini App for social discovery, dating, friendship and virtual communication. The core UX is based on a user's current intent ("vybe") rather than endless generic swiping.
+VYBE is an 18+ Telegram Mini App for social discovery, dating, friendship and private conversations. The core UX is based on a user's current intent ("vybe") rather than endless generic swiping.
 
 ## Current beta — 0.9.47
 

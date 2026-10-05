@@ -18,6 +18,8 @@ function json(data: unknown, status = 200, extraHeaders: Record<string,string> =
 const clean = (value: unknown, max: number) =>
   typeof value === "string" ? value.trim().slice(0, max) : "";
 
+const SUPPORTED_INTENTS = new Set(["Поговорити", "Флірт", "Дружба", "Голос", "Зустріч"]);
+
 const referralCode = (telegramId: string | number) => "v" + BigInt(String(telegramId)).toString(36);
 
 function dbClient() {
@@ -3088,14 +3090,15 @@ Deno.serve(async (req: Request) => {
       const lastSeen = target.last_seen ? new Date(target.last_seen).getTime() : 0;
       const publicPhotos = await signProfilePhotoUrls([profile.photo_url ?? null]);
       const signedProfile = withSignedProfilePhoto(profile, publicPhotos);
+      const activeIntent = SUPPORTED_INTENTS.has(intentRows?.[0]?.intent) ? intentRows[0] : null;
       return json({
         ok: true,
         user_id: targetId,
         profile: {
           ...signedProfile,
           online: !!lastSeen && lastSeen >= Date.now() - 3 * 60 * 1000,
-          intent: intentRows?.[0]?.intent ?? null,
-          intent_expires_at: intentRows?.[0]?.expires_at ?? null,
+          intent: activeIntent?.intent ?? null,
+          intent_expires_at: activeIntent?.expires_at ?? null,
         },
         matched: !!matchRows?.[0],
         match_id: matchRows?.[0]?.id ?? null,
@@ -3104,10 +3107,9 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "set_intent") {
-      const allowed = new Set(["Поговорити", "Флірт", "Вірт", "Дружба", "Голос", "Зустріч"]);
       const intent = clean(body.intent, 30);
       const hours = Number(body.hours);
-      if (!allowed.has(intent) || !Number.isFinite(hours) || hours < 0.05 || hours > 24) return json({ ok: false, error: "Invalid intent duration" }, 400);
+      if (!SUPPORTED_INTENTS.has(intent) || !Number.isFinite(hours) || hours < 0.05 || hours > 24) return json({ ok: false, error: "Invalid intent duration" }, 400);
       const expiresAt = new Date(Date.now() + hours * 3600000).toISOString();
       const rows = await db(`intents?user_id=eq.${encodeURIComponent(user.id)}&select=id&limit=1`);
       const payload = { user_id: user.id, intent, expires_at: expiresAt };
@@ -3157,8 +3159,7 @@ Deno.serve(async (req: Request) => {
       const maxAge = Number.isFinite(maxAgeRaw) ? Math.max(minAge, Math.min(99, Math.floor(maxAgeRaw))) : 99;
       const city = clean(body.city, 40);
       const requestedIntent = clean(body.intent, 30);
-      const allowedIntents = new Set(["Поговорити", "Флірт", "Вірт", "Дружба", "Голос", "Зустріч"]);
-      const intentFilter = allowedIntents.has(requestedIntent) ? requestedIntent : "";
+      const intentFilter = SUPPORTED_INTENTS.has(requestedIntent) ? requestedIntent : "";
       const onlineOnly = body.online_only === true;
       const verifiedOnly = body.verified_only === true;
 

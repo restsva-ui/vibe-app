@@ -188,7 +188,6 @@
 <button class="mood active" data-mood="Усе">Усе</button>
 <button class="mood" data-mood="Поговорити">💬 Поговорити</button>
 <button class="mood" data-mood="Флірт">🔥 Флірт</button>
-<button class="mood" data-mood="Вірт">🌙 Вірт</button>
 <button class="mood" data-mood="Дружба">🫶 Дружба</button>
 <button class="mood" data-mood="Голос">🎙 Голос</button>
 <button class="mood" data-mood="Зустріч">☕ Зустріч</button>
@@ -413,7 +412,7 @@
 </div>
 </div>
 </div>
-<script src="./app.js?v=20261005-visual1">
+<script src="./app.js?v=20261005-no-virt1">
 </script>
 <script>
 (()=>{const splash=document.getElementById("vibeSplash");if(!splash)return;let closed=false;const close=()=>{if(closed)return;closed=true;splash.classList.add("done");setTimeout(()=>splash.remove(),450)};const start=()=>setTimeout(close,2050);if(document.readyState==="complete")start();else window.addEventListener("load",start,{once:true});setTimeout(close,3200)})();

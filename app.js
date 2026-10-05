@@ -54,7 +54,7 @@ const I18N_PAIRS=[
   ["🔗 Запросити друзів","🔗 Invite friends"],["🛡 Безпека та приватність","🛡 Safety & privacy"],
   ["🚫 Заблоковані користувачі","🚫 Blocked users"],["⚑ Підтримка VYBE","⚑ VYBE Support"],["Потрібно поскаржитися на конкретного користувача? Відкрий його анкету або чат → ⋯ → «Поскаржитися».","Need to report a specific user? Open their profile or chat → ⋯ → “Report”."],["Звернення тут — це технічна або платіжна підтримка, а не скарга на користувача.","Requests here are for technical or payment support, not reports about another user."],["⚙ Налаштування","⚙ Settings"],
   ["Вайб","Vibe"],["Збіги","Matches"],["Профіль","Profile"],["Усе","All"],
-  ["Поговорити","Talk"],["Флірт","Flirt"],["Вірт","Virtual"],["Дружба","Friendship"],["Голос","Voice"],["Зустріч","Meet"],
+  ["Поговорити","Talk"],["Флірт","Flirt"],["Дружба","Friendship"],["Голос","Voice"],["Зустріч","Meet"],
   ["● автооновлення","● auto refresh"],["друкує…","typing…"],["realtime • приватний чат","realtime • private chat"],["автооновлення • приватний чат","auto refresh • private chat"],
   ["Не вдалося завантажити реферальну статистику.","Could not load referral statistics."],
   ["Запросити друзів 🔗","Invite friends 🔗"],["Запрошено: ","Invited: "],[" • Активували анкету: "," • Activated profile: "],
@@ -466,7 +466,7 @@ async function openPublicProfile(userId,options={}){
     ? '<img class="publicProfilePhoto" src="'+escapeHtml(p.photo_url)+'" alt="'+escapeHtml(name)+'">'
     : '<div class="publicProfileFallback">'+escapeHtml((name||"V").trim().charAt(0).toUpperCase())+'</div>';
   const meta=[p.city,p.gender,p.looking_for?uiText("Шукаю: ")+p.looking_for:"",p.online?uiText("● онлайн"):""].filter(Boolean).join(" • ");
-  const intent=p.intent?'<div class="intent">'+escapeHtml(intentIcon(p.intent))+' '+escapeHtml(p.intent)+'</div>':"";
+  const intent=isSupportedIntent(p.intent)?'<div class="intent">'+escapeHtml(intentIcon(p.intent))+' '+escapeHtml(p.intent)+'</div>':"";
   const matched=r.matched?'<div class="publicMatched">♡ '+uiText("У вас вже взаємний VYBE 💜")+'</div>':"";
   const chatButton=r.matched&&r.match_id?'<button id="publicChatBtn" class="primary">'+uiText("Написати повідомлення")+'</button>':"";
   const backButton=options.returnChat?'<button id="publicBackChatBtn" class="choice">'+uiText("Назад до чату")+'</button>':"";
@@ -875,7 +875,9 @@ async function renderPremiumShop(resetScroll=true){
 }
 
 
-const intentIcon=x=>({"Поговорити":"💬","Флірт":"🔥","Вірт":"🌙","Дружба":"🫶","Голос":"🎙","Зустріч":"☕"}[x]||"⚡");
+const INTENT_ICONS=Object.freeze({"Поговорити":"💬","Флірт":"🔥","Дружба":"🫶","Голос":"🎙","Зустріч":"☕"});
+const isSupportedIntent=x=>Object.prototype.hasOwnProperty.call(INTENT_ICONS,x);
+const intentIcon=x=>INTENT_ICONS[x]||"⚡";
 $("hello").textContent=uiText("Привіт, ")+(tuser?.first_name||profile?.name||"");
 
 async function syncProfile(){
@@ -904,7 +906,7 @@ function discoveryRequestPayload(extra={}){
   };
 }
 function mapDiscoveryPeople(rows){
-  return (rows||[]).map(p=>({
+  return (rows||[]).filter(p=>isSupportedIntent(p.intent)).map(p=>({
     id:p.user_id,
     name:p.name||"VYBE",
     age:p.age||18,
@@ -1166,7 +1168,7 @@ async function resetDiscoveryFilters(){
   document.querySelectorAll(".mood").forEach(x=>x.classList.toggle("active",x.dataset.mood==="Усе"));
   await loadPeople();
 }
-function validNow(){return now&&now.expires>Date.now()}
+function validNow(){return now&&isSupportedIntent(now.intent)&&now.expires>Date.now()}
 function renderNow(){
   const setNowBtn=$("setNow");
   document.querySelector(".nowCard")?.classList.toggle("isActive",!!validNow());
@@ -1206,7 +1208,7 @@ const sheetObserver=new MutationObserver(()=>{
   else tg?.BackButton?.show?.();
 });
 sheetObserver.observe(sheet,{attributes:true,attributeFilter:["class"]});
-function openSheet(type){setSheetFullscreen(type==="premium");let h="";if(type==="now")h='<h2>Твій VYBE NOW ⚡</h2><p>Що ти хочеш саме зараз?</p><div class="choiceGrid">'+[["💬","Поговорити"],["🔥","Флірт"],["🌙","Вірт"],["🫶","Дружба"],["🎙","Голос"],["☕","Зустріч"]].map(x=>'<button class="choice" data-intent="'+x[1]+'" data-icon="'+x[0]+'">'+x[0]+" "+x[1]+"</button>").join("")+'</div><p>На скільки?</p><div class="choiceGrid"><button class="choice duration selected" data-hours="1">1 година</button><button class="choice duration" data-hours="3">3 години</button><button id="smartDuration" class="choice duration" data-smart="1">До ранку</button></div><button id="saveNow" class="primary">Увімкнути VYBE NOW</button>';else if(type==="premium"){h='<h2>'+uiText("Мої бонуси ✨")+'</h2><div class="empty">'+uiText("Завантажуємо магазин…")+'</div>';} else if(type==="filter")h='<h2>Фільтри</h2><p>Вік, місто, дистанція, кого шукаєш, онлайн та верифікація — наступний етап.</p><button class="primary" onclick="document.getElementById(\'sheet\').classList.add(\'hidden\')">Готово</button>';else if(type==="safety")h='<h2>Безпека 🛡</h2><p>VYBE працює тільки для 18+. Блокування та скарги вже захищені серверною перевіркою: заблоковані користувачі не бачать одне одного у пошуку, збігах і чатах.</p><button id="openBlockedFromSafety" class="choice safetyChoice">🚫 Мої блокування</button><p class="safetyHint">Якщо бачиш погрози, шантаж, неповнолітнього користувача, незаконний контент або пропозиції сексуальних послуг — надішли скаргу з профілю/чату.</p>';else h='<h2>VYBE</h2>';content.innerHTML=h;sheet.classList.remove("hidden");tg?.BackButton?.show?.();requestAnimationFrame(()=>{const card=sheet.querySelector(".sheetCard");if(card)card.scrollTop=0});if(type==="safety"){const b=$("openBlockedFromSafety");if(b)b.onclick=openBlockedUsers}if(type==="premium"){renderPremiumShop()}if(type==="now"){let chosen=null,hours=1;
+function openSheet(type){setSheetFullscreen(type==="premium");let h="";if(type==="now")h='<h2>Твій VYBE NOW ⚡</h2><p>Що ти хочеш саме зараз?</p><div class="choiceGrid">'+Object.entries(INTENT_ICONS).map(([intent,icon])=>'<button class="choice" data-intent="'+intent+'" data-icon="'+icon+'">'+icon+" "+intent+"</button>").join("")+'</div><p>На скільки?</p><div class="choiceGrid"><button class="choice duration selected" data-hours="1">1 година</button><button class="choice duration" data-hours="3">3 години</button><button id="smartDuration" class="choice duration" data-smart="1">До ранку</button></div><button id="saveNow" class="primary">Увімкнути VYBE NOW</button>';else if(type==="premium"){h='<h2>'+uiText("Мої бонуси ✨")+'</h2><div class="empty">'+uiText("Завантажуємо магазин…")+'</div>';} else if(type==="filter")h='<h2>Фільтри</h2><p>Вік, місто, дистанція, кого шукаєш, онлайн та верифікація — наступний етап.</p><button class="primary" onclick="document.getElementById(\'sheet\').classList.add(\'hidden\')">Готово</button>';else if(type==="safety")h='<h2>Безпека 🛡</h2><p>VYBE працює тільки для 18+. Блокування та скарги вже захищені серверною перевіркою: заблоковані користувачі не бачать одне одного у пошуку, збігах і чатах.</p><button id="openBlockedFromSafety" class="choice safetyChoice">🚫 Мої блокування</button><p class="safetyHint">Якщо бачиш погрози, шантаж, неповнолітнього користувача, незаконний контент або пропозиції сексуальних послуг — надішли скаргу з профілю/чату.</p>';else h='<h2>VYBE</h2>';content.innerHTML=h;sheet.classList.remove("hidden");tg?.BackButton?.show?.();requestAnimationFrame(()=>{const card=sheet.querySelector(".sheetCard");if(card)card.scrollTop=0});if(type==="safety"){const b=$("openBlockedFromSafety");if(b)b.onclick=openBlockedUsers}if(type==="premium"){renderPremiumShop()}if(type==="now"){let chosen=null,hours=1;
 const smart=content.querySelector("#smartDuration");
 if(smart){const d=new Date(),hour=d.getHours();let target=new Date(d);
 if(hour<8){target.setHours(8,0,0,0);smart.textContent="До ранку";}
