@@ -34,7 +34,7 @@ function dbClient() {
       ...options,
       headers: {
         apikey: key,
-        Authorization: `Bearer ${key}`,
+        ...(key.startsWith("sb_secret_") ? {} : { Authorization: `Bearer ${key}` }),
         "Content-Type": "application/json",
         Prefer: "return=representation",
         ...(options.headers || {}),
@@ -55,7 +55,7 @@ async function rpc(name: string, payload: Record<string, unknown>) {
     method: "POST",
     headers: {
       apikey: key,
-      Authorization: `Bearer ${key}`,
+      ...(key.startsWith("sb_secret_") ? {} : { Authorization: `Bearer ${key}` }),
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),

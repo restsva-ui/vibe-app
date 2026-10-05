@@ -1,0 +1,43 @@
+name: VYBE CI
+
+on:
+  push:
+    branches: [main, hardening-0.9.47]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vybe-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-and-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Check browser JavaScript syntax
+        run: node --check app.js
+
+      - name: Run hardening invariants
+        run: node scripts/verify-hardening.mjs
+
+      - name: Verify migration catalog
+        run: node scripts/verify-migrations.mjs
+
+      - name: Parse and transpile telegram-auth
+        run: npx --yes esbuild@0.25.11 supabase/functions/telegram-auth/index.ts --platform=neutral --format=esm --outfile=/tmp/telegram-auth.js
+
+      - name: Parse and transpile telegram-bot
+        run: npx --yes esbuild@0.25.11 supabase/functions/telegram-bot/index.ts --platform=neutral --format=esm --outfile=/tmp/telegram-bot.js
