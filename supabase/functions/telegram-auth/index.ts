@@ -1,3 +1,5 @@
+import { validateTelegramInitData } from "../_shared/telegram-init-data.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -10,51 +12,6 @@ function json(data: unknown, status = 200, extraHeaders: Record<string,string> =
     status,
     headers: { ...corsHeaders, ...extraHeaders, "Content-Type": "application/json; charset=utf-8" },
   });
-}
-
-function hex(buffer: ArrayBuffer): string {
-  return Array.from(new Uint8Array(buffer)).map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-function safeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let result = 0;
-  for (let i = 0; i < a.length; i++) result |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return result === 0;
-}
-
-async function hmac(key: string | ArrayBuffer, data: string): Promise<ArrayBuffer> {
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    typeof key === "string" ? new TextEncoder().encode(key) : key,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  return crypto.subtle.sign("HMAC", cryptoKey, new TextEncoder().encode(data));
-}
-
-async function validateTelegramInitData(initData: string, botToken: string) {
-  const params = new URLSearchParams(initData);
-  const receivedHash = params.get("hash");
-  if (!receivedHash) throw new Error("Telegram hash missing");
-  params.delete("hash");
-  const dataCheckString = Array.from(params.entries()).map(([k, v]) => `${k}=${v}`).sort().join("\n");
-  const secretKey = await hmac("WebAppData", botToken);
-  const calculatedHash = hex(await hmac(secretKey, dataCheckString));
-  if (!safeEqual(calculatedHash, receivedHash.toLowerCase())) throw new Error("Invalid Telegram signature");
-
-  const authDate = Number(params.get("auth_date"));
-  if (!Number.isFinite(authDate)) throw new Error("Invalid Telegram auth_date");
-  const age = Math.floor(Date.now() / 1000) - authDate;
-  if (age < -60 || age > 86400) throw new Error("Telegram initData expired");
-
-  const userRaw = params.get("user");
-  if (!userRaw) throw new Error("Telegram user missing");
-  let user;
-  try { user = JSON.parse(userRaw); } catch { throw new Error("Invalid Telegram user"); }
-  if (!user?.id) throw new Error("Telegram user id missing");
-  return { user, authDate };
 }
 
 const clean = (value: unknown, max: number) =>
