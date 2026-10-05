@@ -1,3 +1,5 @@
+import { serviceRoleAuthHeaders } from "../_shared/supabase-service-auth.ts";
+
 const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
 const CONFIGURED_WEBHOOK_SECRET = (Deno.env.get("TELEGRAM_WEBHOOK_SECRET") ?? "").trim();
 const APP_URL = "https://restsva-ui.github.io/vibe-app/";
@@ -74,8 +76,7 @@ function dbClient() {
     const response = await fetch(`${url}/rest/v1/${path}`, {
       ...options,
       headers: {
-        apikey: key,
-        ...(key.startsWith("sb_secret_") ? {} : { Authorization: `Bearer ${key}` }),
+        ...serviceRoleAuthHeaders(key),
         "Content-Type": "application/json",
         Prefer: "return=representation",
         ...(options.headers || {}),
@@ -95,8 +96,7 @@ async function rpc(name: string, payload: Record<string, unknown>) {
   const response = await fetch(`${url}/rest/v1/rpc/${name}`, {
     method: "POST",
     headers: {
-      apikey: key,
-      ...(key.startsWith("sb_secret_") ? {} : { Authorization: `Bearer ${key}` }),
+      ...serviceRoleAuthHeaders(key),
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
