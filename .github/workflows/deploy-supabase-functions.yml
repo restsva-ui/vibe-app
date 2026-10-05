@@ -38,3 +38,26 @@ jobs:
 
       - name: Deploy telegram-bot
         run: supabase functions deploy telegram-bot --project-ref "$SUPABASE_PROJECT_ID" --use-api
+
+      - name: Smoke-test deployed functions
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH_URL="https://$SUPABASE_PROJECT_ID.supabase.co/functions/v1/telegram-auth"
+          BOT_URL="https://$SUPABASE_PROJECT_ID.supabase.co/functions/v1/telegram-bot"
+
+          headers="$(mktemp)"
+          body="$(mktemp)"
+
+          status="$(curl --fail-with-body -sS -o "$body" -D "$headers" -w "%{http_code}"             -X OPTIONS "$AUTH_URL"             -H "Origin: https://restsva-ui.github.io"             -H "Access-Control-Request-Method: POST"             -H "Access-Control-Request-Headers: content-type,apikey")"
+          test "$status" = "204"
+          grep -Eqi '^access-control-max-age:[[:space:]]*86400[[:space:]]*$' "$headers"
+
+          status="$(curl -sS -o "$body" -w "%{http_code}"             -X POST "$AUTH_URL"             -H "Content-Type: application/json"             --data '{}')"
+          test "$status" = "400"
+          grep -Fq 'initData is required' "$body"
+
+          status="$(curl -sS -o "$body" -w "%{http_code}"             -X POST "$BOT_URL"             -H "Content-Type: application/json"             --data '{}')"
+          test "$status" = "401"
+
+          echo "VYBE production Edge smoke tests passed."
