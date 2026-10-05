@@ -184,7 +184,7 @@ window.VybeMedia={base64DataUrl(value){const marker=String(value).indexOf(';base
       if(epoch!==callEpoch||!active()){tracksOff(stream);api('call_action',{call_id:r.call.id,operation:'end'});return}
       call={data:r.call,name:r.peer_name||chat.name,stream,cursor:0,ice:[],sent:Promise.resolve(),caller:true};
       renderCall();call.clock=setInterval(updateCallStatus,1000);schedulePoll(100);
-    }catch(e){tracksOff(stream);permissionError(e,kind==='video')}finally{if(epoch===callEpoch)callStarting=false}
+    }catch(e){tracksOff(stream);if(epoch===callEpoch)permissionError(e,kind==='video')}finally{if(epoch===callEpoch)callStarting=false}
   }
   async function acceptCall(){
     const c=call;if(!c||c.accepting)return;c.accepting=true;$('callAccept').disabled=true;updateCallStatus();
