@@ -40,6 +40,12 @@ for (const [name, source, expected] of [
 if (!auth.includes('"Access-Control-Max-Age": "86400"')) {
   fail("telegram-auth: CORS preflight caching is missing");
 }
+if (!auth.includes("resolveTelegramWebhookSecret") || !auth.includes("vybe:telegram-webhook:")) {
+  fail("telegram-auth: deterministic Telegram webhook secret fallback is missing");
+}
+if (!bot.includes("resolveWebhookSecret") || !bot.includes("ensureDerivedWebhookConfigured") || !bot.includes("secret_token: secret")) {
+  fail("telegram-bot: derived webhook secret self-healing is missing");
+}
 
 if (!app.includes("const SOCIAL_RECONCILE_INTERVAL_MS=120000;")) {
   fail("app.js: reconciliation interval is not 120 seconds");

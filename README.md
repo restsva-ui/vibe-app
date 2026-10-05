@@ -122,3 +122,5 @@ The Mini App frontend currently uses the lightweight `index.html` / `app.js` / `
 - VYBE 0.9.46 uses private profile media: the profile-photos bucket is private, database rows store only object paths, and photos are returned through two-hour signed URLs across Profile, Discovery, Matches, Notifications, Who Liked, Public Profile, and Moderation. Foreground resume refreshes signed profile URLs.
 
 - VYBE 0.9.47 hardens Supabase server-key handling for modern `sb_secret_` keys, caches CORS preflight responses, makes Realtime the primary social/chat transport with a two-minute fallback reconciliation only while Realtime is unavailable, and escapes referral response fields before HTML rendering.
+
+- When `TELEGRAM_WEBHOOK_SECRET` is not configured, VYBE derives a deterministic SHA-256 webhook secret from the private bot token and self-registers the fixed Supabase bot webhook after deploy. The derived secret is never written to Git or logs; an explicitly configured webhook secret still takes precedence.

@@ -199,11 +199,20 @@ async function telegramApi(botToken: string, method: string, payload: Record<str
 }
 
 
+async function resolveTelegramWebhookSecret(botToken: string) {
+  const configured = (Deno.env.get("TELEGRAM_WEBHOOK_SECRET") ?? "").trim();
+  if (configured) return configured;
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(`vybe:telegram-webhook:${botToken}`),
+  );
+  return hex(digest);
+}
+
 async function ensurePaymentWebhook(botToken: string) {
   const baseUrl = Deno.env.get("SUPABASE_URL");
   if (!baseUrl) throw new Error("SUPABASE_URL missing");
-  const secret = Deno.env.get("TELEGRAM_WEBHOOK_SECRET") ?? "";
-  if (!secret) throw new Error("TELEGRAM_WEBHOOK_SECRET missing");
+  const secret = await resolveTelegramWebhookSecret(botToken);
   const payload: Record<string, unknown> = {
     url: `${baseUrl}/functions/v1/telegram-bot`,
     allowed_updates: ["message", "pre_checkout_query"],
