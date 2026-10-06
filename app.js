@@ -14,7 +14,7 @@ function syncTelegramViewport(){
   root.style.setProperty("--chat-viewport-height",Math.min(stable,window.visualViewport?.height||window.innerHeight||stable)+"px");
 }
 if(tg){
-  tg.ready();tg.expand();tg.setHeaderColor("#0c1014");tg.setBackgroundColor("#0c1014");
+  tg.ready();tg.expand();tg.setHeaderColor("#0d0f12");tg.setBackgroundColor("#0d0f12");
   syncTelegramViewport();
   tg.onEvent?.("safeAreaChanged",syncTelegramViewport);
   tg.onEvent?.("contentSafeAreaChanged",syncTelegramViewport);

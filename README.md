@@ -141,8 +141,10 @@ Validation: `node scripts/test-discovery-preferences.ts`; `scripts/test-discover
 
 The app and Telegram bot use the owner's supplied white/silver lowercase `vibe` wordmark on black. `vibe-logo.jpg` preserves the supplied JPEG bytes unchanged. The self-contained SVG wrappers embed that same image: a close viewBox frames the full wordmark for the header, launch screen and age gate, while the square favicon keeps all four letters. The full square JPEG is also the Telegram avatar and /start image.
 
-Active assets: `assets/vibe-logo.jpg`, `assets/vibe-wordmark.svg`, `assets/vibe-icon.svg`. Earlier brand assets remain available for existing cached clients.
+Active assets: `assets/vibe-logo.jpg`, `assets/vibe-wordmark.svg`, `assets/vibe-icon.svg`. Previous logo assets are removed; every app and legal-page logo uses the supplied wordmark.
 
 The bot sends the logo with its existing welcome caption and Mini App button. If Telegram cannot fetch the image, it falls back to the same text and launch button. Webhook authentication, language selection, referral URLs and payment/support commands retain their existing behavior.
 
 Validation: `scripts/test-bot-branding.ts` covers unauthorized webhook requests, Ukrainian welcome, English referrals, image-delivery fallback, terms and retryable delivery errors.
+
+The shared interface palette uses graphite surfaces, silver primary actions and white text. Only semantic status colors retain muted green, red or amber. It applies to discovery, chats, emoji/media controls, the map, admin tools and legal pages; Telegram header/background colors match the app.
