@@ -3,7 +3,7 @@ import { serviceRoleAuthHeaders } from "../_shared/supabase-service-auth.ts";
 const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
 const CONFIGURED_WEBHOOK_SECRET = (Deno.env.get("TELEGRAM_WEBHOOK_SECRET") ?? "").trim();
 const APP_URL = "https://restsva-ui.github.io/vibe-app/";
-const BRAND_PHOTO_URL = `${APP_URL}assets/vybe-avatar.jpg?v=20261006-logo1`;
+const BRAND_PHOTO_URL = `${APP_URL}assets/vibe-logo.jpg?v=20261006-logo2`;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 
 const json = (data: unknown, status = 200) =>

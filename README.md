@@ -139,9 +139,9 @@ Validation: `node scripts/test-discovery-preferences.ts`; `scripts/test-discover
 
 ## Shared VYBE branding — 2026-10-06
 
-The app and Telegram bot share the peach/ivory folded-ribbon V. The Mini App uses the compact WebP symbol in its header, launch screen and age gate, with an outlined SVG wordmark and self-contained SVG favicon. PNG is the source avatar; JPEG is the Telegram-compatible avatar and /start image.
+The app and Telegram bot use the owner's supplied white/silver lowercase `vibe` wordmark on black. `vibe-logo.jpg` preserves the supplied JPEG bytes unchanged. The self-contained SVG wrappers embed that same image: a close viewBox frames the full wordmark for the header, launch screen and age gate, while the square favicon keeps all four letters. The full square JPEG is also the Telegram avatar and /start image.
 
-Assets: `assets/vybe-symbol.webp`, `assets/vybe-wordmark.svg`, `assets/vybe-mark.svg`, `assets/vybe-avatar.png`, `assets/vybe-avatar.jpg`.
+Active assets: `assets/vibe-logo.jpg`, `assets/vibe-wordmark.svg`, `assets/vibe-icon.svg`. Earlier brand assets remain available for existing cached clients.
 
 The bot sends the logo with its existing welcome caption and Mini App button. If Telegram cannot fetch the image, it falls back to the same text and launch button. Webhook authentication, language selection, referral URLs and payment/support commands retain their existing behavior.
 

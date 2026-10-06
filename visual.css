@@ -26,9 +26,8 @@ button:not(:disabled):active{filter:brightness(1.12)}
 .topbar{gap:14px;min-height:56px}
 .topbarCopy{min-width:0}
 .eyebrow{display:flex;align-items:center;gap:9px;text-transform:none;letter-spacing:0;line-height:1}
-.brandLockup{display:inline-flex;align-items:center;gap:7px;flex-shrink:0}
-.brandSymbol{display:block;width:36px;height:36px;border-radius:10px;flex-shrink:0}
-.brandWord{display:block;width:92px;height:26px;object-fit:contain}
+.brandLockup{display:inline-flex;align-items:center;flex-shrink:0}
+.brandWord{display:block;width:128px;height:auto;object-fit:contain;mix-blend-mode:screen}
 .brandEdition{padding:3px 6px;border:1px solid var(--line);border-radius:5px;color:var(--muted);font-size:0.625rem;font-weight:600;letter-spacing:.05em}
 .hello{font-size:1rem;line-height:1.2;letter-spacing:-.01em;font-weight:550;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#bac5cf}
 .topbarActions{display:flex;gap:8px;flex-shrink:0}
@@ -160,8 +159,8 @@ button:not(:disabled):active{filter:brightness(1.12)}
 .onboardingPhoto .fieldError{margin:10px 0 0}
 .onboardingPhoto [aria-invalid="true"]{border-color:#f1a69e;box-shadow:0 0 0 3px #f1a69e15}
 .ageModal{padding:28px;position:relative;background:var(--card)}
-.ageModal .logoMark{border-radius:20px;background:transparent;box-shadow:none;width:80px;height:80px;overflow:hidden}
-.ageModal h1{font-size:2.375rem;line-height:1.1;letter-spacing:-.05em;margin:18px 0 12px}
+.ageModal .ageBrand{width:min(154px,calc(100% - 68px));margin:0 0 24px;line-height:1}
+.ageBrand img{display:block;width:100%;height:auto;mix-blend-mode:screen}
 .ageModal .ageBadge{position:absolute;right:28px;top:32px;font-size:1rem;margin:0;padding:8px 11px;border-radius:12px;border:1px solid var(--line);color:var(--accent);background:var(--accent-soft)}
 .ageModal .checkRow{margin:23px 0}
 .ageLegalLinks{margin:18px 0}
@@ -294,6 +293,3 @@ button:not(:disabled):active{filter:brightness(1.12)}
 .photoViewerHeader button{display:grid;place-items:center;width:44px;height:44px;flex:0 0 44px;padding:10px;border:1px solid #ffffff40;border-radius:15px;background:#151b22db;color:#fff;pointer-events:auto}
 .photoViewerHeader svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round}
 .photoViewerStatus{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:calc(100% - 48px);max-width:420px;padding:16px;text-align:center;color:#b8c3cf;line-height:1.5;font-size:.9375rem}
-
-
-.logoMark img{display:block;width:100%;height:100%}
