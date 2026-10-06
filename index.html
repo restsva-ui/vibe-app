@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>VYBE 0.9.48</title>
 <link rel="stylesheet" href="./styles.css?v=20261006-silver1">
-<link rel="stylesheet" href="./visual.css?v=20261006-silver1">
+<link rel="stylesheet" href="./visual.css?v=20261006-fields1">
 <script src="https://telegram.org/js/telegram-web-app.js">
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2">
@@ -127,7 +127,7 @@
 </div>
 <div id="onboarding" class="overlay hidden">
 <div class="modal onboarding">
-<h2>Створи свою анкету</h2>
+<h2 id="onboardingTitle">Створи свою анкету</h2>
 <p>Анкета синхронізується з VYBE. Не додавай приватні контактні дані в опис.</p>
 <div class="onboardingPhoto">
 <div class="onboardingPhotoLabel">Фото профілю <span class="requiredMark" aria-hidden="true">*</span></div>
@@ -142,14 +142,13 @@
 <label>Ім’я<input id="obName" class="field" maxlength="30">
 </label>
 <div class="two">
-<label>Вік<input id="obAge" class="field" type="number" min="18" max="99">
+<label>Вік<select id="obAge" class="field profileFieldChoices" required aria-required="true"><option value="">Обери</option></select>
 </label>
-<label>Місто<input id="obCity" class="field" maxlength="40" placeholder="Київ">
-</label>
+<div class="profileCityField"><label id="obCityLabel" for="obCityBtn">Місто</label><button id="obCityBtn" class="field profileCityButton" type="button" aria-haspopup="dialog" aria-controls="obCityDialog" aria-labelledby="obCityLabel obCityValue"><span id="obCityValue" class="userNameNoI18n">Обери місто</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button><select id="obCity" class="profileFieldChoices hidden" aria-hidden="true" tabindex="-1"><option value="">Не вказувати</option></select></div>
 </div>
-<label>Я<input id="obGender" class="field" maxlength="30" placeholder="Чоловік / Жінка / Інше">
+<label>Стать<select id="obGender" class="field profileFieldChoices"><option value="">Не вказувати</option></select>
 </label>
-<label>Кого шукаю<input id="obLooking" class="field" maxlength="50" placeholder="Напр. жінок 25–40">
+<label>Кого шукаю<select id="obLooking" class="field profileFieldChoices"><option value="">Не вказувати</option></select>
 </label>
 <label for="obBio">Про себе <span class="requiredMark" aria-hidden="true">*</span><textarea id="obBio" class="field" maxlength="180" required aria-required="true" aria-describedby="obBioHint obBioError" placeholder="Коротко й живо — що варто знати про тебе?">
 </textarea>
@@ -430,11 +429,13 @@
 </div>
 </div>
 </div>
+<script src="./profile-cities.js?v=20261006-fields1"></script>
+<script src="./profile-fields.js?v=20261006-fields1"></script>
 <script src="./interests-map.js?v=20261006-silver1"></script>
 <script src="./chat-media.js?v=20261005-media2"></script>
 <script src="./chat-emoji.js?v=20261006-emoji1"></script>
 <script src="./photo-viewer.js?v=20261006-fullscreen1"></script>
-<script src="./app.js?v=20261006-silver1">
+<script src="./app.js?v=20261006-fields1">
 </script>
 <script>
 (()=>{const splash=document.getElementById("vibeSplash");if(!splash)return;let closed=false;const close=()=>{if(closed)return;closed=true;splash.classList.add("done");setTimeout(()=>splash.remove(),450)};const start=()=>setTimeout(close,2050);if(document.readyState==="complete")start();else window.addEventListener("load",start,{once:true});setTimeout(close,3200)})();

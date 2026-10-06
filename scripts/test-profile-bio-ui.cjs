@@ -2,7 +2,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const requireFixture=createRequire(path.join(process.argv[2]||'/tmp/vybe-emoji-test','package.json'));
 const {JSDOM}=requireFixture('jsdom');
 const html=fs.readFileSync('index.html','utf8');
-const source=['interests-map.js','chat-media.js','chat-emoji.js','photo-viewer.js','app.js'].map(file=>fs.readFileSync(file,'utf8')).join('\n;\n');
+const source=['profile-cities.js','profile-fields.js','interests-map.js','chat-media.js','chat-emoji.js','photo-viewer.js','app.js'].map(file=>fs.readFileSync(file,'utf8')).join('\n;\n');
 const existing={name:'Test',age:28,city:'Київ',bio:'Люблю каву й гори',user_id:'owner',photo_url:'https://ui-fixture.invalid/photo.jpg',interests:['coffee'],map_enabled:false};
 const pause=()=>new Promise(resolve=>setTimeout(resolve,10));
 let checks=0;

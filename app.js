@@ -72,7 +72,7 @@ const I18N_PAIRS=[
   ["Чоловік / Жінка / Інше","Man / Woman / Other"],
   ["Напр. жінок 25–40","E.g. women 25–40"],
   ["Зберегти →","Save →"],
-  ["Ім’я","Name"],["Вік","Age"],["Місто","City"],["Я","I am"],["Кого шукаю","Looking for"],["Про себе","About me"],
+  ["Ім’я","Name"],["Вік","Age"],["Місто","City"],["Стать","Gender"],["Я","I am"],["Кого шукаю","Looking for"],["Про себе","About me"],
   ["⚡ VYBE NOW не задано","⚡ VYBE NOW not set"],
   ["Покажи, чого хочеш саме зараз","Show what you want right now"],
   ["Задати","Set"],["Змінити","Change"],
@@ -168,7 +168,7 @@ function uiText(value){
 function uiLocale(){return currentLang==="en"?"en-US":"uk-UA"}
 function skipI18nElement(el){
   if(!el?.closest)return false;
-  return !!el.closest(".msgBubble,.bio,.meta,#profileBio,#profileMeta,#profileName,#hello,.nameRow h2,.chatTitle h2,.blockedRow b,.chatOpen .itemMain small,.matchOpen .itemMain small,.msgSender,.avatar,.generatedAvatar,.chatAvatar,.msgAvatar,.userNameNoI18n,.mapShell,.interestPicker,.interestTags,.mediaShell,.emojiShell,.photoShell");
+  return !!el.closest(".msgBubble,.bio,.meta,#profileBio,#profileMeta,#profileName,#hello,.nameRow h2,.chatTitle h2,.blockedRow b,.chatOpen .itemMain small,.matchOpen .itemMain small,.msgSender,.avatar,.generatedAvatar,.chatAvatar,.msgAvatar,.userNameNoI18n,.mapShell,.interestPicker,.interestTags,.mediaShell,.emojiShell,.photoShell,.profileFieldChoices,.profileCityShell");
 }
 function localizeDom(root=document){
   document.documentElement.lang=currentLang==="en"?"en":"uk";
@@ -203,6 +203,7 @@ function setLanguage(next){
   store("vybeLanguage",currentLang);
   analyticsCapture("language_changed",{language:currentLang});
   localizeDom(document);
+  profileFields?.refreshLanguage();
   if(profile)renderProfile();
   renderNow();
   renderCard();
@@ -259,7 +260,7 @@ const realtimeClient=window.supabase?.createClient?.(SUPABASE_URL,SUPABASE_KEY,{
 });
 let realtimeUserTopic=null,realtimeUserChannel=null,realtimeUserChannelTopic=null,realtimeConnected=false;
 const realtimeMatchChannels=new Map();
-let chatMedia=null,chatEmoji=null,photoViewer=null,chatRequestId=0;
+let chatMedia=null,chatEmoji=null,photoViewer=null,profileFields=null,chatRequestId=0;
 let activeChat=null,chatRefreshTimer=null,socialRefreshTimer=null,typingStopTimer=null,incomingTypingTimer=null,lastTypingSentAt=0,localTypingActive=false;
 
 function teardownSocialRealtime(){
@@ -1149,7 +1150,8 @@ function showProfileBioError(){
 $("obBio").addEventListener("input",()=>{if(hasProfileBio($("obBio").value))clearProfileBioError()});
 function showOnboarding(){
   const o=$("onboarding");o.classList.remove("hidden");
-  $("obName").value=profile?.name||tuser?.first_name||"";$("obAge").value=profile?.age||"";$("obCity").value=profile?.city||"";$("obGender").value=profile?.gender||"";$("obLooking").value=profile?.looking||"";$("obBio").value=profile?.bio||"";
+  $("onboardingTitle").textContent=uiText(profile?"Редагувати профіль":"Створи свою анкету");
+  $("obName").value=profile?.name||tuser?.first_name||"";profileFields.setValues(profile);$("obBio").value=profile?.bio||"";
   clearProfileBioError();
   onboardingPhotoEpoch++;onboardingPhoto=null;onboardingPhotoBusy=false;
   $("obPhotoInput").value="";clearProfilePhotoError();renderOnboardingPhoto();
@@ -1321,6 +1323,7 @@ function setSheetFullscreen(enabled){
   sheet.classList.toggle("sheetFullscreen",enabled===true);
 }
 function closeSheetView(){
+  if(profileFields?.close())return;
   if(photoViewer?.close())return;
   chatEmoji?.dispose();
   chatMedia?.disposeRecording();
@@ -1335,9 +1338,9 @@ function closeSheetView(){
   tg?.BackButton?.hide?.();
 }
 $("closeSheet").onclick=closeSheetView;
-tg?.BackButton?.onClick?.(()=>{if(photoViewer?.isOpen()||!sheet.classList.contains("hidden"))closeSheetView()});
+tg?.BackButton?.onClick?.(()=>{if(profileFields?.isOpen()||photoViewer?.isOpen()||!sheet.classList.contains("hidden"))closeSheetView()});
 function syncSheetBackButton(){
-  if(!photoViewer?.isOpen()&&sheet.classList.contains("hidden"))tg?.BackButton?.hide?.();
+  if(!profileFields?.isOpen()&&!photoViewer?.isOpen()&&sheet.classList.contains("hidden"))tg?.BackButton?.hide?.();
   else tg?.BackButton?.show?.();
 }
 const sheetObserver=new MutationObserver(syncSheetBackButton);
@@ -2256,3 +2259,4 @@ chatMedia=window.VybeMedia.create({api:secureApi,escape:escapeHtml,language:()=>
 chatEmoji=window.VybeEmoji?.create({content,sheet,language:()=>currentLang,userId:()=>profile?.user_id,chat:()=>activeChat,allowed:()=>accountStatus==="active"&&!!window.__vybeAuth?.ok,onPick:()=>tg?.HapticFeedback?.selectionChanged?.()});
 
 photoViewer=window.VybePhoto?.create({language:()=>currentLang,interrupted:()=>!!$("vybeCall"),onOpen:syncSheetBackButton,onClose:syncSheetBackButton});
+profileFields=window.VybeProfileFields.create({language:()=>currentLang,interrupted:()=>!!$("vybeCall"),onOpen:syncSheetBackButton,onClose:syncSheetBackButton});
