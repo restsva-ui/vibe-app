@@ -159,7 +159,7 @@ function uiText(value){
 function uiLocale(){return currentLang==="en"?"en-US":"uk-UA"}
 function skipI18nElement(el){
   if(!el?.closest)return false;
-  return !!el.closest(".msgBubble,.bio,.meta,#profileBio,#profileMeta,#profileName,#hello,.nameRow h2,.chatTitle h2,.blockedRow b,.chatOpen .itemMain small,.matchOpen .itemMain small,.msgSender,.avatar,.generatedAvatar,.chatAvatar,.msgAvatar,.userNameNoI18n,.mapShell,.interestPicker,.interestTags,.mediaShell");
+  return !!el.closest(".msgBubble,.bio,.meta,#profileBio,#profileMeta,#profileName,#hello,.nameRow h2,.chatTitle h2,.blockedRow b,.chatOpen .itemMain small,.matchOpen .itemMain small,.msgSender,.avatar,.generatedAvatar,.chatAvatar,.msgAvatar,.userNameNoI18n,.mapShell,.interestPicker,.interestTags,.mediaShell,.emojiShell");
 }
 function localizeDom(root=document){
   document.documentElement.lang=currentLang==="en"?"en":"uk";
@@ -250,7 +250,7 @@ const realtimeClient=window.supabase?.createClient?.(SUPABASE_URL,SUPABASE_KEY,{
 });
 let realtimeUserTopic=null,realtimeUserChannel=null,realtimeUserChannelTopic=null,realtimeConnected=false;
 const realtimeMatchChannels=new Map();
-let chatMedia=null,chatRequestId=0;
+let chatMedia=null,chatEmoji=null,chatRequestId=0;
 let activeChat=null,chatRefreshTimer=null,socialRefreshTimer=null,typingStopTimer=null,incomingTypingTimer=null,lastTypingSentAt=0,localTypingActive=false;
 
 function teardownSocialRealtime(){
@@ -1258,6 +1258,7 @@ function setSheetFullscreen(enabled){
   sheet.classList.toggle("sheetFullscreen",enabled===true);
 }
 function closeSheetView(){
+  chatEmoji?.dispose();
   chatMedia?.disposeRecording();
   sendTyping(activeChat?.matchId,false);
   activeChat=null;
@@ -1499,7 +1500,8 @@ async function openChat(matchId,name,userId,options={}){
     const receipt=mine?'<span class="msgReceipt '+(wasRead?"read":"sent")+'" title="'+escapeHtml(uiText(wasRead?"Прочитано":"Надіслано"))+'">'+(wasRead?"✓✓":"✓")+'</span>':"";
     const meta='<span>'+escapeHtml(formatMessageTime(m.created_at))+'</span>'+receipt;
     const avatar=avatarMarkup(mine?ownPhoto:peerPhoto,sender,'msgAvatar');
-    return '<div data-message-id="'+escapeHtml(m.id)+'" class="msgRow '+(mine?"mine":"theirs")+'">'+avatar+'<div class="msgWrap"><div class="msgSender">'+escapeHtml(sender)+'</div><div class="msgBubble">'+(m.kind==='voice'||m.kind==='video'?chatMedia.messageMarkup(m):escapeHtml(m.body))+'</div><div class="msgMeta">'+meta+'</div></div></div>';
+    const emojiClass=m.kind!=='voice'&&m.kind!=='video'&&window.VybeEmoji?.isEmojiMessage(m.body)?' emojiOnly':'';
+    return '<div data-message-id="'+escapeHtml(m.id)+'" class="msgRow '+(mine?"mine":"theirs")+'">'+avatar+'<div class="msgWrap"><div class="msgSender">'+escapeHtml(sender)+'</div><div class="msgBubble'+emojiClass+'">'+(m.kind==='voice'||m.kind==='video'?chatMedia.messageMarkup(m):escapeHtml(m.body))+'</div><div class="msgMeta">'+meta+'</div></div></div>';
   }).join("");
 
   const idlePresence=peerProfile?.online?uiText("● онлайн"):chatConnectionLabel();
@@ -1512,6 +1514,7 @@ async function openChat(matchId,name,userId,options={}){
     for(const row of template.content.children){const old=existing.get(row.dataset.messageId);if(old)old.querySelector('.msgMeta').innerHTML=row.querySelector('.msgMeta').innerHTML;else box.append(row.cloneNode(true))}
     if(!messages.length)box.innerHTML='<div class="chatEmpty">'+uiText('Почни розмову 👋')+'</div>';
   }else{
+    chatEmoji?.dispose();
     chatMedia?.disposeRecording();
   content.innerHTML='<div class="chatHeader"><button id="chatPeerBtn" class="chatPeer" type="button">'+avatarMarkup(peerPhoto,peerName,'chatAvatar')+'<div class="chatTitle"><h2>'+escapeHtml(peerName)+'</h2><small><span id="chatPresence" data-idle-label="'+escapeHtml(idlePresence)+'">'+escapeHtml(idlePresence)+'</span></small></div></button><button id="chatSafetyBtn" class="chatSafety" aria-label="Безпека">⋯</button></div><button id="chatProfileBtn" class="chatProfileAction" type="button"><span>'+uiIcon("user")+uiText("Переглянути анкету")+'</span>'+uiIcon("chevron")+'</button><div id="chatMessages" class="chatMessages">'+(msgs||'<div class="chatEmpty">Почни розмову 👋</div>')+'</div><div class="chatComposer"><textarea id="chatMessage" class="field" maxlength="2000" placeholder="Напиши повідомлення…"></textarea><button id="sendMessage" class="primary sendButton" aria-label="'+escapeHtml(uiText("Надіслати"))+'" title="'+escapeHtml(uiText("Надіслати"))+'">'+uiIcon("send")+'</button></div>';
   }
@@ -1526,6 +1529,7 @@ async function openChat(matchId,name,userId,options={}){
   const safety=$("chatSafetyBtn");if(safety)safety.onclick=()=>openUserSafety(userId,peerName);
   const field=$("chatMessage");if(field&&previousDraft)field.value=previousDraft;
   bindTyping(key);
+  chatEmoji?.mount();
 
   const box=$("chatMessages");
   if(box){
@@ -1551,6 +1555,7 @@ async function openChat(matchId,name,userId,options={}){
   $("sendMessage").onclick=async()=>{
     const composerField=$("chatMessage"),sendBtn=$("sendMessage");
     const message=composerField.value.trim();if(!message)return;
+    chatEmoji?.close();
     sendTyping(key,false);clearTimeout(typingStopTimer);
     $("sendMessage").disabled=true;
     const x=await secureApi("message_send",{match_id:matchId,message});
@@ -2180,3 +2185,5 @@ mapLifecycleObserver.observe(content,{childList:true});
 mapLifecycleObserver.observe(sheet,{attributes:true,attributeFilter:["class"]});
 
 chatMedia=window.VybeMedia.create({api:secureApi,escape:escapeHtml,language:()=>currentLang,userId:()=>profile?.user_id,allowed:()=>accountStatus==="active"&&window.__vybeAuth?.ok,chat:()=>activeChat,alert:showAlert,content,refreshChat:async()=>{const c=activeChat;if(c)await openChat(c.matchId,c.name,c.userId,{silent:true,preserveDraft:true,noMatchRefresh:true});loadMatches()}});
+
+chatEmoji=window.VybeEmoji?.create({content,sheet,language:()=>currentLang,userId:()=>profile?.user_id,chat:()=>activeChat,allowed:()=>accountStatus==="active"&&!!window.__vybeAuth?.ok,onPick:()=>tg?.HapticFeedback?.selectionChanged?.()});
