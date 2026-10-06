@@ -41,6 +41,7 @@ jobs:
           node --check photo-viewer.js
           node --check profile-cities.js
           node --check profile-fields.js
+          node --check viewport-layout.js
 
       - name: Test chat emoji, fullscreen and profile completion UI
         run: |

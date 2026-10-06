@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>VYBE 0.9.48</title>
 <link rel="stylesheet" href="./styles.css?v=20261006-silver1">
-<link rel="stylesheet" href="./visual.css?v=20261006-fields1">
+<link rel="stylesheet" href="./visual.css?v=20261006-actions1">
 <script src="https://telegram.org/js/telegram-web-app.js">
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2">
@@ -215,35 +215,7 @@
 </div>
 <div id="cardStack" class="cardStack">
 </div>
-<div class="actions" id="discoverActions">
-<div class="actionGroup">
-<button class="action" id="skipBtn" aria-label="Пропустити">
-<svg class="uiIcon " aria-hidden="true">
-<use href="#ui-close">
-</use>
-</svg>
-</button>
-<small>Пропустити</small>
-</div>
-<div class="actionGroup superGroup">
-<button class="action super" id="sparkBtn" aria-label="SuperVYBE">
-<svg class="uiIcon " aria-hidden="true">
-<use href="#ui-spark">
-</use>
-</svg>
-</button>
-<small>SuperVYBE</small>
-</div>
-<div class="actionGroup">
-<button class="action like" id="likeBtn" aria-label="VYBE">
-<svg class="uiIcon " aria-hidden="true">
-<use href="#ui-heart">
-</use>
-</svg>
-</button>
-<small>VYBE</small>
-</div>
-</div>
+
 </section>
 <section id="matchesView" class="view">
 <div class="sectionTitle">
@@ -365,6 +337,36 @@
 </button>
 </div>
 </section>
+<div class="appFooter">
+<div class="actions" id="discoverActions">
+<div class="actionGroup">
+<button class="action" id="skipBtn" aria-label="Пропустити">
+<svg class="uiIcon " aria-hidden="true">
+<use href="#ui-close">
+</use>
+</svg>
+</button>
+<small>Пропустити</small>
+</div>
+<div class="actionGroup superGroup">
+<button class="action super" id="sparkBtn" aria-label="SuperVYBE">
+<svg class="uiIcon " aria-hidden="true">
+<use href="#ui-spark">
+</use>
+</svg>
+</button>
+<small>SuperVYBE</small>
+</div>
+<div class="actionGroup">
+<button class="action like" id="likeBtn" aria-label="VYBE">
+<svg class="uiIcon " aria-hidden="true">
+<use href="#ui-heart">
+</use>
+</svg>
+</button>
+<small>VYBE</small>
+</div>
+</div>
 <nav class="nav" aria-label="Навігація">
 <button class="navItem active" data-target="discoverView">
 <span class="navIcon">
@@ -403,6 +405,7 @@
 <small>Профіль</small>
 </button>
 </nav>
+</div>
 </main>
 <div id="sheet" class="sheet hidden">
 <div class="sheetCard">
@@ -430,6 +433,7 @@
 <script src="./photo-viewer.js?v=20261006-fullscreen1"></script>
 <script src="./app.js?v=20261006-fields1">
 </script>
+<script src="./viewport-layout.js?v=20261006-actions1"></script>
 <script>
 (()=>{const splash=document.getElementById("vibeSplash");if(!splash)return;let closed=false;const close=()=>{if(closed)return;closed=true;splash.classList.add("done");setTimeout(()=>splash.remove(),450)};const start=()=>setTimeout(close,2050);if(document.readyState==="complete")start();else window.addEventListener("load",start,{once:true});setTimeout(close,3200)})();
 </script>

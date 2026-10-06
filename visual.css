@@ -22,7 +22,7 @@ button:disabled{cursor:default;opacity:.45}
 button:not(:disabled):active{filter:brightness(1.12)}
 .iconSprite{position:absolute;width:0;height:0;overflow:hidden;pointer-events:none}
 .uiIcon{width:24px;height:24px;display:block;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.app{padding:calc(14px + var(--tg-safe-top,0px)) 18px calc(6.25rem + max(env(safe-area-inset-bottom),var(--tg-safe-bottom,0px)));max-width:560px}
+.app{padding:calc(14px + var(--tg-safe-top,0px)) 18px var(--app-footer-space,calc(6.25rem + max(env(safe-area-inset-bottom),var(--tg-safe-bottom,0px))));max-width:560px}
 .topbar{gap:14px;min-height:56px}
 .topbarCopy{min-width:0}
 .eyebrow{display:flex;align-items:center;gap:9px;text-transform:none;letter-spacing:0;line-height:1}
@@ -53,7 +53,7 @@ button:not(:disabled):active{filter:brightness(1.12)}
 .filterButton{display:flex;align-items:center;justify-content:center;gap:5px;min-height:38px;padding:0 1px 0 8px;font-size:0.8125rem;color:var(--accent);flex-shrink:0}
 .filterButton .uiIcon{width:17px;height:17px}
 .cardStack{min-height:0}
-.personCard{height:clamp(20rem,calc(var(--tg-viewport-height,100dvh) - var(--tg-safe-top,0px) - var(--tg-safe-bottom,0px) - 520px),33.75rem);border:1px solid var(--line);border-radius:24px;background:var(--card);box-shadow:0 12px 32px #00000026}
+.personCard{height:var(--discovery-card-height,clamp(20rem,calc(var(--tg-viewport-height,100dvh) - var(--tg-safe-top,0px) - var(--tg-safe-bottom,0px) - 520px),33.75rem));border:1px solid var(--line);border-radius:24px;background:var(--card);box-shadow:0 12px 32px #00000026}
 .generatedAvatar{font-size:7.812rem;background:radial-gradient(ellipse at 38% 22%,#494b4e,#292b2e 65%,#1b1d20);color:#97999c}
 .gradient{pointer-events:none;background:linear-gradient(180deg,#0d0f121c 0,transparent 30%,#0d0f124d 49%,#0d0f12de 74%,#0d0f12 100%)}
 .personMeta{left:18px;right:18px;bottom:17px}
@@ -84,11 +84,19 @@ button:not(:disabled):active{filter:brightness(1.12)}
 .action.like .uiIcon{fill:currentColor;stroke-width:1.3}
 .action.super{width:56px;height:56px;background:var(--card);border:1px solid #dce1e866;color:var(--accent);box-shadow:none}
 .actionGroup.superGroup small{color:var(--accent)}
-.nav{bottom:calc(12px + max(env(safe-area-inset-bottom),var(--tg-safe-bottom,0px)));width:min(calc(100% - 28px),524px);padding:7px 5px 8px;border:1px solid var(--line);border-radius:21px;background:#16191ef5;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 8px 30px #0000004d;z-index:10}
-.navItem{position:relative;min-height:54px;gap:3px;color:var(--muted);padding:0 3px}
+/* Discovery actions and navigation share one fixed footer so neither can overlap. */
+.appFooter{position:fixed;left:50%;bottom:calc(12px + max(env(safe-area-inset-bottom),var(--tg-safe-bottom,0px)));transform:translateX(-50%);width:min(calc(100% - 28px),524px);display:grid;gap:8px;z-index:10}
+.appFooter #discoverActions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:10px 10px 8px;border:1px solid var(--line);border-radius:22px;background:#0d0f12f5;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 -8px 28px #00000033}
+#discoverActions .actionGroup{min-width:0}
+#discoverActions .actionGroup small{max-width:100%;text-align:center;line-height:1.2;overflow-wrap:anywhere}
+.app:not(:has(#discoverView.active)) #discoverActions{display:none}
+body:has(.sheet:not(.hidden),.overlay:not(.hidden),#vybeCall) .appFooter{visibility:hidden}
+@media(max-height:760px){.app:has(#discoverView.active) .brandWord{width:112px}.app:has(#discoverView.active) .nowCard{margin-top:10px;padding:8px 10px;gap:8px}.app:has(#discoverView.active) .moodStrip{padding:9px 0 6px}.app:has(#discoverView.active) #discoverView .sectionTitle{margin-top:4px;margin-bottom:8px}}
+.nav{position:static;left:auto;bottom:auto;transform:none;width:100%;padding:7px 5px 8px;border:1px solid var(--line);border-radius:21px;background:#16191ef5;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 8px 30px #0000004d;z-index:10}
+.navItem{position:relative;min-width:0;min-height:54px;gap:3px;color:var(--muted);padding:0 3px}
 .navIcon{display:grid;place-items:center;width:43px;height:32px;border-radius:11px;transition:background .16s,color .16s}
 .navIcon .uiIcon{width:22px;height:22px}
-.navItem small{font-size:0.75rem;font-weight:550;line-height:1.2}
+.navItem small{max-width:100%;overflow-wrap:anywhere;font-size:0.75rem;font-weight:550;line-height:1.2}
 .navItem.active{color:var(--accent)}
 .navItem.active .navIcon{background:var(--accent-soft);color:var(--accent)}
 .navItem.active small{font-weight:750}
@@ -257,8 +265,8 @@ body.profileCityViewing{overflow:hidden}
 .notificationText span{font-size:0.875rem}
 .notificationText small{font-size:0.75rem}
 @keyframes viewIn{from{opacity:.5;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
-@media(min-width:600px){.app{padding-top:26px}.personCard{height:540px}.nav{bottom:18px}.sheetChat .sheetCard{border-left:1px solid #404245;border-right:1px solid #404245}}
-@media(max-width:360px){.app{padding-left:14px;padding-right:14px}.hello{font-size:.9375rem}.topbarActions{gap:6px}.iconBtn{width:40px;height:40px}.nowCard{gap:8px;padding:10px}.nowIcon{width:32px;flex-basis:32px;height:40px}.nowCard small{font-size:0.75rem}.nowCard button{padding:8px;font-size:0.75rem}.sectionTitle{font-size:0.9375rem}.personMeta{left:15px;right:15px}.nameRow h2{font-size:1.75rem}.personCard{height:max(360px,22.5rem)}.actionGroup{min-width:68px}.actions{gap:15px}.matchOpen .itemMain{padding:11px 10px}.matchOpen .itemMain b{font-size:1rem}.menuCard button{padding:13px 10px;gap:10px}.menuLabel{padding-right:15px}.sheetCard{padding-left:18px;padding-right:18px}}
+@media(min-width:600px){.app{padding-top:26px}.appFooter{bottom:calc(18px + max(env(safe-area-inset-bottom),var(--tg-safe-bottom,0px)))}.sheetChat .sheetCard{border-left:1px solid #404245;border-right:1px solid #404245}}
+@media(max-width:360px){.app{padding-left:14px;padding-right:14px}.hello{font-size:.9375rem}.topbarActions{gap:6px}.iconBtn{width:40px;height:40px}.nowCard{gap:8px;padding:10px}.nowIcon{width:32px;flex-basis:32px;height:40px}.nowCard small{font-size:0.75rem}.nowCard button{padding:8px;font-size:0.75rem}.sectionTitle{font-size:0.9375rem}.personMeta{left:15px;right:15px}.nameRow h2{font-size:1.75rem}.actionGroup{min-width:68px}.actions{gap:15px}.matchOpen .itemMain{padding:11px 10px}.matchOpen .itemMain b{font-size:1rem}.menuCard button{padding:13px 10px;gap:10px}.menuLabel{padding-right:15px}.sheetCard{padding-left:18px;padding-right:18px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.view.active{animation:none}button,.mood,.navIcon{transition:none}}
 
 /* Interests and the optional area map. */
