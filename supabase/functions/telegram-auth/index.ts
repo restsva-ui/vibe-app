@@ -1547,6 +1547,10 @@ Deno.serve(async (req: Request) => {
       const name = clean(p.name, 30);
       const age = Number(p.age);
       if (!name || !Number.isInteger(age) || age < 18 || age > 99) return json({ ok: false, error: "Invalid profile" }, 400);
+      const bio = clean(p.bio, 180);
+      if (!/[^\s\p{C}\p{Default_Ignorable_Code_Point}]/u.test(bio)) {
+        return json({ ok: false, error: "BIO_REQUIRED", field: "bio" }, 400);
+      }
 
       const payload: Record<string, unknown> = {
         user_id: user.id,
@@ -1555,7 +1559,7 @@ Deno.serve(async (req: Request) => {
         city: clean(p.city, 40) || null,
         gender: clean(p.gender, 30) || null,
         looking_for: clean(p.looking, 50) || null,
-        bio: clean(p.bio, 180) || null,
+        bio,
       };
       if (Object.hasOwn(p, "interests")) {
         const interests = parseInterests(p.interests);

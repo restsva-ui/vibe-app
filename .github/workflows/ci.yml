@@ -45,6 +45,12 @@ jobs:
           npm install --prefix /tmp/vybe-emoji-test jsdom@26.1.0 --no-audit --no-fund
           node scripts/test-chat-emoji.cjs /tmp/vybe-emoji-test
           node scripts/test-fullscreen-ui.cjs /tmp/vybe-emoji-test
+          node scripts/test-profile-bio-ui.cjs /tmp/vybe-emoji-test
+
+      - name: Test mandatory profile bio and API access boundaries
+        run: |
+          npx --yes esbuild@0.25.11 scripts/test-profile-bio-api.ts --bundle --platform=node --format=esm --outfile=/tmp/test-profile-bio-api.mjs
+          node /tmp/test-profile-bio-api.mjs
 
       - name: Test interests and map privacy boundaries
         run: |

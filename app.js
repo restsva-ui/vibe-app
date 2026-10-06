@@ -63,6 +63,8 @@ const I18N_PAIRS=[
   ["Створи свою анкету","Create your profile"],
   ["Анкета синхронізується з VYBE. Не додавай приватні контактні дані в опис.","Your profile syncs with VYBE. Do not put private contact details in your bio."],
   ["Коротко й живо — що варто знати про тебе?","A short, lively intro — what should people know about you?"],
+  ["Обов’язково: напиши кілька слів про себе.","Required: write a few words about yourself."],
+  ["Заповни «Про себе», щоб зберегти анкету.","Fill in About me to save your profile."],
   ["Чоловік / Жінка / Інше","Man / Woman / Other"],
   ["Напр. жінок 25–40","E.g. women 25–40"],
   ["Зберегти →","Save →"],
@@ -1058,7 +1060,7 @@ async function begin(){
     return;
   }
 
-  if(!profile)showOnboarding();else{renderProfile();await syncProfile();await loadPeople()}
+  if(!profile||!hasProfileBio(profile.bio))showOnboarding();else{renderProfile();await syncProfile();await loadPeople()}
   await loadEntitlements();await loadNotificationSettings();await loadMatches();await loadSupportCounts();renderNow();renderCard();renderMatches();renderChats();
   if(adminRole&&launchParams.get("admin")==="support"){
     await openAdminSupport(launchTicket);
@@ -1096,9 +1098,21 @@ window.addEventListener("focus",scheduleSupportCountRefresh);
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){scheduleSupportCountRefresh();if(window.__vybeAuth?.ok&&accountStatus==="active"){hydrateProfile().then(()=>renderProfile()).catch(()=>{});loadMatches();loadPeople()}}});
 
 let readOnboardingInterests=()=>[],onboardingMapPoint=null,mapController=null,mapViewState=null,mapMountToken=0;
+function hasProfileBio(value){return typeof value==="string"&&/[^\s\p{C}\p{Default_Ignorable_Code_Point}]/u.test(value)}
+function clearProfileBioError(){
+  $("obBio").removeAttribute("aria-invalid");$("obBio").setCustomValidity("");
+  $("obBioError").textContent="";$("obBioError").classList.add("hidden");
+}
+function showProfileBioError(){
+  const message=uiText("Заповни «Про себе», щоб зберегти анкету.");
+  $("obBio").setAttribute("aria-invalid","true");$("obBio").setCustomValidity(message);
+  $("obBioError").textContent=message;$("obBioError").classList.remove("hidden");$("obBio").focus();
+}
+$("obBio").addEventListener("input",()=>{if(hasProfileBio($("obBio").value))clearProfileBioError()});
 function showOnboarding(){
   const o=$("onboarding");o.classList.remove("hidden");
   $("obName").value=profile?.name||tuser?.first_name||"";$("obAge").value=profile?.age||"";$("obCity").value=profile?.city||"";$("obGender").value=profile?.gender||"";$("obLooking").value=profile?.looking||"";$("obBio").value=profile?.bio||"";
+  clearProfileBioError();
   $("obInterests").innerHTML=interestPickerMarkup("obInterestChoices",profile?.interests);
   readOnboardingInterests=bindInterestPicker("obInterestChoices",profile?.interests);
   onboardingMapPoint=profile?.map_enabled?snapMapPoint(Number(profile.map_lat),Number(profile.map_lng)):null;
@@ -1110,12 +1124,16 @@ $("obPickArea").onclick=pickProfileMapArea;
 $("saveProfile").onclick=async()=>{
   const age=+$("obAge").value;
   if(!$("obName").value.trim()||age<18||age>99){showAlert("Вкажи ім’я та вік 18+.");return}
+  const bio=$("obBio").value.trim();
+  if(!hasProfileBio(bio)){showProfileBioError();return}
+  clearProfileBioError();
   const mapEnabled=$("obMapEnabled").checked;
   if(mapEnabled&&!onboardingMapPoint){showAlert("Обери район на карті або вимкни показ на карті.");return}
-  const candidate={...profile,name:$("obName").value.trim(),age,city:$("obCity").value.trim(),gender:$("obGender").value.trim(),looking:$("obLooking").value.trim(),bio:$("obBio").value.trim(),interests:readOnboardingInterests(),map_enabled:mapEnabled,map_lat:mapEnabled?onboardingMapPoint.lat:null,map_lng:mapEnabled?onboardingMapPoint.lng:null};
+  const candidate={...profile,name:$("obName").value.trim(),age,city:$("obCity").value.trim(),gender:$("obGender").value.trim(),looking:$("obLooking").value.trim(),bio,interests:readOnboardingInterests(),map_enabled:mapEnabled,map_lat:mapEnabled?onboardingMapPoint.lat:null,map_lng:mapEnabled?onboardingMapPoint.lng:null};
   const button=$("saveProfile");button.disabled=true;
   try{
     const r=await secureApi("save_profile",{profile:candidate});
+    if(!r.ok&&r.error==="BIO_REQUIRED"){showProfileBioError();return}
     if(!r.ok){showAlert("Не вдалося зберегти анкету. Спробуй ще раз.");return}
     profile={...candidate,user_id:r.user_id};store("vybeProfile",profile);
     $("onboarding").classList.add("hidden");renderProfile();analyticsCapture("profile_saved",{interests_count:profile.interests.length});

@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>VYBE 0.9.48</title>
 <link rel="stylesheet" href="./styles.css?v=20261006-chatheader1">
-<link rel="stylesheet" href="./visual.css?v=20261006-logo1">
+<link rel="stylesheet" href="./visual.css?v=20261006-bio1">
 <script src="https://telegram.org/js/telegram-web-app.js">
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2">
@@ -145,9 +145,11 @@
 </label>
 <label>Кого шукаю<input id="obLooking" class="field" maxlength="50" placeholder="Напр. жінок 25–40">
 </label>
-<label>Про себе<textarea id="obBio" class="field" maxlength="180" placeholder="Коротко й живо — що варто знати про тебе?">
+<label for="obBio">Про себе <span class="requiredMark" aria-hidden="true">*</span><textarea id="obBio" class="field" maxlength="180" required aria-required="true" aria-describedby="obBioHint obBioError" placeholder="Коротко й живо — що варто знати про тебе?">
 </textarea>
 </label>
+<p id="obBioHint" class="fieldHint bioRequirement">Обов’язково: напиши кілька слів про себе.</p>
+<p id="obBioError" class="fieldError hidden" role="alert"></p>
 <div class="profileInterestsEditor"><h3>Мої інтереси</h3><p class="fieldHint">Обери до 8 — так легше знайти своїх людей.</p><div id="obInterests"></div></div>
 <div class="profileMapEditor"><label class="checkRow"><input id="obMapEnabled" type="checkbox"><span>Показувати мій район на карті</span></label><p class="fieldHint">Добровільно. Інші бачитимуть лише приблизний район.</p><button id="obPickArea" type="button" class="choice">Обрати район на карті</button><small id="obMapStatus" role="status"></small></div>
 <button id="saveProfile" class="primary">Зберегти</button>
@@ -427,7 +429,7 @@
 <script src="./chat-media.js?v=20261005-media2"></script>
 <script src="./chat-emoji.js?v=20261006-emoji1"></script>
 <script src="./photo-viewer.js?v=20261006-fullscreen1"></script>
-<script src="./app.js?v=20261006-fullscreen1">
+<script src="./app.js?v=20261006-bio1">
 </script>
 <script>
 (()=>{const splash=document.getElementById("vibeSplash");if(!splash)return;let closed=false;const close=()=>{if(closed)return;closed=true;splash.classList.add("done");setTimeout(()=>splash.remove(),450)};const start=()=>setTimeout(close,2050);if(document.readyState==="complete")start();else window.addEventListener("load",start,{once:true});setTimeout(close,3200)})();
