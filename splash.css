@@ -1,0 +1,8 @@
+/* Startup logo styles stay outside translated page text. */
+body:has(#vibeSplash){overflow:hidden}
+#vibeSplash{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#0d0f12;opacity:1;visibility:visible;transition:opacity .35s ease,visibility .35s ease}
+#vibeSplash.done{opacity:0;visibility:hidden;pointer-events:none}
+.vibeSplashLogo{width:min(76vw,300px);margin:0;padding:0;line-height:0}
+.vibeSplashArt{display:block;width:100%;height:auto;animation:vibeLogoFade .7s ease both}
+@keyframes vibeLogoFade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.vibeSplashArt{animation:none}}
