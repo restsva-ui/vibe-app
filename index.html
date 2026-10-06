@@ -22,6 +22,7 @@
 @media (prefers-reduced-motion:reduce){.vibeSplashArt{animation:vibeLogoFade .35s ease both}@keyframes vibeLogoFade{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:scale(1)}}}
 </style>
 <link rel="stylesheet" href="./chat-media.css?v=20261005-brand1">
+<link rel="stylesheet" href="./chat-emoji.css?v=20261006-emoji1">
 </head>
 <body>
 <svg class="iconSprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -421,7 +422,8 @@
 </div>
 <script src="./interests-map.js?v=20261005-brand1"></script>
 <script src="./chat-media.js?v=20261005-media2"></script>
-<script src="./app.js?v=20261005-brand1">
+<script src="./chat-emoji.js?v=20261006-emoji1"></script>
+<script src="./app.js?v=20261006-emoji1">
 </script>
 <script>
 (()=>{const splash=document.getElementById("vibeSplash");if(!splash)return;let closed=false;const close=()=>{if(closed)return;closed=true;splash.classList.add("done");setTimeout(()=>splash.remove(),450)};const start=()=>setTimeout(close,2050);if(document.readyState==="complete")start();else window.addEventListener("load",start,{once:true});setTimeout(close,3200)})();

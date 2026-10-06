@@ -37,6 +37,12 @@ jobs:
           node --check app.js
           node --check interests-map.js
           node --check chat-media.js
+          node --check chat-emoji.js
+
+      - name: Test chat emoji picker behavior
+        run: |
+          npm install --prefix /tmp/vybe-emoji-test jsdom@26.1.0 --no-audit --no-fund
+          node scripts/test-chat-emoji.cjs /tmp/vybe-emoji-test
 
       - name: Test interests and map privacy boundaries
         run: |
