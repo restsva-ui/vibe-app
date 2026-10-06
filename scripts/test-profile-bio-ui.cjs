@@ -3,13 +3,13 @@ const requireFixture=createRequire(path.join(process.argv[2]||'/tmp/vybe-emoji-t
 const {JSDOM}=requireFixture('jsdom');
 const html=fs.readFileSync('index.html','utf8');
 const source=['interests-map.js','chat-media.js','chat-emoji.js','photo-viewer.js','app.js'].map(file=>fs.readFileSync(file,'utf8')).join('\n;\n');
-const existing={name:'Test',age:28,city:'Київ',bio:'Люблю каву й гори',user_id:'owner',interests:['coffee'],map_enabled:false};
+const existing={name:'Test',age:28,city:'Київ',bio:'Люблю каву й гори',user_id:'owner',photo_url:'https://ui-fixture.invalid/photo.jpg',interests:['coffee'],map_enabled:false};
 const pause=()=>new Promise(resolve=>setTimeout(resolve,10));
 let checks=0;
 
 async function fixture(profile,language='uk'){
   const dom=new JSDOM(html,{url:'https://ui-fixture.invalid/',runScripts:'outside-only',pretendToBeVisual:true});
-  const w=dom.window,requests=[];let current=profile?{...profile}:null,rejectBio=false;
+  const w=dom.window,requests=[];let current=profile?{...profile}:null,rejectBio=false,rejectPhoto=null;
   w.console={...console,warn(){},error(){}};
   const noop=()=>{};
   w.Telegram={WebApp:{initData:'fixture-init-data',initDataUnsafe:{user:{id:1,first_name:'Test'}},ready:noop,expand:noop,setHeaderColor:noop,setBackgroundColor:noop,enableClosingConfirmation:noop,viewportHeight:844,BackButton:{show:noop,hide:noop,onClick:noop},HapticFeedback:{notificationOccurred:noop,impactOccurred:noop},showAlert:noop}};
@@ -22,7 +22,10 @@ async function fixture(profile,language='uk'){
       case 'profile_get':result={ok:true,user_id:'owner',profile:current};break;
       case 'save_profile':
         if(rejectBio){result={ok:false,error:'BIO_REQUIRED',field:'bio'};break;}
-        current={...current,...body.profile};result={ok:true,user_id:'owner',profile:current};break;
+        if(rejectPhoto){result={ok:false,error:rejectPhoto,field:'photo'};break;}
+        if(!current?.photo_url&&!current?.photo_present&&!body.profile_photo){result={ok:false,error:'PHOTO_REQUIRED',field:'photo'};break;}
+        current={...current,...body.profile,photo_present:true,photo_url:body.profile_photo?'https://ui-fixture.invalid/new-photo.webp':current?.photo_url||null};
+        result={ok:true,user_id:'owner',profile:current,photo_present:true,...(body.profile_photo?{photo_url:current.photo_url}:{})};break;
       case 'discover':result={ok:true,people:[],pagination:{has_more:false}};break;
       case 'matches':result={ok:true,matches:[],unread_total:0};break;
       case 'notification_settings_get':result={ok:true,preferences:{likes:true,matches:true,messages:true}};break;
@@ -36,11 +39,12 @@ async function fixture(profile,language='uk'){
   }
   await pause();
   assert.ok(requests.some(r=>r.action==='profile_get'),'fixture must complete real app authentication and hydration');
-  return {dom,w,d:w.document,requests,rejectNextBio(){rejectBio=true},saveCalls:()=>requests.filter(r=>r.action==='save_profile')};
+  return {dom,w,d:w.document,requests,rejectNextBio(){rejectBio=true},rejectNextPhoto(error='PHOTO_UPLOAD_FAILED'){rejectPhoto=error},acceptPhoto(){rejectPhoto=null},saveCalls:()=>requests.filter(r=>r.action==='save_profile')};
 }
 const input=(f,id,value)=>{const el=f.d.getElementById(id);el.value=value;el.dispatchEvent(new f.w.Event('input',{bubbles:true}));};
 
-(async()=>{
+module.exports={fixture,input,pause};
+if(require.main===module)(async()=>{
   let f=await fixture(null);
   try{
     const field=f.d.getElementById('obBio'),error=f.d.getElementById('obBioError'),form=f.d.getElementById('onboarding');
@@ -56,8 +60,9 @@ const input=(f,id,value)=>{const el=f.d.getElementById(id);el.value=value;el.dis
     input(f,'obBio','  Люблю каву й гори ☕  ');
     assert.equal(field.hasAttribute('aria-invalid'),false);assert.equal(field.validationMessage,'');assert.equal(error.classList.contains('hidden'),true);checks++;
     await f.d.getElementById('saveProfile').onclick();
-    assert.equal(f.saveCalls().length,1);assert.equal(f.saveCalls()[0].profile.bio,'Люблю каву й гори ☕');
-    assert.equal(form.classList.contains('hidden'),true);assert.equal(f.d.getElementById('saveProfile').disabled,false);checks++;
+    assert.equal(f.saveCalls().length,0,'new profiles still need a photo after the bio is valid');
+    assert.equal(form.classList.contains('hidden'),false);assert.match(f.d.getElementById('obPhotoError').textContent,/Додай фото/);
+    assert.equal(f.d.getElementById('saveProfile').disabled,false);checks++;
   }finally{await pause();f.dom.window.close()}
 
   f=await fixture({...existing,bio:'   '});

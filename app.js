@@ -65,6 +65,10 @@ const I18N_PAIRS=[
   ["Коротко й живо — що варто знати про тебе?","A short, lively intro — what should people know about you?"],
   ["Обов’язково: напиши кілька слів про себе.","Required: write a few words about yourself."],
   ["Заповни «Про себе», щоб зберегти анкету.","Fill in About me to save your profile."],
+  ["Фото для анкети","Profile photo preview"],
+  ["Обов’язково. JPG, PNG або WebP до 12 МБ.","Required. JPG, PNG or WebP up to 12 MB."],
+  ["Додай фото, щоб зберегти анкету.","Add a photo to save your profile."],
+  ["Не вдалося зберегти фото. Спробуй ще раз.","Could not save your photo. Try again."],
   ["Чоловік / Жінка / Інше","Man / Woman / Other"],
   ["Напр. жінок 25–40","E.g. women 25–40"],
   ["Зберегти →","Save →"],
@@ -1033,7 +1037,7 @@ async function hydrateProfile(){
   restrictionReason=r.restriction_reason||null;
   if(r.realtime_topic){realtimeUserTopic=r.realtime_topic;setupUserRealtime(realtimeUserTopic)}
   if(accountStatus==="active")chatMedia?.start();else chatMedia?.stop();
-  if(r.profile){profile={name:r.profile.name,age:r.profile.age,city:r.profile.city||"",gender:r.profile.gender||"",looking:r.profile.looking_for||"",bio:r.profile.bio||"",photo_url:r.profile.photo_url||null,verified:r.profile.verified===true,user_id:r.user_id,interests:normalizeInterests(r.profile.interests),map_enabled:r.profile.map_enabled===true,map_lat:r.profile.map_lat??null,map_lng:r.profile.map_lng??null};store("vybeProfile",profile)}
+  if(r.profile){profile={name:r.profile.name,age:r.profile.age,city:r.profile.city||"",gender:r.profile.gender||"",looking:r.profile.looking_for||"",bio:r.profile.bio||"",photo_url:r.profile.photo_url||null,photo_present:r.profile.photo_present===true,verified:r.profile.verified===true,user_id:r.user_id,interests:normalizeInterests(r.profile.interests),map_enabled:r.profile.map_enabled===true,map_lat:r.profile.map_lat??null,map_lng:r.profile.map_lng??null};store("vybeProfile",profile)}
 }
 async function begin(){
   if(validNow()){
@@ -1060,7 +1064,7 @@ async function begin(){
     return;
   }
 
-  if(!profile||!hasProfileBio(profile.bio))showOnboarding();else{renderProfile();await syncProfile();await loadPeople()}
+  if(!profile||!hasProfileBio(profile.bio)||!hasProfilePhoto())showOnboarding();else{renderProfile();await syncProfile();await loadPeople()}
   await loadEntitlements();await loadNotificationSettings();await loadMatches();await loadSupportCounts();renderNow();renderCard();renderMatches();renderChats();
   if(adminRole&&launchParams.get("admin")==="support"){
     await openAdminSupport(launchTicket);
@@ -1098,6 +1102,40 @@ window.addEventListener("focus",scheduleSupportCountRefresh);
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){scheduleSupportCountRefresh();if(window.__vybeAuth?.ok&&accountStatus==="active"){hydrateProfile().then(()=>renderProfile()).catch(()=>{});loadMatches();loadPeople()}}});
 
 let readOnboardingInterests=()=>[],onboardingMapPoint=null,mapController=null,mapViewState=null,mapMountToken=0;
+let onboardingPhoto=null,onboardingPhotoBusy=false,onboardingPhotoEpoch=0;
+function hasProfilePhoto(){return profile?.photo_present===true||!!profile?.photo_url}
+function clearProfilePhotoError(){
+  $("obPhotoBtn").removeAttribute("aria-invalid");
+  $("obPhotoError").textContent="";$("obPhotoError").classList.add("hidden");
+}
+function showProfilePhotoError(message="Додай фото, щоб зберегти анкету."){
+  $("obPhotoBtn").setAttribute("aria-invalid","true");
+  $("obPhotoError").textContent=uiText(message);$("obPhotoError").classList.remove("hidden");$("obPhotoBtn").focus();
+}
+function renderOnboardingPhoto(){
+  const image=$("obPhotoPreview"),src=onboardingPhoto?.preview_url||profile?.photo_url;
+  image.classList.toggle("hidden",!src);$("obPhotoPlaceholder").classList.toggle("hidden",!!src);
+  if(src)image.src=src;else image.removeAttribute("src");
+  $("obPhotoBtn").textContent=uiText(onboardingPhotoBusy?"Обробляємо фото…":onboardingPhoto||hasProfilePhoto()?"Змінити фото":"Додати фото");
+  $("obPhotoBtn").disabled=onboardingPhotoBusy;$("saveProfile").disabled=onboardingPhotoBusy;
+}
+async function selectOnboardingPhoto(file){
+  if(!file)return;
+  const epoch=++onboardingPhotoEpoch;
+  onboardingPhotoBusy=true;clearProfilePhotoError();renderOnboardingPhoto();
+  try{
+    const prepared=await prepareProfilePhoto(file);
+    if(epoch!==onboardingPhotoEpoch)return;
+    onboardingPhoto={mime_type:prepared.mime,image_base64:prepared.image_base64,preview_url:"data:"+prepared.mime+";base64,"+prepared.image_base64};
+    clearProfilePhotoError();
+  }catch(e){
+    if(epoch===onboardingPhotoEpoch)showProfilePhotoError("Не вдалося завантажити фото. Обери JPG/PNG/WebP до 12 МБ.");
+  }finally{
+    if(epoch===onboardingPhotoEpoch){onboardingPhotoBusy=false;renderOnboardingPhoto();if($("obPhotoBtn").getAttribute("aria-invalid")==="true")$("obPhotoBtn").focus()}
+  }
+}
+$("obPhotoBtn").onclick=()=>{$("obPhotoInput").value="";$("obPhotoInput").click()};
+$("obPhotoInput").onchange=()=>selectOnboardingPhoto($("obPhotoInput").files?.[0]);
 function hasProfileBio(value){return typeof value==="string"&&/[^\s\p{C}\p{Default_Ignorable_Code_Point}]/u.test(value)}
 function clearProfileBioError(){
   $("obBio").removeAttribute("aria-invalid");$("obBio").setCustomValidity("");
@@ -1113,6 +1151,8 @@ function showOnboarding(){
   const o=$("onboarding");o.classList.remove("hidden");
   $("obName").value=profile?.name||tuser?.first_name||"";$("obAge").value=profile?.age||"";$("obCity").value=profile?.city||"";$("obGender").value=profile?.gender||"";$("obLooking").value=profile?.looking||"";$("obBio").value=profile?.bio||"";
   clearProfileBioError();
+  onboardingPhotoEpoch++;onboardingPhoto=null;onboardingPhotoBusy=false;
+  $("obPhotoInput").value="";clearProfilePhotoError();renderOnboardingPhoto();
   $("obInterests").innerHTML=interestPickerMarkup("obInterestChoices",profile?.interests);
   readOnboardingInterests=bindInterestPicker("obInterestChoices",profile?.interests);
   onboardingMapPoint=profile?.map_enabled?snapMapPoint(Number(profile.map_lat),Number(profile.map_lng)):null;
@@ -1122,23 +1162,30 @@ function updateOnboardingMapStatus(){$("obMapStatus").textContent=uiText(onboard
 $("obMapEnabled").onchange=()=>{if($("obMapEnabled").checked&&!onboardingMapPoint)pickProfileMapArea();if(!$("obMapEnabled").checked)onboardingMapPoint=null;updateOnboardingMapStatus()};
 $("obPickArea").onclick=pickProfileMapArea;
 $("saveProfile").onclick=async()=>{
+  if(onboardingPhotoBusy||$("saveProfile").disabled)return;
   const age=+$("obAge").value;
   if(!$("obName").value.trim()||age<18||age>99){showAlert("Вкажи ім’я та вік 18+.");return}
   const bio=$("obBio").value.trim();
   if(!hasProfileBio(bio)){showProfileBioError();return}
   clearProfileBioError();
+  if(!hasProfilePhoto()&&!onboardingPhoto){showProfilePhotoError();return}
+  clearProfilePhotoError();
   const mapEnabled=$("obMapEnabled").checked;
   if(mapEnabled&&!onboardingMapPoint){showAlert("Обери район на карті або вимкни показ на карті.");return}
   const candidate={...profile,name:$("obName").value.trim(),age,city:$("obCity").value.trim(),gender:$("obGender").value.trim(),looking:$("obLooking").value.trim(),bio,interests:readOnboardingInterests(),map_enabled:mapEnabled,map_lat:mapEnabled?onboardingMapPoint.lat:null,map_lng:mapEnabled?onboardingMapPoint.lng:null};
-  const button=$("saveProfile");button.disabled=true;
+  const button=$("saveProfile");button.disabled=true;$("obPhotoBtn").disabled=true;
   try{
-    const r=await secureApi("save_profile",{profile:candidate});
+    const photo=onboardingPhoto?{profile_photo:{mime_type:onboardingPhoto.mime_type,image_base64:onboardingPhoto.image_base64}}:{};
+    const r=await secureApi("save_profile",{profile:candidate,...photo});
     if(!r.ok&&r.error==="BIO_REQUIRED"){showProfileBioError();return}
+    if(!r.ok&&r.error==="PHOTO_REQUIRED"){showProfilePhotoError();return}
+    if(!r.ok&&(r.field==="photo"||r.error==="PHOTO_UPLOAD_FAILED")){showProfilePhotoError("Не вдалося зберегти фото. Спробуй ще раз.");return}
     if(!r.ok){showAlert("Не вдалося зберегти анкету. Спробуй ще раз.");return}
-    profile={...candidate,user_id:r.user_id};store("vybeProfile",profile);
+    profile={...candidate,user_id:r.user_id,photo_url:r.photo_url||candidate.photo_url||null,photo_present:r.photo_present===true||hasProfilePhoto()};store("vybeProfile",profile);
+    onboardingPhoto=null;$("obPhotoInput").value="";
     $("onboarding").classList.add("hidden");renderProfile();analyticsCapture("profile_saved",{interests_count:profile.interests.length});
     await loadPeople();tg?.HapticFeedback?.notificationOccurred("success");
-  }finally{button.disabled=false}
+  }finally{button.disabled=false;$("obPhotoBtn").disabled=false;if($("obPhotoBtn").getAttribute("aria-invalid")==="true")$("obPhotoBtn").focus()}
 };
 $("editProfile").onclick=showOnboarding;
 function renderProfile(){
@@ -1162,8 +1209,7 @@ function renderProfile(){
       avatar.classList.remove("hasPhoto");
     }
   }
-  const remove=$("removePhotoBtn");if(remove)remove.classList.toggle("hidden",!profile.photo_url);
-  const photoAction=$("photoBtn");if(photoAction)photoAction.textContent=uiText(profile.photo_url?"Змінити фото":"Додати фото");
+  const photoAction=$("photoBtn");if(photoAction)photoAction.textContent=uiText(hasProfilePhoto()?"Змінити фото":"Додати фото");
   const adminBtn=$("adminFinanceBtn");if(adminBtn)adminBtn.classList.toggle("hidden",!adminRole);
   const adminSupport=$("adminSupportBtn");if(adminSupport)adminSupport.classList.toggle("hidden",!adminRole);
   const adminModeration=$("adminModerationBtn");if(adminModeration)adminModeration.classList.toggle("hidden",!adminRole);
@@ -1208,24 +1254,15 @@ async function uploadProfilePhoto(file){
     if(btn)btn.textContent="Завантажуємо…";
     const r=await secureApi("photo_upload",{mime_type:prepared.mime,image_base64:prepared.image_base64});
     if(!r.ok)throw new Error(r.error||"upload_failed");
-    profile={...profile,photo_url:r.photo_url||null};store("vybeProfile",profile);renderProfile();await loadPeople();
+    profile={...profile,photo_url:r.photo_url||null,photo_present:r.photo_present===true||!!r.photo_url};store("vybeProfile",profile);renderProfile();await loadPeople();
     analyticsCapture("photo_updated");
     tg?.HapticFeedback?.notificationOccurred("success");showAlert("Фото профілю оновлено ✅");
   }catch(e){
     console.error("VYBE photo upload",e);
     showAlert("Не вдалося завантажити фото. Обери JPG/PNG/WebP до 12 МБ.");
   }finally{
-    if(btn){btn.disabled=false;btn.textContent=profile?.photo_url?"Змінити фото":"Додати фото"}
+    if(btn){btn.disabled=false;btn.textContent=uiText(hasProfilePhoto()?"Змінити фото":"Додати фото")}
   }
-}
-async function removeProfilePhoto(){
-  if(!profile?.photo_url)return;
-  const ok=await confirmAction("Видалити фото профілю?");
-  if(!ok)return;
-  const r=await secureApi("photo_remove");
-  if(!r.ok){showAlert("Не вдалося видалити фото.");return}
-  profile={...profile,photo_url:null};store("vybeProfile",profile);renderProfile();await loadPeople();
-  analyticsCapture("photo_removed");
 }
 
 function openDiscoverFilters(options={}){
@@ -2165,7 +2202,7 @@ const settingsBtn=document.getElementById("settingsBtn");if(settingsBtn)settings
 const adminFinanceBtn=document.getElementById("adminFinanceBtn");if(adminFinanceBtn)adminFinanceBtn.onclick=openAdminFinance;
 const adminSupportBtn=document.getElementById("adminSupportBtn");if(adminSupportBtn)adminSupportBtn.onclick=openAdminSupport;
 const adminModerationBtn=document.getElementById("adminModerationBtn");if(adminModerationBtn)adminModerationBtn.onclick=()=>openAdminModeration();
-const photoBtn=document.getElementById("photoBtn"),removePhotoBtn=document.getElementById("removePhotoBtn");
+const photoBtn=document.getElementById("photoBtn");
 if(photoBtn)photoBtn.onclick=()=>{
   const input=document.createElement("input");
   input.type="file";
@@ -2173,7 +2210,6 @@ if(photoBtn)photoBtn.onclick=()=>{
   input.onchange=async()=>{const file=input.files?.[0];if(file)await uploadProfilePhoto(file)};
   input.click();
 };
-if(removePhotoBtn)removePhotoBtn.onclick=removeProfilePhoto;
 
 function destroyVibeMap(){
   mapMountToken++;

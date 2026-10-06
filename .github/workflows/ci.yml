@@ -40,17 +40,20 @@ jobs:
           node --check chat-emoji.js
           node --check photo-viewer.js
 
-      - name: Test chat emoji and fullscreen UI behavior
+      - name: Test chat emoji, fullscreen and profile completion UI
         run: |
           npm install --prefix /tmp/vybe-emoji-test jsdom@26.1.0 --no-audit --no-fund
           node scripts/test-chat-emoji.cjs /tmp/vybe-emoji-test
           node scripts/test-fullscreen-ui.cjs /tmp/vybe-emoji-test
           node scripts/test-profile-bio-ui.cjs /tmp/vybe-emoji-test
+          node scripts/test-profile-photo-ui.cjs /tmp/vybe-emoji-test
 
-      - name: Test mandatory profile bio and API access boundaries
+      - name: Test mandatory bio and photo with API access boundaries
         run: |
           npx --yes esbuild@0.25.11 scripts/test-profile-bio-api.ts --bundle --platform=node --format=esm --outfile=/tmp/test-profile-bio-api.mjs
           node /tmp/test-profile-bio-api.mjs
+          npx --yes esbuild@0.25.11 scripts/test-profile-photo-api.ts --bundle --platform=node --format=esm --outfile=/tmp/test-profile-photo-api.mjs
+          node /tmp/test-profile-photo-api.mjs
 
       - name: Test interests and map privacy boundaries
         run: |

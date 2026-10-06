@@ -149,6 +149,16 @@ button:not(:disabled):active{filter:brightness(1.12)}
 .onboarding .bioRequirement{margin-top:-7px}
 .onboarding .fieldError{font-size:.8125rem;color:#f1a69e;margin:6px 0 12px;line-height:1.45}
 .onboarding .field[aria-invalid="true"]{border-color:#f1a69e;box-shadow:0 0 0 3px #f1a69e15}
+.onboardingPhoto{margin:20px 0;padding:16px;border:1px solid var(--line);border-radius:18px;background:var(--bg)}
+.onboardingPhotoLabel{font-size:.875rem;color:#bcc7d1;margin-bottom:12px}
+.onboardingPhotoRow{display:flex;align-items:center;gap:14px}
+.onboardingPhotoPreview{width:76px;height:76px;flex:0 0 76px;border-radius:19px;overflow:hidden;display:grid;place-items:center;background:var(--surface);color:var(--muted);border:1px solid var(--line)}
+.onboardingPhotoPreview img{width:100%;height:100%;object-fit:cover}
+.onboardingPhotoPreview svg{width:30px;height:30px}
+.onboardingPhotoRow .choice{flex:1;min-width:0;font-size:.875rem;padding:12px 8px}
+.onboardingPhoto .fieldHint{margin:12px 0 0}
+.onboardingPhoto .fieldError{margin:10px 0 0}
+.onboardingPhoto [aria-invalid="true"]{border-color:#f1a69e;box-shadow:0 0 0 3px #f1a69e15}
 .ageModal{padding:28px;position:relative;background:var(--card)}
 .ageModal .logoMark{border-radius:20px;background:transparent;box-shadow:none;width:80px;height:80px;overflow:hidden}
 .ageModal h1{font-size:2.375rem;line-height:1.1;letter-spacing:-.05em;margin:18px 0 12px}

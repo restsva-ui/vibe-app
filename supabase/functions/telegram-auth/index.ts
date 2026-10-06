@@ -1037,6 +1037,27 @@ function hasUnsafeProfileMetadata(bytes: Uint8Array, mime: string): boolean {
   return true;
 }
 
+function parseProfilePhotoUpload(value: any): { bytes: Uint8Array; mime: string } | { error: string; status: number } {
+  const declaredMime = clean(value?.mime_type, 40).toLowerCase();
+  const base64 = typeof value?.image_base64 === "string" ? value.image_base64.trim() : "";
+  if (!base64 || base64.length > Math.ceil(PROFILE_MAX_BYTES * 4 / 3) + 32) {
+    return { error: "Image is too large", status: 413 };
+  }
+  let bytes: Uint8Array;
+  try { bytes = base64ToBytes(base64); } catch { return { error: "Invalid image encoding", status: 400 }; }
+  if (!bytes.length || bytes.length > PROFILE_MAX_BYTES) return { error: "Image is too large", status: 413 };
+  const detected = detectedImageType(bytes);
+  if (!detected || detected !== declaredMime || !["image/webp", "image/jpeg"].includes(detected)) {
+    return { error: "Unsupported image", status: 400 };
+  }
+  const dimensions = profileImageDimensions(bytes, detected);
+  if (!dimensions || dimensions.width !== 900 || dimensions.height !== 900) {
+    return { error: "Profile image must be normalized to 900x900", status: 400 };
+  }
+  if (hasUnsafeProfileMetadata(bytes, detected)) return { error: "Image metadata is not allowed", status: 400 };
+  return { bytes, mime: detected };
+}
+
 const encodeStoragePath = (path: string) =>
   path.split("/").map((part) => encodeURIComponent(part)).join("/");
 
@@ -1082,6 +1103,11 @@ function profilePhotoObjectPath(value: string | null | undefined): string | null
     return null;
   }
   return PROFILE_OBJECT_RE.test(path) ? path : null;
+}
+
+function ownedProfilePhotoPath(profile: any, userId: string): string | null {
+  const path = profilePhotoObjectPath(profile?.photo_url);
+  return path?.startsWith(`${userId}/`) ? path : null;
 }
 
 async function signProfilePhotoUrls(values: Array<string | null | undefined>) {
@@ -1212,7 +1238,11 @@ async function deleteProfilePhotoObjectPath(objectPath: string): Promise<boolean
 
 async function deleteProfilePhotoObjectWithRetry(objectPath: string) {
   for (let attempt = 1; attempt <= 3; attempt += 1) {
-    if (await deleteProfilePhotoObjectPath(objectPath)) return true;
+    try {
+      if (await deleteProfilePhotoObjectPath(objectPath)) return true;
+    } catch {
+      console.warn("profile_photo:object_delete_unavailable", { attempt });
+    }
     if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 180 * attempt));
   }
   return false;
@@ -1476,7 +1506,7 @@ Deno.serve(async (req: Request) => {
         account_status: user.account_status ?? "active",
         restriction_reason: user.restriction_reason ?? null,
         restricted_at: user.restricted_at ?? null,
-        profile: withSignedProfilePhoto(rawProfile, signedPhotos),
+        profile: withSignedProfilePhoto(rawProfile ? { ...rawProfile, photo_present: !!ownedProfilePhotoPath(rawProfile, user.id) } : rawProfile, signedPhotos),
       });
     }
 
@@ -1484,30 +1514,9 @@ Deno.serve(async (req: Request) => {
       const profile = await getProfile(db, user.id);
       if (!profile) return json({ ok: false, error: "Create profile first" }, 409);
 
-      const declaredMime = clean(body.mime_type, 40).toLowerCase();
-      const base64 = typeof body.image_base64 === "string" ? body.image_base64.trim() : "";
-      if (!base64 || base64.length > Math.ceil(PROFILE_MAX_BYTES * 4 / 3) + 32) {
-        return json({ ok: false, error: "Image is too large" }, 413);
-      }
-
-      let bytes: Uint8Array;
-      try { bytes = base64ToBytes(base64); } catch { return json({ ok: false, error: "Invalid image encoding" }, 400); }
-      if (!bytes.length || bytes.length > PROFILE_MAX_BYTES) return json({ ok: false, error: "Image is too large" }, 413);
-
-      const detected = detectedImageType(bytes);
-      if (!detected || detected !== declaredMime || !["image/webp","image/jpeg"].includes(detected)) {
-        return json({ ok: false, error: "Unsupported image" }, 400);
-      }
-
-      const dimensions = profileImageDimensions(bytes, detected);
-      if (!dimensions || dimensions.width !== 900 || dimensions.height !== 900) {
-        return json({ ok: false, error: "Profile image must be normalized to 900x900" }, 400);
-      }
-      if (hasUnsafeProfileMetadata(bytes, detected)) {
-        return json({ ok: false, error: "Image metadata is not allowed" }, 400);
-      }
-
-      const uploaded = await uploadProfilePhoto(user.id, bytes, detected);
+      const photo = parseProfilePhotoUpload(body);
+      if ("error" in photo) return json({ ok: false, error: photo.error }, photo.status);
+      const uploaded = await uploadProfilePhoto(user.id, photo.bytes, photo.mime);
       try {
         await db(`profiles?user_id=eq.${encodeURIComponent(user.id)}`, {
           method: "PATCH",
@@ -1518,7 +1527,8 @@ Deno.serve(async (req: Request) => {
         throw e;
       }
 
-      const cleanupOk = await cleanupProfilePhotoFolder(user.id, uploaded.objectPath);
+      const previousPhoto = ownedProfilePhotoPath(profile, user.id);
+      const cleanupOk = !previousPhoto || await deleteProfilePhotoObjectWithRetry(previousPhoto);
       if (!cleanupOk) {
         console.warn("profile_photo:cleanup_pending", { user_id: user.id });
       }
@@ -1527,19 +1537,13 @@ Deno.serve(async (req: Request) => {
       return json({
         ok: true,
         photo_url: signed.get(uploaded.objectPath) ?? null,
+        photo_present: true,
         cleanup_ok: cleanupOk,
       });
     }
 
     if (action === "photo_remove") {
-      const profile = await getProfile(db, user.id);
-      if (!profile) return json({ ok: false, error: "Profile not found" }, 404);
-      await db(`profiles?user_id=eq.${encodeURIComponent(user.id)}`, {
-        method: "PATCH",
-        body: JSON.stringify({ photo_url: null, updated_at: new Date().toISOString() }),
-      });
-      const cleanupOk = await cleanupProfilePhotoFolder(user.id, null);
-      return json({ ok: true, photo_url: null, cleanup_ok: cleanupOk });
+      return json({ ok: false, error: "PHOTO_REQUIRED", field: "photo" }, 400);
     }
 
     if (action === "save_profile") {
@@ -1572,14 +1576,46 @@ Deno.serve(async (req: Request) => {
         Object.assign(payload, area);
       }
       const existing = await getProfile(db, user.id);
-      const rows = existing
-        ? await db(`profiles?user_id=eq.${encodeURIComponent(user.id)}`, { method: "PATCH", body: JSON.stringify(payload) })
-        : await db("profiles", { method: "POST", body: JSON.stringify(payload) });
+      const existingPhoto = ownedProfilePhotoPath(existing, user.id);
+      const hasNewPhoto = Object.hasOwn(body, "profile_photo");
+      if (!existingPhoto && !hasNewPhoto) return json({ ok: false, error: "PHOTO_REQUIRED", field: "photo" }, 400);
+      let uploadedPhoto: string | null = null;
+      let uploadedPhotoUrl: string | null = null;
+      if (hasNewPhoto) {
+        const photo = parseProfilePhotoUpload(body.profile_photo);
+        if ("error" in photo) return json({ ok: false, error: photo.error, field: "photo" }, photo.status);
+        const photoLimit = await enforceActionRateLimit(String(user.id), "photo_upload");
+        if (photoLimit) return photoLimit;
+        try {
+          const uploaded = await uploadProfilePhoto(user.id, photo.bytes, photo.mime);
+          uploadedPhoto = uploaded.objectPath;
+          const signed = await signProfilePhotoUrls([uploadedPhoto]);
+          uploadedPhotoUrl = signed.get(uploadedPhoto) ?? null;
+          if (!uploadedPhotoUrl) throw new Error("Profile photo signing failed");
+          payload.photo_url = uploadedPhoto;
+        } catch (e) {
+          if (uploadedPhoto) await deleteProfilePhotoObjectWithRetry(uploadedPhoto);
+          console.error("profile_photo:registration_upload_failed", { error: String(e instanceof Error ? e.message : e).slice(0, 180) });
+          return json({ ok: false, error: "PHOTO_UPLOAD_FAILED", field: "photo" }, 503);
+        }
+      }
+      let rows: any;
+      try {
+        rows = existing
+          ? await db(`profiles?user_id=eq.${encodeURIComponent(user.id)}`, { method: "PATCH", body: JSON.stringify(payload) })
+          : await db("profiles", { method: "POST", body: JSON.stringify(payload) });
+      } catch (e) {
+        if (uploadedPhoto) await deleteProfilePhotoObjectWithRetry(uploadedPhoto);
+        throw e;
+      }
+      if (uploadedPhoto && existingPhoto && existingPhoto !== uploadedPhoto) {
+        await deleteProfilePhotoObjectWithRetry(existingPhoto);
+      }
       const referral = await db(`referrals?referred_id=eq.${encodeURIComponent(user.id)}&activated_at=is.null&select=id&limit=1`);
       if (referral?.length) {
         await db(`referrals?id=eq.${encodeURIComponent(referral[0].id)}`, { method: "PATCH", body: JSON.stringify({ activated_at: new Date().toISOString() }) });
       }
-      return json({ ok: true, user_id: user.id, profile: rows?.[0] ?? payload });
+      return json({ ok: true, user_id: user.id, profile: rows?.[0] ?? payload, photo_present: true, ...(uploadedPhotoUrl ? { photo_url: uploadedPhotoUrl } : {}) });
     }
 
     if (action === "referral_claim") {

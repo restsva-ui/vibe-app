@@ -4,6 +4,7 @@ import { createHmac } from "node:crypto";
 const originalDeno = (globalThis as any).Deno;
 const originalFetch = globalThis.fetch;
 const userId = "11111111-1111-4111-8111-111111111111";
+const photoPath = `${userId}/22222222-2222-4222-8222-222222222222.jpg`;
 const botToken = "profile-bio-test-token";
 let handler: (req: Request) => Promise<Response>;
 let existing: Record<string, any> | null = null;
@@ -72,13 +73,14 @@ try {
     assert.equal(profileRequests.length, 0, "invalid bio must be rejected before reading or writing a profile");
     checks++;
   }
+  existing = { name: "Test", age: 28, bio: null, photo_url: photoPath };
   let response = await handler!(request("  Люблю каву, гори й нові знайомства ☕  "));
   assert.equal(response.status, 200);
   assert.equal(existing?.bio, "Люблю каву, гори й нові знайомства ☕");
-  assert.equal(profileRequests.at(-1)?.method, "POST");
+  assert.equal(profileRequests.at(-1)?.method, "PATCH");
   checks++;
 
-  existing!.photo_url = "existing-photo";
+  existing!.photo_url = photoPath;
   existing!.verified = true;
   const before = structuredClone(existing);
   profileRequests.length = 0;
@@ -92,7 +94,7 @@ try {
   assert.equal(response.status, 200);
   assert.equal(profileRequests.at(-1)?.method, "PATCH");
   assert.equal(existing?.bio, "Кава ☕");
-  assert.equal(existing?.photo_url, "existing-photo");
+  assert.equal(existing?.photo_url, photoPath);
   assert.equal(existing?.verified, true);
   checks++;
 
@@ -101,11 +103,11 @@ try {
   assert.equal(existing?.bio.length, 180, "retain the existing server length limit");
   checks++;
 
-  existing = { name: "Legacy", age: 41, bio: null, photo_url: "legacy-photo" };
+  existing = { name: "Legacy", age: 41, bio: null, photo_url: photoPath };
   response = await handler!(request("Люблю мандрівки"));
   assert.equal(response.status, 200);
   assert.equal(existing?.bio, "Люблю мандрівки");
-  assert.equal(existing?.photo_url, "legacy-photo");
+  assert.equal(existing?.photo_url, photoPath);
   checks++;
 
   profileRequests.length = 0;
