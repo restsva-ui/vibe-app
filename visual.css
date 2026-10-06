@@ -184,9 +184,6 @@ button:not(:disabled):active{filter:brightness(1.12)}
 .sheetChat .chatTitle h2{font-size:1.188rem;line-height:1.2;letter-spacing:-.025em}
 .sheetChat .chatHeader small{font-size:0.75rem;color:var(--muted)}
 .sheetChat .chatSafety{width:34px;height:34px;flex:0 0 34px;border:0;background:var(--surface)}
-.sheetChat .chatProfileAction{flex:0 0 auto;margin:10px 0 3px;padding:9px 11px;min-height:38px;background:var(--card);border-color:var(--line);color:#b5c2ce;border-radius:12px;font-size:0.8125rem;font-weight:500}
-.chatProfileAction>span{display:flex;align-items:center;gap:6px;font-size:0.8125rem;color:inherit}
-.chatProfileAction .uiIcon{width:16px;height:16px}
 .sheetChat .chatMessages{flex:1;min-height:0;max-height:none;padding:22px 0 18px;gap:17px;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#465663 transparent}
 .msgRow{max-width:90%;gap:7px}
 .msgAvatar{width:27px;height:27px;font-size:0.75rem;border-radius:10px;margin-bottom:18px}

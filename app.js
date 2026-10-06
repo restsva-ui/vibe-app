@@ -1505,6 +1505,7 @@ async function openChat(matchId,name,userId,options={}){
   }).join("");
 
   const idlePresence=peerProfile?.online?uiText("● онлайн"):chatConnectionLabel();
+  const peerProfileLabel=escapeHtml(uiText("Переглянути анкету")+": "+peerName);
   if(keepDom){
     const template=document.createElement('template');template.innerHTML=msgs;
     const box=$("chatMessages"),ids=new Set(messages.map(m=>String(m.id)));
@@ -1516,7 +1517,7 @@ async function openChat(matchId,name,userId,options={}){
   }else{
     chatEmoji?.dispose();
     chatMedia?.disposeRecording();
-  content.innerHTML='<div class="chatHeader"><button id="chatPeerBtn" class="chatPeer" type="button">'+avatarMarkup(peerPhoto,peerName,'chatAvatar')+'<div class="chatTitle"><h2>'+escapeHtml(peerName)+'</h2><small><span id="chatPresence" data-idle-label="'+escapeHtml(idlePresence)+'">'+escapeHtml(idlePresence)+'</span></small></div></button><button id="chatSafetyBtn" class="chatSafety" aria-label="Безпека">⋯</button></div><button id="chatProfileBtn" class="chatProfileAction" type="button"><span>'+uiIcon("user")+uiText("Переглянути анкету")+'</span>'+uiIcon("chevron")+'</button><div id="chatMessages" class="chatMessages">'+(msgs||'<div class="chatEmpty">Почни розмову 👋</div>')+'</div><div class="chatComposer"><textarea id="chatMessage" class="field" maxlength="2000" placeholder="Напиши повідомлення…"></textarea><button id="sendMessage" class="primary sendButton" aria-label="'+escapeHtml(uiText("Надіслати"))+'" title="'+escapeHtml(uiText("Надіслати"))+'">'+uiIcon("send")+'</button></div>';
+  content.innerHTML='<div class="chatHeader"><button id="chatPeerBtn" class="chatPeer" type="button" aria-label="'+peerProfileLabel+'" title="'+peerProfileLabel+'">'+avatarMarkup(peerPhoto,peerName,'chatAvatar')+'<div class="chatTitle"><h2>'+escapeHtml(peerName)+'</h2><small><span id="chatPresence" data-idle-label="'+escapeHtml(idlePresence)+'">'+escapeHtml(idlePresence)+'</span></small></div></button><button id="chatSafetyBtn" class="chatSafety" aria-label="Безпека">⋯</button></div><div id="chatMessages" class="chatMessages">'+(msgs||'<div class="chatEmpty">Почни розмову 👋</div>')+'</div><div class="chatComposer"><textarea id="chatMessage" class="field" maxlength="2000" placeholder="Напиши повідомлення…"></textarea><button id="sendMessage" class="primary sendButton" aria-label="'+escapeHtml(uiText("Надіслати"))+'" title="'+escapeHtml(uiText("Надіслати"))+'">'+uiIcon("send")+'</button></div>';
   }
   sheet.classList.add("sheetChat");
   sheet.classList.remove("hidden");
@@ -1525,7 +1526,6 @@ async function openChat(matchId,name,userId,options={}){
 
   const openPeerProfile=()=>openPublicProfile(userId,{returnChat:{matchId,name:peerName,userId}});
   const peer=$("chatPeerBtn");if(peer)peer.onclick=openPeerProfile;
-  const profileBtn=$("chatProfileBtn");if(profileBtn)profileBtn.onclick=openPeerProfile;
   const safety=$("chatSafetyBtn");if(safety)safety.onclick=()=>openUserSafety(userId,peerName);
   const field=$("chatMessage");if(field&&previousDraft)field.value=previousDraft;
   bindTyping(key);
