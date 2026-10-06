@@ -16,14 +16,14 @@
     const card=stack.querySelector(".personCard");
     if(!view.classList.contains("active")||!card)return;
     const metadata=card.querySelector(".personMeta");
-    const minimum=Math.max(260,(metadata?.getBoundingClientRect().height||0)+48);
+    const minimum=Math.max(180,(metadata?.getBoundingClientRect().height||0)+32);
     const stackTop=stack.getBoundingClientRect().top+window.scrollY;
     setPixels("--discovery-card-height",Math.max(minimum,Math.min(540,footerTop-stackTop-12)));
   };
   const schedule=()=>{if(!frame)frame=requestAnimationFrame(measure)};
   if(window.ResizeObserver){
     const observer=new ResizeObserver(schedule);
-    [footer,document.querySelector(".topbar"),document.querySelector(".nowCard"),document.querySelector(".moodStrip"),view.querySelector(".sectionTitle")].filter(Boolean).forEach(el=>observer.observe(el));
+    [footer,document.querySelector(".topbar"),document.getElementById("vibeControls"),document.querySelector(".nowCard"),document.querySelector(".moodStrip"),view.querySelector(".sectionTitle")].filter(Boolean).forEach(el=>observer.observe(el));
   }
   const changes=new MutationObserver(schedule);
   changes.observe(view,{attributes:true,attributeFilter:["class"]});

@@ -46,7 +46,19 @@ button:not(:disabled):active{filter:brightness(1.12)}
 .moodStrip{gap:7px;padding:12px 0 8px;scroll-padding:18px}
 .mood{min-height:38px;padding:8px 12px;font-size:0.8125rem;border-color:var(--line);background:var(--card);color:#c0c2c5;transition:background .16s,color .16s,border-color .16s}
 .mood.active{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:750}
-.app:not(:has(#discoverView.active)) .nowCard,.app:not(:has(#discoverView.active)) .moodStrip{display:none}
+.vibeControls{margin-top:10px}
+.vibeSummary{display:flex;align-items:center;gap:8px;min-height:44px;padding:6px 0;list-style:none;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.vibeSummary::-webkit-details-marker{display:none}
+.vibeSummary:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:8px}
+.vibeSummaryCopy{display:flex;align-items:baseline;gap:8px;flex:1;min-width:0;flex-wrap:wrap}
+#compactVibeLabel{font-size:.875rem;font-weight:600;line-height:1.4;overflow-wrap:anywhere}
+#compactSearchLabel{font-size:.75rem;color:var(--muted);line-height:1.4;overflow-wrap:anywhere}
+.vibeSummary [hidden]{display:none}
+.vibeSummaryHint{font-size:.75rem;color:var(--muted);flex:none}
+.vibeSummaryChevron{width:16px;height:16px;transform:rotate(90deg);color:var(--muted)}
+.vibeControls[open] .vibeSummaryChevron{transform:rotate(-90deg)}
+.vibeOptions .nowCard{margin-top:4px}
+.app:not(:has(#discoverView.active)) .vibeControls{display:none}
 .view.active{animation:viewIn .22s ease both}
 .sectionTitle{gap:10px;margin:8px 0 12px;font-size:1rem;font-weight:700;letter-spacing:-.015em}
 #matchesView .sectionTitle,#chatView .sectionTitle{margin:25px 0 18px;font-size:1.562rem;letter-spacing:-.04em}
@@ -55,9 +67,10 @@ button:not(:disabled):active{filter:brightness(1.12)}
 .cardStack{min-height:0}
 .personCard{height:var(--discovery-card-height,clamp(20rem,calc(var(--tg-viewport-height,100dvh) - var(--tg-safe-top,0px) - var(--tg-safe-bottom,0px) - 520px),33.75rem));border:1px solid var(--line);border-radius:24px;background:var(--card);box-shadow:0 12px 32px #00000026}
 .generatedAvatar{font-size:7.812rem;background:radial-gradient(ellipse at 38% 22%,#494b4e,#292b2e 65%,#1b1d20);color:#97999c}
-.gradient{pointer-events:none;background:linear-gradient(180deg,#0d0f121c 0,transparent 30%,#0d0f124d 49%,#0d0f12de 74%,#0d0f12 100%)}
+.gradient{pointer-events:none;background:linear-gradient(180deg,transparent 0,transparent 38%,#0d0f121a 55%,#0d0f12b3 80%,#0d0f12f5 100%)}
 .personMeta{left:18px;right:18px;bottom:17px}
 .nameRow h2{font-size:1.938rem;line-height:1.15;font-weight:750;letter-spacing:-.035em;overflow-wrap:anywhere;text-shadow:0 2px 14px #00000088}
+.personCard .nameRow h2{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal}
 .discoveryBadges{left:14px;top:14px;right:60px;gap:6px;pointer-events:none}
 .discoveryBadge{font-size:0.75rem;padding:6px 10px;border-color:#ffffff26;background:#16191ed9;font-weight:650;min-height:30px}
 .onlineBadge{color:#b9d1c5;background:#23392fd4;border-color:#94bbaa33}
@@ -68,13 +81,20 @@ button:not(:disabled):active{filter:brightness(1.12)}
 .vibeNowLive span{font-size:0.875rem;font-weight:650}
 .vibeNowLive span b{font-size:0.625rem;letter-spacing:.08em;color:var(--accent);display:block;margin-bottom:3px}
 .vibeNowLive small{font-size:0.75rem;font-weight:500;color:#c2c4c7}
+.personCard .vibeNowLive{margin:6px 0;padding:0;gap:0;border:0;border-radius:0;background:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+.personCard .vibeNowLive span{font-size:.875rem;font-weight:550;color:#e1e3e6;text-shadow:0 1px 8px #0009}
+.personCard .vibeNowLive b,.personCard .vibeNowLive small{display:none}
 .bio{font-size:0.9375rem;line-height:1.4;color:#dfe1e4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:10px}
 .profileFacts{gap:8px;margin-top:0}
 .profileFacts span{display:inline-flex;align-items:center;gap:4px;font-size:0.75rem;padding:4px 7px;background:#ffffff0b;color:#c3c5c8;border-radius:8px}
 .profileFacts .uiIcon{width:14px;height:14px}
 .profileFacts .verifiedFact{color:#d7d9dc;background:#acb8c81a}
+.personCard .profileFacts{flex-wrap:nowrap;gap:8px;overflow:hidden}
+.personCard .profileFacts span{min-width:0;padding:0;background:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .profilePeek{min-height:40px;display:inline-flex;align-items:center;gap:6px;margin-top:11px;padding:8px 11px;border-color:#ffffff1f;border-radius:11px;background:#ffffff09;color:var(--text);font-size:0.8125rem;font-weight:600}
 .profilePeek .uiIcon{width:15px;height:15px}
+.personCard .bio{-webkit-line-clamp:1;margin-bottom:6px;text-shadow:0 1px 8px #0009}
+.personCard .profilePeek{min-height:40px;margin-top:6px;padding:6px 0;border:0;background:none;border-radius:0;color:#d5d9df;font-weight:500;text-decoration:underline;text-decoration-color:#d5d9df55;text-underline-offset:4px}
 .actions{gap:24px;align-items:start;padding:14px 0 10px}
 .actionGroup{min-width:72px;gap:5px}
 .actionGroup small{font-size:0.75rem;font-weight:550;color:var(--muted)}
@@ -86,12 +106,14 @@ button:not(:disabled):active{filter:brightness(1.12)}
 .actionGroup.superGroup small{color:var(--accent)}
 /* Discovery actions and navigation share one fixed footer so neither can overlap. */
 .appFooter{position:fixed;left:50%;bottom:calc(12px + max(env(safe-area-inset-bottom),var(--tg-safe-bottom,0px)));transform:translateX(-50%);width:min(calc(100% - 28px),524px);display:grid;gap:8px;z-index:10}
-.appFooter #discoverActions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:10px 10px 8px;border:1px solid var(--line);border-radius:22px;background:#0d0f12f5;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 -8px 28px #00000033}
+.appFooter #discoverActions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:4px 10px 6px;border:0;border-radius:0;background:var(--bg);box-shadow:none}
 #discoverActions .actionGroup{min-width:0}
 #discoverActions .actionGroup small{max-width:100%;text-align:center;line-height:1.2;overflow-wrap:anywhere}
 .app:not(:has(#discoverView.active)) #discoverActions{display:none}
 body:has(.sheet:not(.hidden),.overlay:not(.hidden),#vybeCall) .appFooter{visibility:hidden}
 @media(max-height:760px){.app:has(#discoverView.active) .brandWord{width:112px}.app:has(#discoverView.active) .nowCard{margin-top:10px;padding:8px 10px;gap:8px}.app:has(#discoverView.active) .moodStrip{padding:9px 0 6px}.app:has(#discoverView.active) #discoverView .sectionTitle{margin-top:4px;margin-bottom:8px}}
+@media(max-height:680px){.personCard .bio,.personCard .cardInterests{display:none}.appFooter #discoverActions .action{width:50px;height:50px}.appFooter #discoverActions .action.like{width:54px;height:54px}}
+@media(max-width:360px){.discoveryTools .filterButton{min-width:36px;padding:0}.discoveryTools .filterButton>span{display:none}}
 .nav{position:static;left:auto;bottom:auto;transform:none;width:100%;padding:7px 5px 8px;border:1px solid var(--line);border-radius:21px;background:#16191ef5;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 8px 30px #0000004d;z-index:10}
 .navItem{position:relative;min-width:0;min-height:54px;gap:3px;color:var(--muted);padding:0 3px}
 .navIcon{display:grid;place-items:center;width:43px;height:32px;border-radius:11px;transition:background .16s,color .16s}

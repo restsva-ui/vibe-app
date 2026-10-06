@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>VYBE 0.9.48</title>
 <link rel="stylesheet" href="./styles.css?v=20261006-silver1">
-<link rel="stylesheet" href="./visual.css?v=20261006-actions1">
+<link rel="stylesheet" href="./visual.css?v=20261006-compact1">
 <script src="https://telegram.org/js/telegram-web-app.js">
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2">
@@ -178,6 +178,13 @@
 </button>
 </div>
 </header>
+<details id="vibeControls" class="vibeControls">
+<summary id="vibeSummary" class="vibeSummary">
+<span class="vibeSummaryCopy"><span id="compactVibeLabel">Твій вайб зараз</span><small id="compactSearchLabel" hidden></small></span>
+<span id="compactVibeHint" class="vibeSummaryHint">Задати</span>
+<svg class="uiIcon vibeSummaryChevron" aria-hidden="true"><use href="#ui-chevron"></use></svg>
+</summary>
+<div id="vibeOptions" class="vibeOptions">
 <section class="nowCard">
 <span class="nowIcon" aria-hidden="true">
 <svg class="uiIcon " aria-hidden="true">
@@ -200,11 +207,13 @@
 <button class="mood" data-mood="Голос">🎙 Голос</button>
 <button class="mood" data-mood="Зустріч">☕ Зустріч</button>
 </section>
+</div>
+</details>
 <section id="discoverView" class="view active">
 <div class="sectionTitle">
 <span>Люди по твоєму вайбу</span>
 <div class="discoveryTools"><button id="mapBtn" class="textBtn filterButton" aria-label="Карта">⌖ <span>Карта</span></button>
-<button class="textBtn filterButton" id="filterBtn">
+<button class="textBtn filterButton" id="filterBtn" aria-label="Фільтри">
 <svg class="uiIcon " aria-hidden="true">
 <use href="#ui-filter">
 </use>
@@ -433,7 +442,8 @@
 <script src="./photo-viewer.js?v=20261006-fullscreen1"></script>
 <script src="./app.js?v=20261006-fields1">
 </script>
-<script src="./viewport-layout.js?v=20261006-actions1"></script>
+<script src="./discovery-vibe.js?v=20261006-compact1"></script>
+<script src="./viewport-layout.js?v=20261006-compact1"></script>
 <script>
 (()=>{const splash=document.getElementById("vibeSplash");if(!splash)return;let closed=false;const close=()=>{if(closed)return;closed=true;splash.classList.add("done");setTimeout(()=>splash.remove(),450)};const start=()=>setTimeout(close,2050);if(document.readyState==="complete")start();else window.addEventListener("load",start,{once:true});setTimeout(close,3200)})();
 </script>
