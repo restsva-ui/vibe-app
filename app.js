@@ -26,6 +26,9 @@ const tuser=tg?.initDataUnsafe?.user;const $=id=>document.getElementById(id),sto
 
 
 const I18N_PAIRS=[
+  ["Переглянути фото на весь екран","View full-screen photo"],["Фото профілю","Profile photo"],
+  ["Показати анкети","Show profiles"],["Згорнути список","Collapse list"],
+  ["Приблизні позначки · активний VYBE NOW","Approximate markers · active VYBE NOW"],
   ["Інтереси","Interests"],["Мої інтереси","My interests"],["Обери до 8 — так легше знайти своїх людей.","Choose up to 8 to find your people."],
   ["Можна обрати до 8 інтересів.","You can choose up to 8 interests."],["Показувати мій район на карті","Show my area on the map"],
   ["Добровільно. Інші бачитимуть лише приблизний район.","Optional. Others will see only an approximate area."],
@@ -159,7 +162,7 @@ function uiText(value){
 function uiLocale(){return currentLang==="en"?"en-US":"uk-UA"}
 function skipI18nElement(el){
   if(!el?.closest)return false;
-  return !!el.closest(".msgBubble,.bio,.meta,#profileBio,#profileMeta,#profileName,#hello,.nameRow h2,.chatTitle h2,.blockedRow b,.chatOpen .itemMain small,.matchOpen .itemMain small,.msgSender,.avatar,.generatedAvatar,.chatAvatar,.msgAvatar,.userNameNoI18n,.mapShell,.interestPicker,.interestTags,.mediaShell,.emojiShell");
+  return !!el.closest(".msgBubble,.bio,.meta,#profileBio,#profileMeta,#profileName,#hello,.nameRow h2,.chatTitle h2,.blockedRow b,.chatOpen .itemMain small,.matchOpen .itemMain small,.msgSender,.avatar,.generatedAvatar,.chatAvatar,.msgAvatar,.userNameNoI18n,.mapShell,.interestPicker,.interestTags,.mediaShell,.emojiShell,.photoShell");
 }
 function localizeDom(root=document){
   document.documentElement.lang=currentLang==="en"?"en":"uk";
@@ -250,7 +253,7 @@ const realtimeClient=window.supabase?.createClient?.(SUPABASE_URL,SUPABASE_KEY,{
 });
 let realtimeUserTopic=null,realtimeUserChannel=null,realtimeUserChannelTopic=null,realtimeConnected=false;
 const realtimeMatchChannels=new Map();
-let chatMedia=null,chatEmoji=null,chatRequestId=0;
+let chatMedia=null,chatEmoji=null,photoViewer=null,chatRequestId=0;
 let activeChat=null,chatRefreshTimer=null,socialRefreshTimer=null,typingStopTimer=null,incomingTypingTimer=null,lastTypingSentAt=0,localTypingActive=false;
 
 function teardownSocialRealtime(){
@@ -489,7 +492,7 @@ async function openPublicProfile(userId,options={}){
   const p=r.profile;
   const name=p.name||"VYBE";
   const photo=p.photo_url
-    ? '<img class="publicProfilePhoto" src="'+escapeHtml(p.photo_url)+'" alt="'+escapeHtml(name)+'">'
+    ? '<button id="publicPhotoBtn" class="publicPhotoOpen" type="button" aria-label="'+escapeHtml(uiText("Переглянути фото на весь екран"))+': '+escapeHtml(name)+'"><img class="publicProfilePhoto" src="'+escapeHtml(p.photo_url)+'" alt="'+escapeHtml(name)+'"><span class="photoExpandHint" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></span></button>'
     : '<div class="publicProfileFallback">'+escapeHtml((name||"V").trim().charAt(0).toUpperCase())+'</div>';
   const meta=[p.city,p.gender,p.looking_for?uiText("Шукаю: ")+p.looking_for:"",p.online?uiText("● онлайн"):""].filter(Boolean).join(" • ");
   const intent=isSupportedIntent(p.intent)?'<div class="intent">'+escapeHtml(intentIcon(p.intent))+' '+escapeHtml(p.intent)+'</div>':"";
@@ -502,6 +505,7 @@ async function openPublicProfile(userId,options={}){
   content.innerHTML='<div class="publicProfile">'+photo+'<div class="publicProfileBody"><h2>'+escapeHtml(name)+(p.age?", "+escapeHtml(p.age):"")+(p.verified?' ✓':'')+'</h2>'+matched+intent+publicInterests+'<p class="publicMeta">'+escapeHtml(meta)+'</p><p class="publicBio">'+escapeHtml(p.bio||"")+'</p>'+chatButton+mapLikeButton+mapBackButton+backButton+'<div class="publicProfileSafety"><button id="publicReportBtn" class="choice">⚑ '+uiText("Поскаржитися")+'</button><button id="publicBlockBtn" class="choice dangerChoice">🚫 '+uiText("Заблокувати")+'</button></div></div></div>';
   sheet.classList.remove("hidden");tg?.BackButton?.show?.();
   setSheetFullscreen(false);
+  const photoButton=$("publicPhotoBtn");if(photoButton)photoButton.onclick=()=>photoViewer?.open(p.photo_url,name);
   const mapBack=$("publicBackMapBtn");if(mapBack)mapBack.onclick=openPeopleMap;
   const like=$("publicMapLikeBtn");if(like)like.onclick=async()=>{like.disabled=true;const result=await secureApi("like",{target_user_id:userId,kind:"like"});if(!result.ok){like.disabled=false;showAlert("Не вдалося надіслати VYBE. Спробуй ще раз.");return}analyticsCapture("like_sent");await loadPeople();if(result.matched){await loadMatches();openMatchSuccess({id:userId})}else{like.textContent=uiText("VYBE надіслано")}};
   const report=$("publicReportBtn");if(report)report.onclick=()=>openReport(userId,name);
@@ -1127,6 +1131,9 @@ function renderProfile(){
   $("profileInterests").innerHTML=interestTags(profile.interests);
   const avatar=$("profileAvatar");
   if(avatar){
+    avatar.disabled=!profile.photo_url;
+    avatar.setAttribute("aria-label",uiText(profile.photo_url?"Переглянути фото на весь екран":"Фото профілю"));
+    avatar.onclick=()=>photoViewer?.open(profile.photo_url,profile.name);
     if(profile.photo_url){
       avatar.textContent="";
       avatar.style.backgroundImage='url("'+String(profile.photo_url).replace(/"/g,"%22")+'")';
@@ -1138,6 +1145,7 @@ function renderProfile(){
     }
   }
   const remove=$("removePhotoBtn");if(remove)remove.classList.toggle("hidden",!profile.photo_url);
+  const photoAction=$("photoBtn");if(photoAction)photoAction.textContent=uiText(profile.photo_url?"Змінити фото":"Додати фото");
   const adminBtn=$("adminFinanceBtn");if(adminBtn)adminBtn.classList.toggle("hidden",!adminRole);
   const adminSupport=$("adminSupportBtn");if(adminSupport)adminSupport.classList.toggle("hidden",!adminRole);
   const adminModeration=$("adminModerationBtn");if(adminModeration)adminModeration.classList.toggle("hidden",!adminRole);
@@ -1258,6 +1266,7 @@ function setSheetFullscreen(enabled){
   sheet.classList.toggle("sheetFullscreen",enabled===true);
 }
 function closeSheetView(){
+  if(photoViewer?.close())return;
   chatEmoji?.dispose();
   chatMedia?.disposeRecording();
   sendTyping(activeChat?.matchId,false);
@@ -1271,11 +1280,12 @@ function closeSheetView(){
   tg?.BackButton?.hide?.();
 }
 $("closeSheet").onclick=closeSheetView;
-tg?.BackButton?.onClick?.(()=>{if(!sheet.classList.contains("hidden"))closeSheetView()});
-const sheetObserver=new MutationObserver(()=>{
-  if(sheet.classList.contains("hidden"))tg?.BackButton?.hide?.();
+tg?.BackButton?.onClick?.(()=>{if(photoViewer?.isOpen()||!sheet.classList.contains("hidden"))closeSheetView()});
+function syncSheetBackButton(){
+  if(!photoViewer?.isOpen()&&sheet.classList.contains("hidden"))tg?.BackButton?.hide?.();
   else tg?.BackButton?.show?.();
-});
+}
+const sheetObserver=new MutationObserver(syncSheetBackButton);
 sheetObserver.observe(sheet,{attributes:true,attributeFilter:["class"]});
 function openSheet(type){setSheetFullscreen(type==="premium");let h="";if(type==="now")h='<h2>Твій VYBE NOW ⚡</h2><p>Що ти хочеш саме зараз?</p><div class="choiceGrid">'+Object.entries(INTENT_ICONS).map(([intent,icon])=>'<button class="choice" data-intent="'+intent+'" data-icon="'+icon+'">'+icon+" "+intent+"</button>").join("")+'</div><p>На скільки?</p><div class="choiceGrid"><button class="choice duration selected" data-hours="1">1 година</button><button class="choice duration" data-hours="3">3 години</button><button id="smartDuration" class="choice duration" data-smart="1">До ранку</button></div><button id="saveNow" class="primary">Увімкнути VYBE NOW</button>';else if(type==="premium"){h='<h2>'+uiText("Мої бонуси ✨")+'</h2><div class="empty">'+uiText("Завантажуємо магазин…")+'</div>';} else if(type==="filter")h='<h2>Фільтри</h2><p>Вік, місто, дистанція, кого шукаєш, онлайн та верифікація — наступний етап.</p><button class="primary" onclick="document.getElementById(\'sheet\').classList.add(\'hidden\')">Готово</button>';else if(type==="safety")h='<h2>Безпека 🛡</h2><p>VYBE працює тільки для 18+. Блокування та скарги вже захищені серверною перевіркою: заблоковані користувачі не бачать одне одного у пошуку, збігах і чатах.</p><button id="openBlockedFromSafety" class="choice safetyChoice">🚫 Мої блокування</button><p class="safetyHint">Якщо бачиш погрози, шантаж, неповнолітнього користувача, незаконний контент або пропозиції сексуальних послуг — надішли скаргу з профілю/чату.</p>';else h='<h2>VYBE</h2>';content.innerHTML=h;sheet.classList.remove("hidden");tg?.BackButton?.show?.();requestAnimationFrame(()=>{const card=sheet.querySelector(".sheetCard");if(card)card.scrollTop=0});if(type==="safety"){const b=$("openBlockedFromSafety");if(b)b.onclick=openBlockedUsers}if(type==="premium"){renderPremiumShop()}if(type==="now"){let chosen=null,hours=1;
 const smart=content.querySelector("#smartDuration");
@@ -2150,9 +2160,11 @@ if(removePhotoBtn)removePhotoBtn.onclick=removeProfilePhoto;
 function destroyVibeMap(){
   mapMountToken++;
   mapController?.destroy();mapController=null;
+  document.body.classList.remove("mapViewing");
   if(sheet.classList.contains("sheetMap"))sheet.classList.remove("sheetMap");
 }
 function launchVibeMap(options){
+  document.body.classList.add("mapViewing");
   const token=++mapMountToken;
   void mountVibeMap({...options,onReady:controller=>{if(token===mapMountToken)mapController=controller;else controller.destroy()}}).then(controller=>{if(token!==mapMountToken)controller.destroy()});
 }
@@ -2178,6 +2190,7 @@ function openPeopleMap(){
 $("mapBtn").onclick=openPeopleMap;
 const mapLifecycleObserver=new MutationObserver(()=>{
   const active=!sheet.classList.contains("hidden")&&!!content.querySelector(".mapShell");
+  document.body.classList.toggle("mapViewing",active);
   if(sheet.classList.contains("sheetMap")!==active)sheet.classList.toggle("sheetMap",active);
   if(!active&&mapController)destroyVibeMap();
 });
@@ -2187,3 +2200,5 @@ mapLifecycleObserver.observe(sheet,{attributes:true,attributeFilter:["class"]});
 chatMedia=window.VybeMedia.create({api:secureApi,escape:escapeHtml,language:()=>currentLang,userId:()=>profile?.user_id,allowed:()=>accountStatus==="active"&&window.__vybeAuth?.ok,chat:()=>activeChat,alert:showAlert,content,refreshChat:async()=>{const c=activeChat;if(c)await openChat(c.matchId,c.name,c.userId,{silent:true,preserveDraft:true,noMatchRefresh:true});loadMatches()}});
 
 chatEmoji=window.VybeEmoji?.create({content,sheet,language:()=>currentLang,userId:()=>profile?.user_id,chat:()=>activeChat,allowed:()=>accountStatus==="active"&&!!window.__vybeAuth?.ok,onPick:()=>tg?.HapticFeedback?.selectionChanged?.()});
+
+photoViewer=window.VybePhoto?.create({language:()=>currentLang,interrupted:()=>!!$("vybeCall"),onOpen:syncSheetBackButton,onClose:syncSheetBackButton});
