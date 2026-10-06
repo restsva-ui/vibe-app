@@ -1,23 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 310 80" role="img" aria-labelledby="title">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 3 2339 755" role="img" aria-labelledby="title">
   <title id="title">VYBE</title>
-  <defs>
-    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
-      <stop stop-color="#f4f1ed"/>
-      <stop offset="1" stop-color="#dce2e5"/>
-    </linearGradient>
-    <linearGradient id="coral" x1="0" y1="0" x2="0" y2="1">
-      <stop stop-color="#edc0aa"/>
-      <stop offset="1" stop-color="#dfa58f"/>
-    </linearGradient>
-    <path id="v" d="M4 0h18l19 44L60 0h18L50 64H32Z"/>
-    <path id="y" d="M83 0h19l18 27 18-27h19l-29 42v22h-16V42Z"/>
-    <path id="b" fill-rule="evenodd" d="M167 0h31c15 0 23 7 23 17 0 7-3 11-10 14 9 2 14 7 14 15 0 12-9 18-25 18h-33Zm17 13v13h12c6 0 9-2 9-7s-3-6-9-6Zm0 26v12h14c7 0 10-2 10-6s-3-6-10-6Z"/>
-    <path id="e" d="M238 0h54v14h-37v11h32v14h-32v11h37v14h-54Z"/>
-  </defs>
-  <g transform="translate(7 10)" fill="#63717b">
-    <use href="#v" fill="#8d6355"/><use href="#y"/><use href="#b"/><use href="#e"/>
-  </g>
-  <g transform="translate(4 6)" fill="url(#face)">
-    <use href="#v" fill="url(#coral)"/><use href="#y"/><use href="#b"/><use href="#e"/>
+  <g fill="#f4f1ed">
+    <path d="M296 750H408L694 11H550L351 573L152 11H8Z"/>
+    <path d="M898 750H1035V477L1278 11H1130L966 351L803 11H655L898 477Z"/>
+    <path d="M1344 750H1541C1623 750 1683 737 1728 709C1789 672 1824 606 1824 530C1824 483 1811 439 1788 409C1767 381 1746 367 1698 347C1758 316 1780 278 1780 208C1780 139 1750 81 1696 47C1652 19 1606 11 1496 11H1344ZM1481 619V430H1546C1641 430 1686 461 1686 526C1686 591 1645 619 1549 619ZM1481 296V145H1537C1609 145 1643 169 1643 220C1643 273 1608 296 1525 296Z"/>
+    <path d="M1934 750H2331V619H2071V447H2320V316H2071V142H2331V11H1934Z"/>
   </g>
 </svg>

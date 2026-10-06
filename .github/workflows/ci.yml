@@ -71,6 +71,11 @@ jobs:
           npx --yes esbuild@0.25.11 scripts/test-supabase-service-auth.ts --bundle --platform=node --format=esm --outfile=/tmp/test-supabase-service-auth.mjs
           node /tmp/test-supabase-service-auth.mjs
 
+      - name: Test branded bot welcome and delivery fallback
+        run: |
+          npx --yes esbuild@0.25.11 scripts/test-bot-branding.ts --bundle --platform=node --format=esm --outfile=/tmp/test-bot-branding.mjs
+          node /tmp/test-bot-branding.mjs
+
       - name: Run hardening invariants
         run: node scripts/verify-hardening.mjs
 

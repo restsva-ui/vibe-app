@@ -3,6 +3,7 @@ import { serviceRoleAuthHeaders } from "../_shared/supabase-service-auth.ts";
 const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
 const CONFIGURED_WEBHOOK_SECRET = (Deno.env.get("TELEGRAM_WEBHOOK_SECRET") ?? "").trim();
 const APP_URL = "https://restsva-ui.github.io/vibe-app/";
+const BRAND_PHOTO_URL = `${APP_URL}assets/vybe-avatar.jpg?v=20261006-logo1`;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 
 const json = (data: unknown, status = 200) =>
@@ -482,16 +483,27 @@ Deno.serve(async (req: Request) => {
         ? "VYBE 💜 — dating, flirting, friendship and private communication for adults 18+."
         : "VYBE 💜 — знайомства, флірт, дружба та приватне спілкування для дорослих 18+.";
 
-    await telegram("sendMessage", {
-      chat_id: msg.chat.id,
-      text,
-      reply_markup: {
-        inline_keyboard: [[{
-          text: english ? "Open VYBE ✨" : "Відкрити VYBE ✨",
-          web_app: { url: webAppUrl },
-        }]],
-      },
-    });
+    const replyMarkup = {
+      inline_keyboard: [[{
+        text: english ? "Open VYBE ✨" : "Відкрити VYBE ✨",
+        web_app: { url: webAppUrl },
+      }]],
+    };
+    try {
+      await telegram("sendPhoto", {
+        chat_id: msg.chat.id,
+        photo: BRAND_PHOTO_URL,
+        caption: text,
+        reply_markup: replyMarkup,
+      });
+    } catch {
+      // Keep /start usable if Telegram cannot fetch the brand image.
+      await telegram("sendMessage", {
+        chat_id: msg.chat.id,
+        text,
+        reply_markup: replyMarkup,
+      });
+    }
     return json({ ok: true });
   } catch (e) {
     console.error("telegram-bot:", e instanceof Error ? e.message : String(e));

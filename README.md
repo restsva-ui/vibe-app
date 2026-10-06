@@ -134,3 +134,14 @@ The map opens from Discovery. It shows up to 100 active VYBE NOW profiles in the
 Leaflet 1.9.4 is pinned locally under `vendor/leaflet` with its license. OpenStreetMap tiles load only while the map is open, honor normal browser caching, and display attribution. Profiles and interests are never sent to the tile provider.
 
 Validation: `node scripts/test-discovery-preferences.ts`; `scripts/test-discovery-query.sql` contains rollback-only synthetic database checks for matching, opt-in visibility, restrictions, both block directions, passes, keyset pagination and coarse-coordinate constraints.
+
+
+## Shared VYBE branding — 2026-10-06
+
+The app and Telegram bot share the peach/ivory folded-ribbon V. The Mini App uses the compact WebP symbol in its header, launch screen and age gate, with an outlined SVG wordmark and self-contained SVG favicon. PNG is the source avatar; JPEG is the Telegram-compatible avatar and /start image.
+
+Assets: `assets/vybe-symbol.webp`, `assets/vybe-wordmark.svg`, `assets/vybe-mark.svg`, `assets/vybe-avatar.png`, `assets/vybe-avatar.jpg`.
+
+The bot sends the logo with its existing welcome caption and Mini App button. If Telegram cannot fetch the image, it falls back to the same text and launch button. Webhook authentication, language selection, referral URLs and payment/support commands retain their existing behavior.
+
+Validation: `scripts/test-bot-branding.ts` covers unauthorized webhook requests, Ukrainian welcome, English referrals, image-delivery fallback, terms and retryable delivery errors.
