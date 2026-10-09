@@ -11,6 +11,7 @@
     let matchId=null,data=null,overlay=null,button=null,timer=null,epoch=0,serial=0,busy=false,lastRead=0,error='',selection={choice:null,guess:null},questionKey='',previousFocus=null,background=[];
     const t=(uk,en)=>ctx.getLang?.()==='en'?en:uk;
     const text=value=>typeof value==='string'?value:value?.[ctx.getLang?.()==='en'?'en':'uk']||value?.uk||'';
+    const interrupted=()=>!!d.getElementById('vybeCall')||!!d.querySelector('#sheetContent .chatMediaDraft');
     const available=()=>!!matchId&&ctx.getChat?.()?.matchId===matchId&&ctx.isChatVisible?.()!==false&&button?.isConnected;
     const capture=(event,props={})=>ctx.capture?.(event,props);
     function close(){
@@ -28,6 +29,7 @@
       if(data?.state==='playing')value=t('Продовжити · ','Continue · ')+data.my_progress+'/3';
       if(data?.state==='waiting')value=t('Твої відповіді збережено · чекаємо другого учасника','Your answers are saved · waiting for your partner');
       if(data?.state==='completed')value=t('Відкрити ваш результат','See your results');
+      if(interrupted())value=t('Заверши запис або дзвінок, щоб зіграти','Finish the recording or call to play');
       button.querySelector('small').textContent=value;
     }
     function schedule(){
@@ -112,7 +114,7 @@
       finally{if(generation===epoch){busy=false;render();schedule();if(reconcile)refresh();}}
     }
     function open(){
-      if(!available()||overlay)return;
+      if(!available()||interrupted()||overlay)return;
       previousFocus=button||d.activeElement;overlay=d.createElement('div');overlay.className='duetOverlay';overlay.id='duetDialog';
       overlay.innerHTML='<section class="duetPanel" role="dialog" aria-modal="true" aria-label="VYBE-дует"><div class="duetTop"><span class="duetBrand">VYBE DUET</span><button class="duetClose" type="button" aria-label="'+esc(t('Закрити','Close'))+'">×</button></div><div class="duetBody"></div><button class="duetSecondary duetReturn" type="button">'+esc(t('Повернутися до чату','Return to chat'))+'</button></section>';
       background=[...d.body.children].map(node=>[node,node.getAttribute('inert')]);
@@ -137,7 +139,10 @@
       }else if(Date.now()-lastRead>60000)refresh();
       schedule();
     }
-    const observer=new w.MutationObserver(()=>{if(matchId&&(!available()||d.getElementById('vybeCall')))dispose();});
+    const observer=new w.MutationObserver(()=>{
+      if(matchId&&!available()){dispose();return;}
+      if(button){const blocked=interrupted();button.disabled=blocked;if(blocked)close();const caption=button.querySelector('small');if(caption&&((blocked&&!caption.dataset.interrupted)||(!blocked&&caption.dataset.interrupted))){caption.dataset.interrupted=blocked?'yes':'';label();}}
+    });
     observer.observe(d.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
     const onVisible=()=>{if(!d.hidden&&available())refresh();};d.addEventListener('visibilitychange',onVisible);
     return {mount,refresh,close,dispose,isOpen:()=>!!overlay,destroy(){dispose();observer.disconnect();d.removeEventListener('visibilitychange',onVisible);}};

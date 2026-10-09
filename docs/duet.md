@@ -18,7 +18,7 @@ Apply `supabase/migrations/20261009151300_vybe_duet.sql`, deploy `telegram-auth`
 
 ## Checks
 
-Run `node scripts/test-duet-ui.cjs <directory-containing-jsdom-package.json>`. The test covers async navigation, offline retry, duplicate submissions, stale responses, composer preservation, language, focus isolation and the real `openChat` / Telegram Back integration.
+Run `node scripts/test-duet-ui.cjs <directory-containing-jsdom-package.json>`. The test covers async navigation, offline retry, duplicate submissions, stale responses, composer preservation, language, focus isolation, media recording / incoming-call interruption, and the real `openChat` / Telegram Back integration.
 
 Bundle `scripts/test-duet-api.ts` with the pinned esbuild version in CI and run it in Node. It exercises the real Edge Function handler with signed fixture initData and a network stub that rejects real network calls.
 
