@@ -241,7 +241,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.48",
+      app_version:"0.9.49",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -260,7 +260,7 @@ const realtimeClient=window.supabase?.createClient?.(SUPABASE_URL,SUPABASE_KEY,{
 });
 let realtimeUserTopic=null,realtimeUserChannel=null,realtimeUserChannelTopic=null,realtimeConnected=false;
 const realtimeMatchChannels=new Map();
-let chatMedia=null,chatEmoji=null,photoViewer=null,profileFields=null,chatRequestId=0;
+let chatMedia=null,chatEmoji=null,chatDuet=null,photoViewer=null,profileFields=null,chatRequestId=0;
 let activeChat=null,chatRefreshTimer=null,socialRefreshTimer=null,typingStopTimer=null,incomingTypingTimer=null,lastTypingSentAt=0,localTypingActive=false;
 
 function teardownSocialRealtime(){
@@ -391,6 +391,9 @@ function setupUserRealtime(topic){
       scheduleSupportCountRefresh();
     })
     .on("broadcast",{event:"call_changed"},()=>chatMedia?.poll())
+    .on("broadcast",{event:"duet_changed"},payload=>{
+      if(activeChat?.matchId===String(payload?.payload?.match_id||""))chatDuet?.refresh();
+    })
     .on("broadcast",{event:"relationship_changed"},()=>{
       chatMedia?.disposeRecording();chatMedia?.endCall();
       if(activeChat){activeChat=null;sheet?.classList?.add("hidden");syncMatchRealtimeChannels()}
@@ -1323,8 +1326,10 @@ function setSheetFullscreen(enabled){
   sheet.classList.toggle("sheetFullscreen",enabled===true);
 }
 function closeSheetView(){
+  if(chatDuet?.close())return;
   if(profileFields?.close())return;
   if(photoViewer?.close())return;
+  chatDuet?.dispose();
   chatEmoji?.dispose();
   chatMedia?.disposeRecording();
   sendTyping(activeChat?.matchId,false);
@@ -1590,6 +1595,7 @@ async function openChat(matchId,name,userId,options={}){
   sheet.classList.add("sheetChat");
   sheet.classList.remove("hidden");
   chatMedia?.mount();
+  chatDuet?.mount();
   bindAvatarFallbacks(content);
 
   const openPeerProfile=()=>openPublicProfile(userId,{returnChat:{matchId,name:peerName,userId}});
@@ -2257,6 +2263,12 @@ mapLifecycleObserver.observe(sheet,{attributes:true,attributeFilter:["class"]});
 chatMedia=window.VybeMedia.create({api:secureApi,escape:escapeHtml,language:()=>currentLang,userId:()=>profile?.user_id,allowed:()=>accountStatus==="active"&&window.__vybeAuth?.ok,chat:()=>activeChat,alert:showAlert,content,refreshChat:async()=>{const c=activeChat;if(c)await openChat(c.matchId,c.name,c.userId,{silent:true,preserveDraft:true,noMatchRefresh:true});loadMatches()}});
 
 chatEmoji=window.VybeEmoji?.create({content,sheet,language:()=>currentLang,userId:()=>profile?.user_id,chat:()=>activeChat,allowed:()=>accountStatus==="active"&&!!window.__vybeAuth?.ok,onPick:()=>tg?.HapticFeedback?.selectionChanged?.()});
+
+chatDuet=window.VybeDuet?.create({document,api:secureApi,getChat:()=>activeChat,getLang:()=>currentLang,isChatVisible:()=>!sheet.classList.contains("hidden")&&accountStatus==="active",capture:analyticsCapture,onPrompt:prompt=>{
+  const field=$("chatMessage");if(!field)return;
+  const prefix=field.value.trimEnd();field.value=(prefix?prefix+"\n"+prompt:prompt).slice(0,2000);
+  field.dispatchEvent(new Event("input",{bubbles:true}));field.focus();
+}});
 
 photoViewer=window.VybePhoto?.create({language:()=>currentLang,interrupted:()=>!!$("vybeCall"),onOpen:syncSheetBackButton,onClose:syncSheetBackButton});
 profileFields=window.VybeProfileFields.create({language:()=>currentLang,interrupted:()=>!!$("vybeCall"),onOpen:syncSheetBackButton,onClose:syncSheetBackButton});

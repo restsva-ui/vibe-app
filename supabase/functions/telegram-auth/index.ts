@@ -3,6 +3,7 @@ import { validateTelegramInitData } from "../_shared/telegram-init-data.ts";
 import { boundedJson } from "../_shared/chat-media.ts";
 import { MEDIA_ACTIONS, handleMediaAction, flushMediaCleanup } from "../_shared/chat-media-api.ts";
 import { parseInterests, parseMapArea, parseMapBounds } from "../_shared/discovery-preferences.ts";
+import { DUET_ACTIONS, handleDuetAction } from "../_shared/duet-api.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -102,6 +103,10 @@ const ACTION_RATE_LIMITS: Record<string, RateLimitPolicy> = {
   super_like: { windowSeconds: 60, maxHits: 60 },
   like: { windowSeconds: 60, maxHits: 120 },
   message_send: { windowSeconds: 60, maxHits: 120 },
+  duet_get: { windowSeconds: 60, maxHits: 30 },
+  duet_start: { windowSeconds: 600, maxHits: 12 },
+  duet_join: { windowSeconds: 600, maxHits: 12 },
+  duet_answer: { windowSeconds: 60, maxHits: 30 },
   message_media_send: { windowSeconds: 600, maxHits: 30 },
   message_media_url: { windowSeconds: 60, maxHits: 90 },
   call_start: { windowSeconds: 600, maxHits: 12 },
@@ -3494,6 +3499,11 @@ Deno.serve(async (req: Request) => {
         matches: signedMatches,
         unread_total: signedMatches.reduce((n: number, m: any) => n + Number(m.unread_count || 0), 0),
       });
+    }
+
+    if (DUET_ACTIONS.has(String(action))) {
+      const result = await handleDuetAction(String(action), body, { userId: String(user.id), rpc });
+      return json(result.data, result.status);
     }
 
     if (MEDIA_ACTIONS.has(String(action))) {
