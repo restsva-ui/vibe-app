@@ -2,34 +2,39 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const requireFixture=createRequire(path.join(process.argv[2]||'/tmp/vybe-emoji-test','package.json'));
 const {JSDOM}=requireFixture('jsdom');
 const html=fs.readFileSync('index.html','utf8');
-const source=['profile-cities.js','profile-fields.js','interests-map.js','chat-media.js','chat-emoji.js','duet.js','photo-viewer.js','app.js'].map(file=>fs.readFileSync(file,'utf8')).join('\n;\n');
+const source=['profile-cities.js','profile-fields.js','interests-map.js','chat-media.js','chat-emoji.js','duet.js','photo-viewer.js','start-guide.js','app.js'].map(file=>fs.readFileSync(file,'utf8')).join('\n;\n');
 const existing={name:'Test',age:28,city:'Київ',bio:'Люблю каву й гори',user_id:'owner',photo_url:'https://ui-fixture.invalid/photo.jpg',interests:['coffee'],map_enabled:false};
 const pause=()=>new Promise(resolve=>setTimeout(resolve,10));
 let checks=0;
 
-async function fixture(profile,language='uk'){
+async function fixture(profile,language='uk',options={}){
   const dom=new JSDOM(html,{url:'https://ui-fixture.invalid/',runScripts:'outside-only',pretendToBeVisual:true});
   const w=dom.window,requests=[];let current=profile?{...profile}:null,rejectBio=false,rejectPhoto=null;
+  if(Object.hasOwn(options,'serverProfile'))current=options.serverProfile?{...options.serverProfile}:null;
+  const userId=options.userId||'owner';
   w.console={...console,warn(){},error(){}};
   const noop=()=>{};
   w.Telegram={WebApp:{initData:'fixture-init-data',initDataUnsafe:{user:{id:1,first_name:'Test'}},ready:noop,expand:noop,setHeaderColor:noop,setBackgroundColor:noop,enableClosingConfirmation:noop,viewportHeight:844,BackButton:{show:noop,hide:noop,onClick:noop},HapticFeedback:{notificationOccurred:noop,impactOccurred:noop},showAlert:noop}};
   w.localStorage.setItem('vybe18','yes');w.localStorage.setItem('vybeLanguage',JSON.stringify(language));
+  for(const [key,value] of Object.entries(options.storage||{}))w.localStorage.setItem(key,JSON.stringify(value));
   w.fetch=async(url,init={})=>{
     const body=JSON.parse(init.body||'{}');requests.push(body);
     let result={ok:true};
     switch(body.action){
       case 'me':result={ok:true,authenticated:true,user:{id:1,first_name:'Test'}};break;
-      case 'profile_get':result={ok:true,user_id:'owner',profile:current};break;
+      case 'profile_get':result={ok:true,user_id:userId,profile:current};break;
       case 'save_profile':
         if(rejectBio){result={ok:false,error:'BIO_REQUIRED',field:'bio'};break;}
         if(rejectPhoto){result={ok:false,error:rejectPhoto,field:'photo'};break;}
         if(!current?.photo_url&&!current?.photo_present&&!body.profile_photo){result={ok:false,error:'PHOTO_REQUIRED',field:'photo'};break;}
         current={...current,...body.profile,photo_present:true,photo_url:body.profile_photo?'https://ui-fixture.invalid/new-photo.webp':current?.photo_url||null};
-        result={ok:true,user_id:'owner',profile:current,photo_present:true,...(body.profile_photo?{photo_url:current.photo_url}:{})};break;
+        result={ok:true,user_id:userId,profile:current,photo_present:true,...(body.profile_photo?{photo_url:current.photo_url}:{})};break;
+      case 'set_intent':result={ok:true,intent:body.intent,expires_at:new Date(Date.now()+(Number(body.hours)||1)*3600000).toISOString()};break;
       case 'discover':result={ok:true,people:[],pagination:{has_more:false}};break;
       case 'matches':result={ok:true,matches:[],unread_total:0};break;
       case 'notification_settings_get':result={ok:true,preferences:{likes:true,matches:true,messages:true}};break;
     }
+    if(options.respond)result=await options.respond(body,result)||result;
     return {ok:result.ok,status:result.ok?200:400,json:async()=>result,text:async()=>JSON.stringify(result)};
   };
   w.eval(source);

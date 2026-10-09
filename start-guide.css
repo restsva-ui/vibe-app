@@ -1,0 +1,27 @@
+/* The guide stays in Profile so discovery photos retain the full available space. */
+.startGuide{margin:20px 0 14px;border:1px solid var(--line);border-radius:20px;background:var(--card);overflow:hidden;scroll-margin-top:calc(16px + var(--tg-safe-top,0px))}
+.startGuide[hidden],#startGuideBtn[hidden]{display:none}
+.startGuideSummary{display:flex;align-items:center;gap:10px;min-height:56px;padding:14px 16px;list-style:none;cursor:pointer;touch-action:manipulation}
+.startGuideSummary::-webkit-details-marker{display:none}
+.startGuideSummary:focus-visible{outline:2px solid var(--accent);outline-offset:-4px;border-radius:20px}
+.startGuideHeading{flex:1;min-width:0;font-size:.9375rem;font-weight:700;overflow-wrap:anywhere}
+.startGuideCount{flex:none;font-size:.75rem;color:var(--muted)}
+.startGuideChevron{flex:none;color:var(--muted);font-size:1.125rem}
+.startGuideDetails[open] .startGuideChevron{transform:rotate(180deg)}
+.startGuideBody{padding:0 16px 16px;border-top:1px solid var(--line)}
+.startGuideIntro{font-size:.8125rem;color:var(--muted);line-height:1.5;margin:14px 0}
+.startGuideSteps{display:grid;gap:12px;list-style:none;padding:0;margin:18px 0}
+.startGuideSteps li{display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;gap:8px;font-size:.8125rem}
+.startGuideSteps li>span:nth-child(2){overflow-wrap:anywhere}
+.startGuideMark{display:grid;place-items:center;width:24px;height:24px;border:1px solid var(--line);border-radius:50%;font-size:.6875rem;color:var(--muted)}
+.startGuideSteps small{font-size:.6875rem;color:var(--muted)}
+.startGuideSteps .isDone .startGuideMark{background:var(--accent-soft);border-color:#94bbaa55;color:var(--green)}
+.startGuideSteps .isDone small{color:var(--green)}
+.startGuideNext{padding:14px;border-radius:14px;background:var(--surface)}
+.startGuideNext b{font-size:.875rem;line-height:1.35;display:block;overflow-wrap:anywhere}
+.startGuideNext p{margin:7px 0 14px;font-size:.8125rem;line-height:1.5;color:var(--muted)}
+.startGuideNext .primary{min-height:44px;font-size:.8125rem;padding:11px 12px;overflow-wrap:anywhere}
+.startGuideDismiss{display:block;min-height:44px;margin:10px auto -4px;font-size:.75rem;color:var(--muted)}
+.emptyState .emptyStateAction{width:auto;min-height:44px;margin:16px auto 0;font-size:.8125rem}
+.discoverEmpty .discoverInvite{min-height:44px;font-size:.8125rem;color:var(--accent)}
+@media(max-width:360px){.startGuideSteps li{grid-template-columns:24px minmax(0,1fr)}.startGuideSteps small{grid-column:2;margin-top:-6px}}

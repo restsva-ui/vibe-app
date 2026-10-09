@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0d0f12">
 <link rel="icon" type="image/svg+xml" href="./assets/vibe-icon.svg?v=20261006-logo2">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>VYBE 0.9.49</title>
+<title>VYBE 0.9.50</title>
 <link rel="stylesheet" href="./styles.css?v=20261006-silver1">
 <link rel="stylesheet" href="./visual.css?v=20261006-compact1">
 <script src="https://telegram.org/js/telegram-web-app.js">
@@ -17,6 +17,7 @@
 <link rel="stylesheet" href="./chat-media.css?v=20261006-silver1">
 <link rel="stylesheet" href="./chat-emoji.css?v=20261006-silver1">
 <link rel="stylesheet" href="./duet.css?v=20261009-duet1">
+<link rel="stylesheet" href="./start-guide.css?v=20261009-start1">
 </head>
 <body>
 <svg class="iconSprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -244,6 +245,7 @@
 </div>
 </section>
 <section id="profileView" class="view">
+<div id="startGuide" class="startGuide" hidden></div>
 <div class="profileCard">
 <button id="profileAvatar" class="avatar big" type="button" aria-label="Фото профілю" disabled>👤</button>
 <div class="profilePhotoActions">
@@ -257,6 +259,11 @@
 <button id="editProfile" class="primary">Редагувати профіль</button>
 </div>
 <div class="menuCard">
+<button id="startGuideBtn" type="button" hidden>
+<svg class="uiIcon menuIcon" aria-hidden="true"><use href="#ui-bolt"></use></svg>
+<span class="menuLabel">Старт у VYBE</span>
+<svg class="uiIcon menuChevron" aria-hidden="true"><use href="#ui-chevron"></use></svg>
+</button>
 <button id="referralBtn">
 <svg class="uiIcon menuIcon" aria-hidden="true">
 <use href="#ui-share">
@@ -442,7 +449,8 @@
 <script src="./chat-emoji.js?v=20261006-emoji1"></script>
 <script src="./duet.js?v=20261009-duet2"></script>
 <script src="./photo-viewer.js?v=20261006-fullscreen1"></script>
-<script src="./app.js?v=20261009-duet1">
+<script src="./start-guide.js?v=20261009-start1"></script>
+<script src="./app.js?v=20261009-start1">
 </script>
 <script src="./discovery-vibe.js?v=20261006-compact1"></script>
 <script src="./viewport-layout.js?v=20261006-compact1"></script>

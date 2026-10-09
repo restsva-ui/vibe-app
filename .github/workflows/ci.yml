@@ -44,6 +44,7 @@ jobs:
           node --check viewport-layout.js
           node --check discovery-vibe.js
           node --check duet.js
+          node --check start-guide.js
 
       - name: Test chat emoji, fullscreen and profile completion UI
         run: |
@@ -55,6 +56,7 @@ jobs:
           node scripts/test-profile-fields-ui.cjs /tmp/vybe-emoji-test
           node scripts/test-discovery-vibe-ui.cjs /tmp/vybe-emoji-test
           node scripts/test-duet-ui.cjs /tmp/vybe-emoji-test
+          node scripts/test-start-guide-ui.cjs /tmp/vybe-emoji-test
 
       - name: Test mandatory bio and photo with API access boundaries
         run: |

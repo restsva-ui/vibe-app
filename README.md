@@ -9,6 +9,7 @@ Implemented and wired to production Supabase:
 - Telegram Mini App authentication with server-side initData validation
 - 18+ entry gate and legal/community pages
 - profiles with mandatory bio and photo, discovery filters and VYBE NOW intents
+- optional **Start in VYBE** guide in Profile recommends the next step, remembers per-account milestones on the device and can be hidden/restored; see [docs/start-guide.md](docs/start-guide.md)
 - onboarding selects and previews a photo before saving; the backend validates and stores the photo together with the profile, preserves the current photo on failed replacement, and blocks removing the only profile photo
 - Discovery shows only active VYBE NOW profiles, excludes existing matches, filters by the selected vibe, and remembers passes for the current intent session
 - live Discovery cards show intent expiry, online state, verification and Spotlight prominence

@@ -26,6 +26,10 @@ const tuser=tg?.initDataUnsafe?.user;const $=id=>document.getElementById(id),sto
 
 
 const I18N_PAIRS=[
+  ["Старт у VYBE","Start in VYBE"],["Переглянути людей","Browse people"],["Запросити друга","Invite a friend"],
+  ["Не вдалося оновити пошук.","Could not refresh discovery."],["Перевір з’єднання й спробуй ще раз.","Check your connection and try again."],
+  ["Не вдалося увімкнути VYBE NOW. Спробуй ще раз.","Could not activate VYBE NOW. Please try again."],
+  ["Не вдалося завантажити анкету. Спробуй ще раз.","Could not load your profile. Please try again."],
   ["Переглянути фото на весь екран","View full-screen photo"],["Фото профілю","Profile photo"],
   ["Показати анкети","Show profiles"],["Згорнути список","Collapse list"],
   ["Приблизні позначки · активний VYBE NOW","Approximate markers · active VYBE NOW"],
@@ -168,7 +172,7 @@ function uiText(value){
 function uiLocale(){return currentLang==="en"?"en-US":"uk-UA"}
 function skipI18nElement(el){
   if(!el?.closest)return false;
-  return !!el.closest(".msgBubble,.bio,.meta,#profileBio,#profileMeta,#profileName,#hello,.nameRow h2,.chatTitle h2,.blockedRow b,.chatOpen .itemMain small,.matchOpen .itemMain small,.msgSender,.avatar,.generatedAvatar,.chatAvatar,.msgAvatar,.userNameNoI18n,.mapShell,.interestPicker,.interestTags,.mediaShell,.emojiShell,.photoShell,.profileFieldChoices,.profileCityShell");
+  return !!el.closest(".msgBubble,.bio,.meta,#profileBio,#profileMeta,#profileName,#hello,.nameRow h2,.chatTitle h2,.blockedRow b,.chatOpen .itemMain small,.matchOpen .itemMain small,.msgSender,.avatar,.generatedAvatar,.chatAvatar,.msgAvatar,.userNameNoI18n,.mapShell,.interestPicker,.interestTags,.mediaShell,.emojiShell,.photoShell,.profileFieldChoices,.profileCityShell,.startGuide");
 }
 function localizeDom(root=document){
   document.documentElement.lang=currentLang==="en"?"en":"uk";
@@ -241,7 +245,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.49",
+      app_version:"0.9.50",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -260,7 +264,7 @@ const realtimeClient=window.supabase?.createClient?.(SUPABASE_URL,SUPABASE_KEY,{
 });
 let realtimeUserTopic=null,realtimeUserChannel=null,realtimeUserChannelTopic=null,realtimeConnected=false;
 const realtimeMatchChannels=new Map();
-let chatMedia=null,chatEmoji=null,chatDuet=null,photoViewer=null,profileFields=null,chatRequestId=0;
+let chatMedia=null,chatEmoji=null,chatDuet=null,photoViewer=null,profileFields=null,startGuide=null,chatRequestId=0;
 let activeChat=null,chatRefreshTimer=null,socialRefreshTimer=null,typingStopTimer=null,incomingTypingTimer=null,lastTypingSentAt=0,localTypingActive=false;
 
 function teardownSocialRealtime(){
@@ -607,6 +611,7 @@ async function openBlockedUsers(){
 let profile=load("vybeProfile",null),now=load("vybeNow",null),matches=[],index=0,filter="Усе",remotePeople=[],entitlements={balances:{supervybe:0,spotlight:0},vybe_plus_until:null,spotlight_until:null},starCatalog=[],adminRole=null,supportUnread=0,adminSupportUnread=0,moderationUnread=0,notificationUnread=0,accountStatus="active",restrictionReason=null,notificationPrefs={likes:true,matches:true,messages:true};
 const DISCOVER_PAGE_SIZE=20;
 let discoverCursor=null,discoverSnapshot=null,discoverHasMore=false,discoverLoading=false,discoverGeneration=0;
+let profileHydrated=false,matchesLoaded=false,discoveryStatus="idle";
 let discoverFilters=load("vybeDiscoverFilters",{minAge:18,maxAge:99,city:"",onlineOnly:false,verifiedOnly:false});
 localStorage.removeItem("vybeMatches");
 async function loadEntitlements(){const r=await secureApi("entitlements");if(r.ok)entitlements=r;return r}
@@ -932,11 +937,14 @@ async function syncProfile(){
   if(!r.ok)return false;
   profile={...profile,user_id:r.user_id};store("vybeProfile",profile);return true;
 }
-async function syncNow(hours=1){
-  if(!now)return false;
-  const r=await secureApi("set_intent",{intent:now.intent,hours});
-  if(!r.ok)return false;
-  if(r.expires_at){now.expires=new Date(r.expires_at).getTime();store("vybeNow",now);renderNow()}
+async function syncNow(chosen,hours=1){
+  if(!chosen||!profile?.user_id)return false;
+  const userId=profile.user_id;
+  const r=await secureApi("set_intent",{intent:chosen.intent,hours});
+  if(!r.ok||profile?.user_id!==userId)return false;
+  const expires=new Date(r.expires_at).getTime();
+  if(!Number.isFinite(expires)||expires<=Date.now())return false;
+  now={...chosen,expires,user_id:userId};store("vybeNow",now);renderNow();
   return true;
 }
 function discoveryRequestPayload(extra={}){
@@ -982,6 +990,7 @@ function applyDiscoveryPagination(r){
 async function loadPeople(){
   const generation=++discoverGeneration;
   discoverLoading=true;
+  discoveryStatus="loading";startGuide?.refresh();
   discoverHasMore=false;
   discoverCursor=null;
   discoverSnapshot=null;
@@ -990,12 +999,14 @@ async function loadPeople(){
     if(generation!==discoverGeneration)return false;
     if(!r.ok)return false;
     remotePeople=mapDiscoveryPeople(r.people);
+    discoveryStatus="ready";
     applyDiscoveryPagination(r);
     index=0;
     return true;
   }finally{
     if(generation===discoverGeneration){
       discoverLoading=false;
+      if(discoveryStatus==="loading")discoveryStatus="error";
       renderCard();
     }
   }
@@ -1034,7 +1045,11 @@ async function loadMorePeople(){
   }
 }
 async function hydrateProfile(){
-  const r=await secureApi("profile_get");if(!r.ok)return;
+  const r=await secureApi("profile_get");if(!r.ok)return false;
+  if(now&&(now.user_id?now.user_id!==r.user_id:profile?.user_id!==r.user_id)){
+    now=null;localStorage.removeItem("vybeNow");filter="Усе";
+    document.querySelectorAll(".mood").forEach(x=>x.classList.toggle("active",x.dataset.mood===filter));renderNow();
+  }
   analyticsDistinctId=r.user_id||null;
   adminRole=r.admin_role||null;
   accountStatus=r.account_status||"active";
@@ -1042,6 +1057,8 @@ async function hydrateProfile(){
   if(r.realtime_topic){realtimeUserTopic=r.realtime_topic;setupUserRealtime(realtimeUserTopic)}
   if(accountStatus==="active")chatMedia?.start();else chatMedia?.stop();
   if(r.profile){profile={name:r.profile.name,age:r.profile.age,city:r.profile.city||"",gender:r.profile.gender||"",looking:r.profile.looking_for||"",bio:r.profile.bio||"",photo_url:r.profile.photo_url||null,photo_present:r.profile.photo_present===true,verified:r.profile.verified===true,user_id:r.user_id,interests:normalizeInterests(r.profile.interests),map_enabled:r.profile.map_enabled===true,map_lat:r.profile.map_lat??null,map_lng:r.profile.map_lng??null};store("vybeProfile",profile)}
+  else{profile=null;localStorage.removeItem("vybeProfile")}
+  profileHydrated=true;startGuide?.refresh();return true;
 }
 async function begin(){
   if(validNow()){
@@ -1051,7 +1068,7 @@ async function begin(){
   const auth=await verifyTelegramAuth();window.__vybeAuth=auth;
   if(!auth?.ok){console.warn("VYBE secure auth not confirmed",auth);showAlert("Не вдалося підтвердити Telegram-авторизацію. Відкрий VYBE заново через бота.");return}
   await claimReferral();
-  await hydrateProfile();
+  if(!await hydrateProfile()){showAlert("Не вдалося завантажити анкету. Спробуй ще раз.");return}
   await recoverTestRefund();
   analyticsCapture("app_open");
   const launchParams=new URL(location.href).searchParams;
@@ -1177,6 +1194,7 @@ $("saveProfile").onclick=async()=>{
   clearProfilePhotoError();
   const mapEnabled=$("obMapEnabled").checked;
   if(mapEnabled&&!onboardingMapPoint){showAlert("Обери район на карті або вимкни показ на карті.");return}
+  const firstProfile=!profile;
   const candidate={...profile,name:$("obName").value.trim(),age,city:$("obCity").value.trim(),gender:$("obGender").value.trim(),looking:$("obLooking").value.trim(),bio,interests:readOnboardingInterests(),map_enabled:mapEnabled,map_lat:mapEnabled?onboardingMapPoint.lat:null,map_lng:mapEnabled?onboardingMapPoint.lng:null};
   const button=$("saveProfile");button.disabled=true;$("obPhotoBtn").disabled=true;
   try{
@@ -1189,11 +1207,14 @@ $("saveProfile").onclick=async()=>{
     profile={...candidate,user_id:r.user_id,photo_url:r.photo_url||candidate.photo_url||null,photo_present:r.photo_present===true||hasProfilePhoto()};store("vybeProfile",profile);
     onboardingPhoto=null;$("obPhotoInput").value="";
     $("onboarding").classList.add("hidden");renderProfile();analyticsCapture("profile_saved",{interests_count:profile.interests.length});
-    await loadPeople();tg?.HapticFeedback?.notificationOccurred("success");
+    await loadPeople();
+    if(firstProfile){showAppView("profileView");startGuide?.show()}
+    tg?.HapticFeedback?.notificationOccurred("success");
   }finally{button.disabled=false;$("obPhotoBtn").disabled=false;if($("obPhotoBtn").getAttribute("aria-invalid")==="true")$("obPhotoBtn").focus()}
 };
 $("editProfile").onclick=showOnboarding;
 function renderProfile(){
+  startGuide?.refresh();
   if(!profile)return;
   $("profileName").textContent=profile.name+", "+profile.age+(profile.verified?" ✓":"");
   $("profileMeta").textContent=[profile.city,profile.gender,profile.looking&&uiText("Шукаю: ")+profile.looking].filter(Boolean).join(" • ");
@@ -1311,11 +1332,13 @@ function renderNow(){
     $("nowLabel").textContent=uiText("Твій вайб зараз");
     $("nowTime").textContent=uiText("Покажи, чого хочеш саме зараз");
     if(setNowBtn)setNowBtn.textContent=uiText("Задати");
+    startGuide?.refresh();
     return
   }
   $("nowLabel").textContent=now.icon+" "+uiText(now.intent);
   $("nowTime").textContent=vibeTimeLeft(new Date(now.expires).toISOString());
   if(setNowBtn)setNowBtn.textContent=uiText("Змінити");
+  startGuide?.refresh();
 }
 const sheet=$("sheet"),content=$("sheetContent");
 const sheetPresentationObserver=new MutationObserver(()=>{
@@ -1356,7 +1379,19 @@ if(smart){const d=new Date(),hour=d.getHours();let target=new Date(d);
 if(hour<8){target.setHours(8,0,0,0);smart.textContent="До ранку";}
 else if(hour<18){target.setHours(20,0,0,0);smart.textContent="До вечора";}
 else{target.setDate(target.getDate()+1);target.setHours(8,0,0,0);smart.textContent="До ранку";}
-smart.dataset.until=String(target.getTime());}content.querySelectorAll(".choice[data-intent]").forEach(b=>b.onclick=()=>{content.querySelectorAll(".choice[data-intent]").forEach(x=>x.classList.remove("selected"));b.classList.add("selected");chosen={intent:b.dataset.intent,icon:b.dataset.icon}});content.querySelectorAll(".duration").forEach(b=>b.onclick=()=>{content.querySelectorAll(".duration").forEach(x=>x.classList.remove("selected"));b.classList.add("selected");hours=b.dataset.smart?Math.max(1,(Number(b.dataset.until)-Date.now())/3600000):+b.dataset.hours});$("saveNow").onclick=async()=>{if(!chosen){showAlert("Спочатку обери свій вайб.");return}now={...chosen,expires:Date.now()+hours*3600000};store("vybeNow",now);renderNow();filter=chosen.intent;document.querySelectorAll(".mood").forEach(x=>x.classList.toggle("active",x.dataset.mood===filter));const saved=await syncNow(hours);if(saved){analyticsCapture("vybe_now_set");await loadPeople()}sheet.classList.add("hidden");tg?.HapticFeedback?.notificationOccurred("success")}}}
+smart.dataset.until=String(target.getTime());}content.querySelectorAll(".choice[data-intent]").forEach(b=>b.onclick=()=>{content.querySelectorAll(".choice[data-intent]").forEach(x=>x.classList.remove("selected"));b.classList.add("selected");chosen={intent:b.dataset.intent,icon:b.dataset.icon}});content.querySelectorAll(".duration").forEach(b=>b.onclick=()=>{content.querySelectorAll(".duration").forEach(x=>x.classList.remove("selected"));b.classList.add("selected");hours=b.dataset.smart?Math.max(1,(Number(b.dataset.until)-Date.now())/3600000):+b.dataset.hours});$("saveNow").onclick=async()=>{
+  const button=$("saveNow");if(!button||button.disabled)return;
+  if(!chosen){showAlert("Спочатку обери свій вайб.");return}
+  const selected={...chosen},duration=hours;button.disabled=true;
+  try{
+    const saved=await syncNow(selected,duration);
+    if(!saved){showAlert("Не вдалося увімкнути VYBE NOW. Спробуй ще раз.");return}
+    filter=selected.intent;document.querySelectorAll(".mood").forEach(x=>x.classList.toggle("active",x.dataset.mood===filter));
+    analyticsCapture("vybe_now_set");await loadPeople();
+    if(button.isConnected){sheet.classList.add("hidden");tg?.BackButton?.hide?.()}
+    tg?.HapticFeedback?.notificationOccurred("success");
+  }finally{button.disabled=false}
+}}}
 $("setNow").onclick=()=>openSheet("now");$("premiumBtn").onclick=()=>openSheet("premium");$("notificationBtn").onclick=()=>openNotificationCenter();$("filterBtn").onclick=openDiscoverFilters;$("safetyBtn").onclick=()=>openSheet("safety");
 function people(){return remotePeople}
 function filtered(){
@@ -1376,6 +1411,7 @@ function vibeTimeLeft(expiresAt){
     : "активний ще "+hours+" год."+(rest?" "+rest+" хв.":"");
 }
 function renderCard(){
+  startGuide?.refresh();
   const arr=filtered();
   const stack=$("cardStack"),actions=$("discoverActions");
   if(!arr.length||index>=arr.length){
@@ -1390,11 +1426,14 @@ function renderCard(){
     stack.classList.add("emptyStack");
     const hasFilters=discoveryFiltersActive();
     const hasVibe=validNow()||filter!=="Усе";
-    const emptyTitle=hasVibe?uiText("Зараз нікого з таким вайбом немає."):uiText("Зараз немає активних анкет.");
-    const emptyText=hasVibe?uiText("Зміни VYBE NOW або спробуй інші умови."):uiText("Нові активні VYBE NOW з’являться тут.");
-    const secondary=hasFilters?uiText("↺ Скинути фільтри"):uiText("↻ Оновити пошук");
-    stack.innerHTML='<div class="discoverEmpty"><div class="discoverEmptyIcon">'+uiIcon("discover")+'</div><h3>'+emptyTitle+'</h3><p>'+emptyText+'</p><div class="discoverEmptyActions"><button id="emptySecondary" class="primary">'+secondary+'</button></div></div>';
-    const secondaryBtn=$("emptySecondary");if(secondaryBtn)secondaryBtn.onclick=async()=>{secondaryBtn.disabled=true;try{if(hasFilters)await resetDiscoveryFilters();else await loadPeople()}finally{if($("emptySecondary"))$("emptySecondary").disabled=false}};
+    const failed=discoveryStatus==="error",loading=discoveryStatus==="loading"||discoveryStatus==="idle";
+    const emptyTitle=failed?uiText("Не вдалося оновити пошук."):loading?uiText("Завантаження…"):hasVibe?uiText("Зараз нікого з таким вайбом немає."):uiText("Зараз немає активних анкет.");
+    const emptyText=failed?uiText("Перевір з’єднання й спробуй ще раз."):loading?"":hasVibe?uiText("Зміни VYBE NOW або спробуй інші умови."):uiText("Нові активні VYBE NOW з’являться тут.");
+    const secondary=hasFilters&&!failed?uiText("↺ Скинути фільтри"):uiText("↻ Оновити пошук");
+    const invite=!loading&&!failed&&!hasFilters&&accountStatus==="active"&&profileHydrated&&profile;
+    stack.innerHTML='<div class="discoverEmpty"><div class="discoverEmptyIcon">'+uiIcon("discover")+'</div><h3>'+emptyTitle+'</h3><p>'+emptyText+'</p><div class="discoverEmptyActions">'+(loading?'':'<button id="emptySecondary" class="primary">'+secondary+'</button>')+(invite?'<button id="emptyInvite" type="button" class="textBtn discoverInvite">'+uiText("Запросити друга")+'</button>':'')+'</div></div>';
+    const inviteBtn=$("emptyInvite");if(inviteBtn)inviteBtn.onclick=async()=>{inviteBtn.disabled=true;try{await openReferral()}finally{inviteBtn.disabled=false}};
+    const secondaryBtn=$("emptySecondary");if(secondaryBtn)secondaryBtn.onclick=async()=>{secondaryBtn.disabled=true;try{if(hasFilters&&!failed)await resetDiscoveryFilters();else await loadPeople()}finally{if($("emptySecondary"))$("emptySecondary").disabled=false}};
     return
   }
   stack.classList.remove("emptyStack");
@@ -1413,6 +1452,7 @@ function renderCard(){
 function updateUnreadBadge(total){const nav=[...document.querySelectorAll(".navItem")].find(x=>x.dataset.target==="chatView");if(!nav)return;let badge=nav.querySelector(".navUnread");if(!badge){badge=document.createElement("b");badge.className="navUnread";nav.appendChild(badge)}badge.textContent=total>99?"99+":String(total);badge.classList.toggle("hidden",!total)}
 async function loadMatches(){
   const r=await secureApi("matches");if(!r.ok)return false;
+  matchesLoaded=true;
   matches=(r.matches||[]).map(m=>({
     match_id:m.match_id,
     realtime_topic:m.realtime_topic||null,
@@ -1486,7 +1526,11 @@ async function next(kind){
 $("skipBtn").onclick=()=>next("skip");$("likeBtn").onclick=()=>next("like");$("sparkBtn").onclick=()=>next("super");document.querySelectorAll(".mood").forEach(b=>b.onclick=async()=>{document.querySelectorAll(".mood").forEach(x=>x.classList.remove("active"));b.classList.add("active");filter=b.dataset.mood;index=0;await loadPeople()});
 
 function uiIcon(name){return '<svg class="uiIcon" aria-hidden="true"><use href="#ui-'+name+'"></use></svg>'}
-function emptyStateMarkup(icon,title,hint){return '<div class="emptyState"><div class="emptyStateIcon">'+uiIcon(icon)+'</div><h3>'+escapeHtml(uiText(title))+'</h3><p>'+escapeHtml(uiText(hint))+'</p></div>'}
+function emptyStateMarkup(icon,title,hint){return '<div class="emptyState"><div class="emptyStateIcon">'+uiIcon(icon)+'</div><h3>'+escapeHtml(uiText(title))+'</h3><p>'+escapeHtml(uiText(hint))+'</p><button type="button" class="primary emptyStateAction">'+uiText("Переглянути людей")+'</button></div>'}
+function showAppView(target){
+  const button=[...document.querySelectorAll(".navItem")].find(x=>x.dataset.target===target);
+  if(button){button.click();$(target)?.scrollIntoView?.({block:"start",behavior:"smooth"})}
+}
 function avatarMarkup(photo,name,className="avatar"){
   const initial=escapeHtml((name||"V").trim().charAt(0).toUpperCase()||"V");
   return '<span class="'+className+' avatarShell"><span class="avatarInitial">'+initial+'</span>'+(photo?'<img data-avatar-img src="'+escapeHtml(photo)+'" alt="">':"")+'</span>';
@@ -1500,12 +1544,14 @@ function bindAvatarFallbacks(root=document){
 }
 
 function renderMatches(){
+  startGuide?.refresh();
   const list=$("matchesList");
   $("matchCount").textContent=matches.length;
   list.innerHTML=matches.length
     ? matches.map((p,i)=>'<button type="button" class="listItem matchOpen" data-index="'+i+'">'+avatarMarkup(p.photo_url,p.name,'avatar matchAvatar')+'<span class="matchMark">'+uiIcon("heart")+'</span><div class="itemMain"><b>'+escapeHtml(p.name)+(p.age?", "+escapeHtml(p.age):"")+(p.verified?' ✓':'')+'</b><small>'+uiText("Взаємний VYBE")+'</small>'+(p.city?'<small class="matchCity">'+escapeHtml(p.city)+(p.online?" • "+uiText("● онлайн"):"")+'</small>':p.online?'<small class="matchCity">'+uiText("● онлайн")+'</small>':'')+'</div></button>').join("")
     : emptyStateMarkup("heart","Поки немає взаємних збігів.","Лайкни анкету — взаємний VYBE відкриє чат.");
   bindAvatarFallbacks(list);
+  list.querySelector(".emptyStateAction")?.addEventListener("click",()=>showAppView("discoverView"));
   list.querySelectorAll(".matchOpen").forEach(b=>{
     b.onclick=()=>{
       const p=matches[Number(b.dataset.index)];
@@ -1529,6 +1575,7 @@ function renderChats(){
     return '<div class="listItem chatRow '+(unread?"hasUnread ":"")+(isNewMatch?"newMatchRow":"")+'"><button type="button" class="chatAvatarOpen" data-index="'+i+'" aria-label="'+escapeHtml(uiText("Переглянути анкету"))+'">'+avatarMarkup(p.photo_url,p.name,'avatar')+'</button><button type="button" class="chatOpen chatMainOpen" data-index="'+i+'"><div class="itemMain"><b>'+escapeHtml(p.name)+(p.age?", "+escapeHtml(p.age):"")+(p.online?' <span class="onlineMini">●</span>':'')+'</b><small>'+subtitle+'</small></div><div class="chatTail">'+(time?'<small class="chatTime">'+escapeHtml(time)+'</small>':'')+(unread?'<span class="unreadBadge">'+unread+'</span>':isNewMatch?'<span class="newMatchDot">✨</span>':'')+'</div><span class="chevron">›</span></button></div>';
   }).join(""):emptyStateMarkup("chat","Чати з’являться після взаємних збігів.","Тут будуть твої розмови після взаємного VYBE.");
   bindAvatarFallbacks(list);
+  list.querySelector(".emptyStateAction")?.addEventListener("click",()=>showAppView("discoverView"));
   list.querySelectorAll(".chatOpen").forEach(b=>b.onclick=()=>{
     const p=rows[Number(b.dataset.index)];if(p)openChat(p.match_id,p.name,p.id);
   });
@@ -1759,6 +1806,7 @@ async function deleteAccount(){
   analyticsCapture("account_deleted",{},true);
   resetLocalVYBE();
   profile=null;now=null;matches=[];remotePeople=[];activeChat=null;
+  profileHydrated=false;matchesLoaded=false;startGuide?.refresh();
   sheet.classList.add("hidden");
   tg?.HapticFeedback?.notificationOccurred("success");
   if(tg?.showAlert){
@@ -2272,3 +2320,29 @@ chatDuet=window.VybeDuet?.create({document,api:secureApi,getChat:()=>activeChat,
 
 photoViewer=window.VybePhoto?.create({language:()=>currentLang,interrupted:()=>!!$("vybeCall"),onOpen:syncSheetBackButton,onClose:syncSheetBackButton});
 profileFields=window.VybeProfileFields.create({language:()=>currentLang,interrupted:()=>!!$("vybeCall"),onOpen:syncSheetBackButton,onClose:syncSheetBackButton});
+
+startGuide=window.VybeStartGuide?.create({document,getLang:()=>currentLang,capture:analyticsCapture,
+  getState:()=>({
+    userId:profile?.user_id,
+    eligible:window.__vybeAuth?.ok===true&&profileHydrated&&accountStatus==="active"&&!!profile&&hasProfileBio(profile.bio)&&hasProfilePhoto(),
+    interests:normalizeInterests(profile?.interests).length>0,
+    vibe:!!validNow(),activeVibe:!!validNow(),
+    conversation:matchesLoaded&&matches.some(m=>!!m.last_message_at),
+    matchesReady:matchesLoaded,hasMatch:matches.length>0,
+    discoveryStatus,hasPeople:filtered().length>index,hasFilters:discoveryFiltersActive(),
+  }),
+  onAction:async action=>{
+    if(accountStatus!=="active")return;
+    if(action==="interests"){
+      showOnboarding();
+      const choices=$("obInterests");choices?.scrollIntoView?.({block:"center"});choices?.querySelector("button")?.focus({preventScroll:true});
+    }else if(action==="vibe")openSheet("now");
+    else if(action==="chats")showAppView("chatView");
+    else if(action==="discover")showAppView("discoverView");
+    else if(action==="reset_filters"){await resetDiscoveryFilters();showAppView("discoverView")}
+    else if(action==="refresh_discovery"){await loadPeople();showAppView("discoverView")}
+    else if(action==="refresh_matches"){if(await loadMatches()){if(matches.length)showAppView("chatView")}else showAlert("Не вдалося завантажити чати.")}
+    else if(action==="invite")await openReferral();
+  },onError:()=>showAlert("Перевір з’єднання й спробуй ще раз."),
+});
+$("startGuideBtn").onclick=()=>{showAppView("profileView");startGuide?.show()};

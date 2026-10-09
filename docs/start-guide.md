@@ -1,0 +1,15 @@
+# Start in VYBE — 0.9.50
+
+The optional guide lives at the top of Profile, collapsed by default for existing profiles. After the first successful profile creation, the app opens Profile and expands the guide so a new user sees a concrete next step. Discovery photos retain their current space. Users can expand it, hide it, and restore it with the Profile menu's **Start in VYBE** button.
+
+Three first-use milestones are observed: saved interests, an active VYBE NOW, and a conversation confirmed by the matches response's `last_message_at`. The next action uses current app state: edit interests, activate/renew a vibe, open chats, browse profiles, retry loading, reset filters, or open the referral screen. Every action reuses existing UI and authenticated API boundaries. It never likes a profile, sends a message, starts a duet, buys a product or shares an invitation automatically.
+
+Only four booleans (`interests`, `vibe`, `conversation`, `hidden`) are stored under `vybeStartGuide:v1:<authenticated VYBE user ID>`. There are no names, interest values, answers or message contents in this record. Milestones survive reloads and vibe expiration on this device; expiration recommends renewal without removing completed steps. A completed guide stays hidden on subsequent launches until explicitly reopened. Account deletion clears these keys through the existing `resetLocalVYBE` routine. Product analytics uses only guide event names and action types and respects the existing analytics preference.
+
+The guide stays hidden until profile hydration succeeds, required profile fields are complete, and the account is active. A server response containing no profile clears a cached profile; an account change clears a different user's cached vibe. Failed hydration never silently saves a cached profile. These boundaries prevent progress and profile data from being inherited by another account.
+
+VYBE NOW activation now waits for a successful server response with a valid future expiry before updating the active label, saved state, search selection or milestones. The save button prevents duplicate pending submissions. A failed request retains the existing vibe and the user's selected retry choices and leaves the dialog open. A closed/replaced dialog is not closed by a late successful response.
+
+Discovery failures display retry rather than claiming there are no active profiles. A truly empty unfiltered discovery adds **Invite a friend**, which opens the existing referral screen. Empty matches and chats link back to discovery.
+
+Validation: `node scripts/test-start-guide-ui.cjs <jsdom dependency directory>` exercises the real app's profile, vibe, discovery, chat navigation, language, restriction, hydration and account-isolation flows. Existing profile, compact discovery, emoji, photo, fullscreen and duet suites remain in CI. Check on a phone: reopen VYBE → Profile → Start in VYBE; complete interests and a vibe, open an existing match, and send a message manually. Also hide and restore the guide. Physical Telegram testing remains separate from browser tests.

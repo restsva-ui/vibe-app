@@ -59,6 +59,10 @@ async function close(f){await pause();f.dom.window.close()}
       f.acceptPhoto();await f.d.getElementById('saveProfile').onclick();const sent=f.saveCalls().at(-1);
       assert.equal(sent.profile.bio,'Мій опис');assert.equal(sent.profile_photo.mime_type,'image/webp');assert.ok(sent.profile_photo.image_base64);
       assert.equal(visible(f),false);const stored=JSON.parse(f.w.localStorage.getItem('vybeProfile'));
+      assert.equal(f.d.getElementById('profileView').classList.contains('active'),true);
+      assert.equal(f.d.getElementById('startGuide').hidden,false);
+      assert.equal(f.d.querySelector('.startGuideDetails').open,true);
+      assert.equal(f.d.activeElement,f.d.querySelector('.startGuideSummary'));
       assert.equal(stored.photo_url,'https://ui-fixture.invalid/new-photo.webp');assert.equal(stored.photo_present,true);
       assert.equal(JSON.stringify(stored).includes(sent.profile_photo.image_base64),false,'photo bytes must never enter localStorage');
     });
@@ -76,6 +80,7 @@ async function close(f){await pause();f.dom.window.close()}
   try{
     await check('complete profiles continue normally and can edit without re-uploading',async()=>{
       assert.equal(visible(f),false);assert.ok(f.saveCalls().length);f.d.getElementById('editProfile').click();
+      assert.equal(f.d.getElementById('discoverView').classList.contains('active'),true,'editing an existing profile must not change views');
       assert.equal(f.d.getElementById('obPhotoPreview').src,existing.photo_url);input(f,'obBio','Оновлений опис');
       await f.d.getElementById('saveProfile').onclick();assert.equal(visible(f),false);assert.equal(Object.hasOwn(f.saveCalls().at(-1),'profile_photo'),false);
     });
