@@ -107,6 +107,7 @@ const ACTION_RATE_LIMITS: Record<string, RateLimitPolicy> = {
   admin_test_reset_match: { windowSeconds: 3600, maxHits: 10 },
   admin_refund_star_order: { windowSeconds: 3600, maxHits: 20 },
   admin_finance_reconcile: { windowSeconds: 600, maxHits: 6 },
+  admin_growth_summary: { windowSeconds: 60, maxHits: 30 },
   star_invoice: { windowSeconds: 600, maxHits: 10 },
   star_test_refund: { windowSeconds: 3600, maxHits: 5 },
   star_order_close: { windowSeconds: 600, maxHits: 30 },
@@ -1734,7 +1735,19 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true, code, invited: rows.length, activated, rewards });
     }
 
+    if (action === "admin_growth_summary") {
+      const adminRole = await getAdminRole(db, user.id);
+      if (!adminRole) return json({ ok: false, error: "ADMIN_REQUIRED" }, 403);
+      try {
+        const counts = await rpc("vybe_admin_growth_summary", { p_actor: user.id });
+        return json({ ok: true, admin_role: adminRole, counts });
+      } catch {
+        return json({ ok: false, error: "GROWTH_UNAVAILABLE" }, 503);
+      }
+    }
+
     if (action === "entitlements") {
+      const ownerAccess = await getAdminRole(db, user.id) === "owner";
       const [rewards, paidRewards, uses] = await Promise.all([
         db(`referral_rewards?user_id=eq.${encodeURIComponent(user.id)}&select=reward_type,reward_amount,granted_at`) ?? [],
         db(`paid_rewards?user_id=eq.${encodeURIComponent(user.id)}&select=reward_type,reward_amount,granted_at`) ?? [],
@@ -1762,6 +1775,7 @@ Deno.serve(async (req: Request) => {
       });
       return json({
         ok: true,
+        owner_access: ownerAccess,
         balances: { supervybe, spotlight },
         earned: { supervybe: earnedSupervybe, spotlight: earnedSpotlight },
         used: { supervybe: usedSupervybe, spotlight: usedSpotlight },
@@ -2766,6 +2780,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "star_invoice") {
+      if (await getAdminRole(db, user.id) === "owner") return json({ ok: false, error: "OWNER_ACCESS_INCLUDED" }, 409);
       const productKey = clean(body.product_key, 64);
       const language = body.lang === "en" ? "en" : "uk";
       const termsAccepted = body.terms_accepted === true;
@@ -2918,11 +2933,12 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "likes_received") {
+      const ownerAccess = await getAdminRole(db, user.id) === "owner";
       const nowIso = new Date().toISOString();
       const plusRows = await db(
         `user_entitlements?user_id=eq.${encodeURIComponent(user.id)}&vybe_plus_until=gt.${encodeURIComponent(nowIso)}&select=vybe_plus_until&limit=1`,
       ) ?? [];
-      if (!plusRows?.length) return json({ ok: false, error: "VYBE+ required" }, 403);
+      if (!ownerAccess && !plusRows?.length) return json({ ok: false, error: "VYBE+ required" }, 403);
 
       const [likes, blockedIds, currentMatches] = await Promise.all([
         db(`likes?to_user_id=eq.${encodeURIComponent(user.id)}&select=from_user_id,kind,created_at&order=created_at.desc&limit=200`) ?? [],
@@ -2937,7 +2953,7 @@ Deno.serve(async (req: Request) => {
         .filter((id: string) => !blockedIds.has(id) && !matchedIds.has(id)))];
 
       if (!senderIds.length) {
-        return json({ ok: true, vybe_plus_until: plusRows[0].vybe_plus_until, people: [] });
+        return json({ ok: true, owner_access: ownerAccess, vybe_plus_until: plusRows[0]?.vybe_plus_until ?? null, people: [] });
       }
 
       const [profiles, statuses] = await Promise.all([
@@ -2966,7 +2982,7 @@ Deno.serve(async (req: Request) => {
         liked_at: latestLikeByUser.get(id)?.created_at ?? null,
       }));
 
-      return json({ ok: true, vybe_plus_until: plusRows[0].vybe_plus_until, people });
+      return json({ ok: true, owner_access: ownerAccess, vybe_plus_until: plusRows[0]?.vybe_plus_until ?? null, people });
     }
 
     if (action === "spotlight_use") {
@@ -3422,7 +3438,7 @@ Deno.serve(async (req: Request) => {
               sourceKey:`match:${matchId}:${targetId}`,
             }),
           ]);
-        } else if (result?.matched !== true && result?.super_charged === true) {
+        } else if (result?.matched !== true && (result?.super_charged === true || result?.like_created === true || result?.like_upgraded === true)) {
           await sendSocialNotification(db,botToken,{
             eventType:"like",
             recipientUserId:targetId,

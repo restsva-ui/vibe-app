@@ -1,4 +1,5 @@
 import { serviceRoleAuthHeaders } from '../_shared/supabase-service-auth.ts';
+import { deliverGrowthAlerts } from '../_shared/owner-growth.ts';
 import { calendarFile, publicPreview, validToken, APP_URL } from '../_shared/plan-invites.ts';
 const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'content-type,authorization,apikey','Access-Control-Max-Age':'86400','Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff'};
 const json=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{...cors,'Content-Type':'application/json; charset=utf-8'}});
@@ -39,7 +40,8 @@ export async function handler(req:Request){
       }catch{outcome='unknown';}
       finally{await rpc('vybe_plan_reminder_finish',{p_plan:job.plan_id,p_user:job.user_id,p_claim:job.claim,p_outcome:outcome,p_retry:retry}).catch(()=>{});}
     }));
-    return json({ok:true,processed:(jobs||[]).length,sent});
+    const growth=await deliverGrowthAlerts(rpc,Deno.env.get('TELEGRAM_BOT_TOKEN'),APP_URL);
+    return json({ok:true,processed:(jobs||[]).length,sent,growth});
   }catch{return json({ok:false,error:'REMINDERS_UNAVAILABLE'},503);}
 }
 Deno.serve(handler);

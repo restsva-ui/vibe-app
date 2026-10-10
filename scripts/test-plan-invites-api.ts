@@ -23,6 +23,7 @@ globalThis.fetch=async(input:any,options:RequestInit={})=>{
  if(url.pathname.endsWith('/vybe_plan_reminder_claim'))return Response.json([{plan_id:plan,user_id:actor,claim:token,telegram_id:123}]);
  if(url.pathname.endsWith('/vybe_plan_reminder_allowed'))return Response.json(allowed);
  if(url.pathname.endsWith('/vybe_plan_reminder_finish'))return Response.json(null);
+ if(url.pathname.endsWith('/vybe_growth_claim'))return Response.json(null);
  throw new Error('Unexpected network: '+url.pathname);
 };
 const fields={auth_date:String(Math.floor(Date.now()/1000)),user:JSON.stringify({id:123,first_name:'QA'})},key=createHmac('sha256','WebAppData').update(bot).digest(),hash=createHmac('sha256',key).update(Object.entries(fields).map(([k,v])=>k+'='+v).sort().join('\n')).digest('hex'),initData=new URLSearchParams({...fields,hash}).toString();

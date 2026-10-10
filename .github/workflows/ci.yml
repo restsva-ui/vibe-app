@@ -66,6 +66,7 @@ jobs:
           node scripts/test-start-guide-ui.cjs /tmp/vybe-emoji-test
           node scripts/test-plans-ui.cjs /tmp/vybe-emoji-test
           node scripts/test-plan-invites-ui.cjs /tmp/vybe-emoji-test
+          node scripts/test-owner-growth-ui.cjs /tmp/vybe-emoji-test
 
       - name: Test mandatory bio and photo with API access boundaries
         run: |
@@ -98,6 +99,11 @@ jobs:
         run: |
           npx --yes esbuild@0.25.11 scripts/test-plan-invites-api.ts --bundle --platform=node --format=esm --outfile=/tmp/test-plan-invites-api.mjs
           node /tmp/test-plan-invites-api.mjs
+
+      - name: Test owner access and registration notifications
+        run: |
+          npx --yes esbuild@0.25.11 scripts/test-owner-growth-api.ts --bundle --platform=node --format=esm --outfile=/tmp/test-owner-growth-api.mjs
+          node /tmp/test-owner-growth-api.mjs
 
       - name: Test native WebRTC audio and video transfer
         run: |
