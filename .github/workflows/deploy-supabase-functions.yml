@@ -39,6 +39,9 @@ jobs:
       - name: Deploy telegram-bot
         run: supabase functions deploy telegram-bot --project-ref "$SUPABASE_PROJECT_ID" --use-api
 
+      - name: Deploy plan-invite
+        run: supabase functions deploy plan-invite --project-ref "$SUPABASE_PROJECT_ID" --use-api
+
       - name: Smoke-test deployed functions
         shell: bash
         run: |

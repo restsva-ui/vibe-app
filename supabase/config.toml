@@ -5,3 +5,7 @@ verify_jwt = false
 
 [functions.telegram-bot]
 verify_jwt = false
+
+# GET accepts a revocable opaque invitation/calendar capability; worker POST checks a Vault secret hash.
+[functions.plan-invite]
+verify_jwt = false

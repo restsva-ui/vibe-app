@@ -5,6 +5,7 @@ import { MEDIA_ACTIONS, handleMediaAction, flushMediaCleanup } from "../_shared/
 import { parseInterests, parseMapArea, parseMapBounds } from "../_shared/discovery-preferences.ts";
 import { DUET_ACTIONS, handleDuetAction } from "../_shared/duet-api.ts";
 import { PLAN_ACTIONS, handlePlanAction } from "../_shared/plans-api.ts";
+import { PLAN_GROWTH_ACTIONS, handlePlanGrowth } from "../_shared/plan-invites.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -78,6 +79,13 @@ type RateLimitPolicy = {
 };
 
 const ACTION_RATE_LIMITS: Record<string, RateLimitPolicy> = {
+  plans_invite_get: { windowSeconds: 60, maxHits: 30 },
+  plans_invite_update: { windowSeconds: 60, maxHits: 15 },
+  plans_invite_preview: { windowSeconds: 60, maxHits: 30 },
+  plans_share: { windowSeconds: 60, maxHits: 15 },
+  plans_calendar: { windowSeconds: 60, maxHits: 15 },
+  plans_reminder_get: { windowSeconds: 60, maxHits: 30 },
+  plans_reminder_set: { windowSeconds: 60, maxHits: 15 },
   plans_list: { windowSeconds: 60, maxHits: 60 },
   plans_my: { windowSeconds: 60, maxHits: 30 },
   plans_get: { windowSeconds: 60, maxHits: 60 },
@@ -3509,6 +3517,13 @@ Deno.serve(async (req: Request) => {
         matches: signedMatches,
         unread_total: signedMatches.reduce((n: number, m: any) => n + Number(m.unread_count || 0), 0),
       });
+    }
+
+    if (PLAN_GROWTH_ACTIONS.has(String(action))) {
+      const result=await handlePlanGrowth(String(action),body,{userId:String(user.id),telegramId:Number(telegram.user.id),
+        endpoint:Deno.env.get('SUPABASE_URL')+'/functions/v1/plan-invite',rpc,
+        telegram:(method,payload)=>telegramApi(botToken,method,payload)});
+      return json(result.data,result.status);
     }
 
     if (PLAN_ACTIONS.has(String(action))) {

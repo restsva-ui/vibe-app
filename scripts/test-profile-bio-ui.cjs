@@ -2,13 +2,13 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const requireFixture=createRequire(path.join(process.argv[2]||'/tmp/vybe-emoji-test','package.json'));
 const {JSDOM}=requireFixture('jsdom');
 const html=fs.readFileSync('index.html','utf8');
-const source=['profile-cities.js','profile-fields.js','interests-map.js','chat-media.js','chat-emoji.js','duet.js','photo-viewer.js','start-guide.js','plans.js','app.js'].map(file=>fs.readFileSync(file,'utf8')).join('\n;\n');
+const source=['profile-cities.js','profile-fields.js','interests-map.js','chat-media.js','chat-emoji.js','duet.js','photo-viewer.js','start-guide.js','plans.js','plan-invites.js','app.js'].map(file=>fs.readFileSync(file,'utf8')).join('\n;\n');
 const existing={name:'Test',age:28,city:'Київ',bio:'Люблю каву й гори',user_id:'owner',photo_url:'https://ui-fixture.invalid/photo.jpg',interests:['coffee'],map_enabled:false};
 const pause=()=>new Promise(resolve=>setTimeout(resolve,10));
 let checks=0;
 
 async function fixture(profile,language='uk',options={}){
-  const dom=new JSDOM(html,{url:'https://ui-fixture.invalid/',runScripts:'outside-only',pretendToBeVisual:true});
+  const dom=new JSDOM(html,{url:options.url||'https://ui-fixture.invalid/',runScripts:'outside-only',pretendToBeVisual:true});
   const w=dom.window,requests=[];let current=profile?{...profile}:null,rejectBio=false,rejectPhoto=null;
   if(Object.hasOwn(options,'serverProfile'))current=options.serverProfile?{...options.serverProfile}:null;
   const userId=options.userId||'owner';
@@ -34,16 +34,17 @@ async function fixture(profile,language='uk',options={}){
       case 'matches':result={ok:true,matches:[],unread_total:0};break;
       case 'notification_settings_get':result={ok:true,preferences:{likes:true,matches:true,messages:true}};break;
     }
-    if(options.respond)result=await options.respond(body,result)||result;
+    if(options.respond)result=await options.respond(body,result,url)||result;
     return {ok:result.ok,status:result.ok?200:400,json:async()=>result,text:async()=>JSON.stringify(result)};
   };
+  options.beforeEval?.(w);
   w.eval(source);
   for(let i=0;i<40;i++){
     if(requests.some(r=>r.action==='support_counts'))break;
     await pause();
   }
   await pause();
-  assert.ok(requests.some(r=>r.action==='profile_get'),'fixture must complete real app authentication and hydration');
+  if(options.expectHydration!==false)assert.ok(requests.some(r=>r.action==='profile_get'),'fixture must complete real app authentication and hydration');
   return {dom,w,d:w.document,requests,rejectNextBio(){rejectBio=true},rejectNextPhoto(error='PHOTO_UPLOAD_FAILED'){rejectPhoto=error},acceptPhoto(){rejectPhoto=null},saveCalls:()=>requests.filter(r=>r.action==='save_profile')};
 }
 const input=(f,id,value)=>{const el=f.d.getElementById(id);el.value=value;el.dispatchEvent(new f.w.Event('input',{bubbles:true}));};

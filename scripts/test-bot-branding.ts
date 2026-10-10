@@ -30,7 +30,7 @@ globalThis.fetch = async (input: any, init?: RequestInit) => {
 const request = (text: string, language = "uk", authorized = true) => new Request("https://fixture.invalid/telegram-bot", {
   method: "POST",
   headers: { "Content-Type": "application/json", ...(authorized ? { "x-telegram-bot-api-secret-token": "fixture-webhook-secret" } : {}) },
-  body: JSON.stringify({ message: { chat: { id: 42 }, from: { id: 42, language_code: language }, text } }),
+  body: JSON.stringify({ message: { chat: { id: 42, type: 'private' }, from: { id: 42, language_code: language }, text } }),
 });
 
 try {
@@ -64,6 +64,13 @@ try {
   assert.ok(calls[0].payload.text.includes("terms.html"));
 
   calls.length = 0;
+  const planToken='55555555-5555-4555-8555-555555555555';
+  assert.equal((await handler!(request('/start plan_'+planToken))).status,200);
+  assert.equal(calls.at(-1)?.payload.reply_markup.inline_keyboard[0][0].web_app.url,'https://restsva-ui.github.io/vibe-app/?invite='+planToken);
+  assert.match(calls.at(-1)?.payload.text,/перед заповненням анкети/);
+  calls.length=0;
+  assert.equal((await handler!(request('/start plan_bad'))).status,200);
+  assert.equal(calls.length,0,'invalid plan capabilities are ignored');
   failMessage = true;
   assert.equal((await handler!(request("/start"))).status, 500, "failed delivery must remain retryable by Telegram");
   console.log("Bot branding: webhook authorization, Ukrainian welcome, English referral, text fallback, terms and delivery retry passed");

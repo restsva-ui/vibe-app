@@ -470,6 +470,13 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true });
     }
 
+    const planLaunch = textInput.match(/^\/start\s+plan_([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i);
+    if (planLaunch && msg.chat.type === 'private' && Number(msg.chat.id) === Number(msg.from?.id)) {
+      await telegram('sendMessage',{chat_id:msg.chat.id,
+        text:english?'You were invited to a VYBE meetup 📍\nView the plan before filling out your profile. Participation requires an 18+ profile and host approval.':'Тебе запросили на зустріч у VYBE 📍\nПереглянь план перед заповненням анкети. Для участі потрібні анкета 18+ і схвалення організатора.',
+        reply_markup:{inline_keyboard:[[{text:english?'View the plan 📍':'Переглянути план 📍',web_app:{url:APP_URL+'?invite='+encodeURIComponent(planLaunch[1].toLowerCase())}}]]}});
+      return json({ok:true});
+    }
     const m = msg.text.trim().match(/^\/start(?:\s+ref_(v[0-9a-z]+))?$/i);
     if (!m) return json({ ok: true });
 

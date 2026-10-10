@@ -46,6 +46,7 @@ jobs:
           node --check duet.js
           node --check start-guide.js
           node --check plans.js
+          node --check plan-invites.js
 
       - name: Test chat emoji, fullscreen and profile completion UI
         run: |
@@ -59,6 +60,7 @@ jobs:
           node scripts/test-duet-ui.cjs /tmp/vybe-emoji-test
           node scripts/test-start-guide-ui.cjs /tmp/vybe-emoji-test
           node scripts/test-plans-ui.cjs /tmp/vybe-emoji-test
+          node scripts/test-plan-invites-ui.cjs /tmp/vybe-emoji-test
 
       - name: Test mandatory bio and photo with API access boundaries
         run: |
@@ -86,6 +88,11 @@ jobs:
         run: |
           npx --yes esbuild@0.25.11 scripts/test-plans-api.ts --bundle --platform=node --format=esm --outfile=/tmp/test-plans-api.mjs
           node /tmp/test-plans-api.mjs
+
+      - name: Test invitation, calendar and reminder access boundaries
+        run: |
+          npx --yes esbuild@0.25.11 scripts/test-plan-invites-api.ts --bundle --platform=node --format=esm --outfile=/tmp/test-plan-invites-api.mjs
+          node /tmp/test-plan-invites-api.mjs
 
       - name: Test native WebRTC audio and video transfer
         run: |
@@ -121,6 +128,9 @@ jobs:
 
       - name: Type-check telegram-bot
         run: deno check supabase/functions/telegram-bot/index.ts
+
+      - name: Type-check plan-invite
+        run: deno check supabase/functions/plan-invite/index.ts
 
       - name: Parse and transpile telegram-bot
         run: npx --yes esbuild@0.25.11 supabase/functions/telegram-bot/index.ts --platform=neutral --format=esm --outfile=/tmp/telegram-bot.js

@@ -245,7 +245,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.51",
+      app_version:"0.9.52",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -264,7 +264,7 @@ const realtimeClient=window.supabase?.createClient?.(SUPABASE_URL,SUPABASE_KEY,{
 });
 let realtimeUserTopic=null,realtimeUserChannel=null,realtimeUserChannelTopic=null,realtimeConnected=false;
 const realtimeMatchChannels=new Map();
-let chatMedia=null,chatEmoji=null,chatDuet=null,photoViewer=null,profileFields=null,startGuide=null,planUI=null,chatRequestId=0;
+let chatMedia=null,chatEmoji=null,chatDuet=null,photoViewer=null,profileFields=null,startGuide=null,planUI=null,planExtras=null,pendingPlanInvitation=null,invitationEntry=false,chatRequestId=0;
 let activeChat=null,chatRefreshTimer=null,socialRefreshTimer=null,typingStopTimer=null,incomingTypingTimer=null,lastTypingSentAt=0,localTypingActive=false;
 
 function teardownSocialRealtime(){
@@ -286,7 +286,7 @@ function teardownSocialRealtime(){
   setRealtimeBadge(false);
 }
 function enterRestrictedMode(reason=null,{showNotice=true}={}){
-  if(planUI?.isMounted()){planUI.dispose();content.innerHTML='';sheet.classList.add('hidden');sheet.classList.remove('sheetPlans');}
+  if(planUI?.isMounted()||planExtras?.isMounted()){planUI?.dispose();planExtras?.dispose();pendingPlanInvitation=null;content.innerHTML='';sheet.classList.add('hidden');sheet.classList.remove('sheetPlans');}
   chatMedia?.stop();
   accountStatus="restricted";
   restrictionReason=reason||restrictionReason||null;
@@ -464,7 +464,7 @@ async function claimReferral(){
   const initParams=new URLSearchParams(tg?.initData||"");
   const pageParams=new URLSearchParams(location.search);
   const code=String(tg?.initDataUnsafe?.start_param||initParams.get("start_param")||pageParams.get("tgWebAppStartParam")||pageParams.get("ref")||"").trim().toLowerCase();
-  if(!code)return;
+  if(!code||code.startsWith('plan_'))return;
   const r=await secureApi("referral_claim",{code});
   if(r.ok&&(r.claimed===true||r.reason==="already_claimed"))localStorage.setItem("vybeReferral:"+code,"1");
   else console.warn("VYBE referral claim failed",r);
@@ -663,7 +663,7 @@ function notificationCenterTime(iso){
 function notificationPresentation(n){
   const payload=n.payload||{};
   if(payload.plan_id&&String(payload.kind||'').startsWith('plan_')){
-    const labels={plan_request:['Нова заявка на план','New plan request'],plan_approved:['Тебе схвалено на зустріч','Your meetup request was approved'],plan_rejected:['Відповідь на заявку','Your request was reviewed'],plan_cancelled:['План скасовано','Plan cancelled'],plan_message:['Повідомлення у плані','Message in your plan']};
+    const labels={plan_request:['Нова заявка на план','New plan request'],plan_approved:['Тебе схвалено на зустріч','Your meetup request was approved'],plan_rejected:['Відповідь на заявку','Your request was reviewed'],plan_cancelled:['План скасовано','Plan cancelled'],plan_message:['Повідомлення у плані','Message in your plan'],plan_reminder:['Зустріч незабаром','Your meetup starts soon']};
     const label=labels[payload.kind]||['План оновлено','Plan updated'];
     return {icon:'📍',title:currentLang==='en'?label[1]:label[0],subtitle:currentLang==='en'?'Open your meetup plan':'Відкрий свій план зустрічі',action:'plan'};
   }
@@ -1094,8 +1094,12 @@ async function begin(){
     return;
   }
 
+  const invitation=vybeLaunchInvitation();
+  if(invitation&&!pendingPlanInvitation){openInvitationPreview(invitation,true);return;}
+
   if(!profile||!hasProfileBio(profile.bio)||!hasProfilePhoto())showOnboarding();else{renderProfile();await syncProfile();await loadPeople()}
   await loadEntitlements();await loadNotificationSettings();await loadMatches();await loadSupportCounts();renderNow();renderCard();renderMatches();renderChats();
+  if(pendingPlanInvitation&&profile&&hasProfileBio(profile.bio)&&hasProfilePhoto()){await resumePlanInvitation();return;}
   if(adminRole&&launchParams.get("admin")==="support"){
     await openAdminSupport(launchTicket);
     history.replaceState({},document.title,location.pathname);
@@ -1125,7 +1129,8 @@ enterBtn.addEventListener("click",async()=>{
   try{await begin()}finally{enterBtn.textContent="Увійти";syncAgeButton()}
 });
 syncAgeButton();
-if(localStorage.getItem("vybe18")==="yes"){$("ageGate").classList.add("hidden");setTimeout(begin,0)}
+if(vybeLaunchInvitation()){$("ageGate").classList.add("hidden");setTimeout(()=>{if(tg?.initData&&localStorage.getItem('vybe18')==='yes')begin();else openInvitationPreview(vybeLaunchInvitation(),false);},0)}
+else if(localStorage.getItem("vybe18")==="yes"){$("ageGate").classList.add("hidden");setTimeout(begin,0)}
 let supportRefreshTimer=null;
 function scheduleSupportCountRefresh(){
   clearTimeout(supportRefreshTimer);
@@ -1220,7 +1225,8 @@ $("saveProfile").onclick=async()=>{
     onboardingPhoto=null;$("obPhotoInput").value="";
     $("onboarding").classList.add("hidden");renderProfile();analyticsCapture("profile_saved",{interests_count:profile.interests.length});
     await loadPeople();
-    if(firstProfile){showAppView("profileView");startGuide?.show()}
+    if(pendingPlanInvitation){analyticsCapture('plan_invitation_profile_completed');await loadEntitlements();await loadNotificationSettings();await loadMatches();await loadSupportCounts();await resumePlanInvitation();}
+    else if(firstProfile){showAppView("profileView");startGuide?.show()}
     tg?.HapticFeedback?.notificationOccurred("success");
   }finally{button.disabled=false;$("obPhotoBtn").disabled=false;if($("obPhotoBtn").getAttribute("aria-invalid")==="true")$("obPhotoBtn").focus()}
 };
@@ -1357,7 +1363,7 @@ const sheetPresentationObserver=new MutationObserver(()=>{
   sheet.classList.toggle("sheetChat",!!content.querySelector(".chatComposer"));
   const plansActive=!sheet.classList.contains('hidden')&&!!content.querySelector('.plansShell');
   sheet.classList.toggle('sheetPlans',plansActive);
-  if(!plansActive)planUI?.dispose();
+  if(!plansActive){planUI?.dispose();planExtras?.dispose();}
 });
 sheetPresentationObserver.observe(content,{childList:true});
 function setSheetFullscreen(enabled){
@@ -1367,6 +1373,7 @@ function closeSheetView(){
   if(chatDuet?.close())return;
   if(profileFields?.close())return;
   if(photoViewer?.close())return;
+  if(planExtras?.back())return;
   if(planUI?.back())return;
   planUI?.dispose();sheet.classList.remove('sheetPlans');
   chatDuet?.dispose();
@@ -2319,16 +2326,33 @@ function openPeopleMap(){
 }
 $("mapBtn").onclick=openPeopleMap;
 function openPlansMap(planId){
-  destroyVibeMap();planUI?.dispose();
+  invitationEntry=false;
+  destroyVibeMap();planUI?.dispose();planExtras?.dispose();
   chatDuet?.dispose();chatEmoji?.dispose();chatMedia?.disposeRecording();
   sendTyping(activeChat?.matchId,false);activeChat=null;syncMatchRealtimeChannels();
   setSheetFullscreen(true);content.innerHTML='<div class="plansShell"></div>';
   sheet.classList.remove('hidden');sheet.classList.add('sheetPlans');tg?.BackButton?.show?.();
   planUI?.mount(content.querySelector('.plansShell'),planId);
 }
-planUI=createVybePlans({api:secureApi,getLang:()=>currentLang,getProfile:()=>profile,onPeople:openPeopleMap,
+planUI=createVybePlans({api:secureApi,getLang:()=>currentLang,getProfile:()=>profile,onPeople:openPeopleMap,onExtras:openPlanExtras,
   onExit:()=>{planUI?.dispose();content.innerHTML='';closeSheetView();},
   onProfile:(id,planId)=>openPublicProfile(id,{returnPlan:planId}),onSafety:(id,name)=>openUserSafety(id,name),confirm:confirmAction,analytics:analyticsCapture});
+function planExtrasRoot(){destroyVibeMap();planUI?.dispose();planExtras?.dispose();chatDuet?.dispose();chatEmoji?.dispose();chatMedia?.disposeRecording();sendTyping(activeChat?.matchId,false);activeChat=null;syncMatchRealtimeChannels();setSheetFullscreen(true);content.innerHTML='<div class="plansShell planExtrasShell"></div>';sheet.classList.remove('hidden');sheet.classList.add('sheetPlans');tg?.BackButton?.show?.();return content.querySelector('.plansShell');}
+function exitPlanExtras(){const wasEntry=invitationEntry;invitationEntry=false;planExtras?.dispose();pendingPlanInvitation=null;content.innerHTML='';sheet.classList.add('hidden');sheet.classList.remove('sheetPlans');setSheetFullscreen(false);tg?.BackButton?.hide?.();history.replaceState({},document.title,location.pathname);if(localStorage.getItem('vybe18')!=='yes'||!window.__vybeAuth?.ok)$('ageGate').classList.remove('hidden');else if(wasEntry)begin();}
+function openInvitationPreview(token,authenticated){invitationEntry=true;return planExtras.preview(planExtrasRoot(),token,authenticated);}
+function openPlanExtras(id,host,mode){invitationEntry=false;const target=planExtrasRoot();return mode==='planning'?planExtras.planning(target,id):planExtras.invitation(target,id,host);}
+async function resumePlanInvitation(){const token=pendingPlanInvitation;if(!token)return;const r=await secureApi('plans_invite_preview',{token});if(pendingPlanInvitation!==token)return;pendingPlanInvitation=null;if(!r.ok){await openInvitationPreview(token,true);return;}history.replaceState({},document.title,location.pathname);openPlansMap(r.plan.id);}
+async function joinPlanInvitation(token){
+  if(!tg?.initData){const url='https://t.me/vybe_now_bot?start=plan_'+encodeURIComponent(token);if(tg?.openTelegramLink)tg.openTelegramLink(url);else location.assign(url);return;}
+  pendingPlanInvitation=token;planExtras?.dispose();content.innerHTML='';sheet.classList.add('hidden');sheet.classList.remove('sheetPlans');
+  if(localStorage.getItem('vybe18')!=='yes'){$('ageGate').classList.remove('hidden');return;}
+  if(!window.__vybeAuth?.ok||!profileHydrated){await begin();return;}
+  if(!profile||!hasProfileBio(profile.bio)||!hasProfilePhoto()){showOnboarding();return;}
+  await Promise.allSettled([loadEntitlements(),loadNotificationSettings(),loadMatches(),loadSupportCounts()]);
+  await resumePlanInvitation();
+}
+planExtras=createVybePlanExtras({api:secureApi,getLang:()=>currentLang,telegram:tg,onPlan:openPlansMap,onJoin:joinPlanInvitation,onExit:exitPlanExtras,analytics:analyticsCapture,
+  publicApi:async token=>{try{const r=await fetch(SUPABASE_URL+'/functions/v1/plan-invite?token='+encodeURIComponent(token),{headers:{apikey:SUPABASE_KEY},cache:'no-store',referrerPolicy:'no-referrer'});return await r.json();}catch{return {ok:false,error:'PLANS_UNAVAILABLE'};}}});
 const mapLifecycleObserver=new MutationObserver(()=>{
   const active=!sheet.classList.contains("hidden")&&!!content.querySelector(".mapShell");
   document.body.classList.toggle("mapViewing",active);
