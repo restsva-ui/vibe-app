@@ -2,12 +2,13 @@
 
 VYBE is an 18+ Telegram Mini App for social discovery, dating, friendship and private conversations. The core UX is based on a user's current intent ("vybe") rather than endless generic swiping.
 
-## Current beta — 0.9.55
+## Current beta — 0.9.56
 
 Implemented and wired to production Supabase:
 
 - consistent **VYBE** branding: the silver wordmark spells `vybe` with the owner-approved first variant and a clear straight descending `y`; the app, legal pages and bot welcome share the corrected assets
 - Telegram Mini App authentication with server-side initData validation
+- TikTok campaign links carry a validated source tag through the bot into consent-controlled app events; first profile creation is measured separately from edits. See [campaign measurement](docs/campaign-measurement.md)
 - 18+ entry gate and legal/community pages
 - profiles with mandatory bio and photo, discovery filters and VYBE NOW intents
 - subtle color accents on the dark theme: pink likes/matches, lavender SuperVYBE, blue chat indicators, mint profile navigation and warm gold notifications

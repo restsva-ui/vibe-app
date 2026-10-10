@@ -93,9 +93,9 @@ for (const token of referralChecks) {
   if (!app.includes(token)) fail(`app.js: referral HTML is missing ${token}`);
 }
 
-if (!index.includes("VYBE 0.9.55")) fail("index.html: version is not 0.9.55");
+if (!index.includes("VYBE 0.9.56")) fail("index.html: version is not 0.9.56");
 if (!index.includes("@supabase/supabase-js@2.117.2")) fail("index.html: Supabase JS dependency is not pinned to 2.117.2");
-if (!app.includes('app_version:"0.9.55"')) fail("app.js: analytics version is not 0.9.55");
+if (!app.includes('app_version:"0.9.56"')) fail("app.js: analytics version is not 0.9.56");
 
 if (process.exitCode) process.exit(process.exitCode);
 console.log("VYBE hardening checks passed.");

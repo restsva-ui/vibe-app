@@ -237,6 +237,8 @@ const POSTHOG_HOST="https://eu.i.posthog.com";
 const POSTHOG_PROJECT_TOKEN="phc_pBHQg5iKgvw66j7dCYoRHZvZaTUhe5Gmu6SPU3fWmmVC";
 let analyticsDistinctId=null;
 let analyticsEnabled=load("vybeAnalytics",true)!==false;
+let campaignAttribution=null;
+const launchCampaign=window.VybeCampaign?.fromLaunch(location.href,tg)||null;
 function analyticsCapture(event,properties={},useBeacon=false){
   if(!analyticsEnabled||!analyticsDistinctId||!event)return;
   const payload={
@@ -245,9 +247,10 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.55",
+      app_version:"0.9.56",
       platform:"telegram_mini_app",
       language:currentLang,
+      ...window.VybeCampaign?.properties(campaignAttribution),
       ...properties,
     },
   };
@@ -1059,6 +1062,7 @@ async function hydrateProfile(){
     document.querySelectorAll(".mood").forEach(x=>x.classList.toggle("active",x.dataset.mood===filter));renderNow();
   }
   analyticsDistinctId=r.user_id||null;
+  campaignAttribution=window.VybeCampaign?.forAccount(analyticsDistinctId,launchCampaign,{enabled:analyticsEnabled})||null;
   adminRole=r.admin_role||null;
   accountStatus=r.account_status||"active";
   restrictionReason=r.restriction_reason||null;
@@ -1223,7 +1227,8 @@ $("saveProfile").onclick=async()=>{
     if(!r.ok){showAlert("Не вдалося зберегти анкету. Спробуй ще раз.");return}
     profile={...candidate,user_id:r.user_id,photo_url:r.photo_url||candidate.photo_url||null,photo_present:r.photo_present===true||hasProfilePhoto()};store("vybeProfile",profile);
     onboardingPhoto=null;$("obPhotoInput").value="";
-    $("onboarding").classList.add("hidden");renderProfile();analyticsCapture("profile_saved",{interests_count:profile.interests.length});
+    $("onboarding").classList.add("hidden");renderProfile();analyticsCapture("profile_saved",{interests_count:profile.interests.length,is_first_profile:firstProfile});
+    if(firstProfile)analyticsCapture("profile_created");
     await loadPeople();
     if(pendingPlanInvitation){analyticsCapture('plan_invitation_profile_completed');await loadEntitlements();await loadNotificationSettings();await loadMatches();await loadSupportCounts();await resumePlanInvitation();}
     else if(firstProfile){showAppView("profileView");startGuide?.show()}
@@ -1828,6 +1833,7 @@ async function deleteAccount(){
   for(const entry of realtimeMatchChannels.values()){try{realtimeClient?.removeChannel(entry.channel)}catch{}}
   realtimeMatchChannels.clear();
   analyticsCapture("account_deleted",{},true);
+  window.VybeCampaign?.clear(analyticsDistinctId);campaignAttribution=null;
   resetLocalVYBE();
   profile=null;now=null;matches=[];remotePeople=[];activeChat=null;
   profileHydrated=false;matchesLoaded=false;startGuide?.refresh();
@@ -2247,6 +2253,7 @@ function openSettings(){
   $("analyticsToggleBtn").onclick=()=>{
     analyticsEnabled=!analyticsEnabled;
     store("vybeAnalytics",analyticsEnabled);
+    campaignAttribution=window.VybeCampaign?.forAccount(analyticsDistinctId,launchCampaign,{enabled:analyticsEnabled})||null;
     if(analyticsEnabled)analyticsCapture("analytics_opt_in");
     openSettings();
   };

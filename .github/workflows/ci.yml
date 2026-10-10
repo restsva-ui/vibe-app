@@ -47,6 +47,10 @@ jobs:
           node --check start-guide.js
           node --check plans.js
           node --check plan-invites.js
+          node --check campaign-attribution.js
+
+      - name: Test campaign attribution scope and expiry
+        run: node scripts/test-campaign-attribution.cjs
 
       - name: Test chat emoji, fullscreen and profile completion UI
         run: |
@@ -55,6 +59,7 @@ jobs:
           node scripts/test-fullscreen-ui.cjs /tmp/vybe-emoji-test
           node scripts/test-profile-bio-ui.cjs /tmp/vybe-emoji-test
           node scripts/test-profile-photo-ui.cjs /tmp/vybe-emoji-test
+          node scripts/test-campaign-ui.cjs /tmp/vybe-emoji-test
           node scripts/test-profile-fields-ui.cjs /tmp/vybe-emoji-test
           node scripts/test-discovery-vibe-ui.cjs /tmp/vybe-emoji-test
           node scripts/test-duet-ui.cjs /tmp/vybe-emoji-test

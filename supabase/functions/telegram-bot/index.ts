@@ -477,11 +477,16 @@ Deno.serve(async (req: Request) => {
         reply_markup:{inline_keyboard:[[{text:english?'View the plan 📍':'Переглянути план 📍',web_app:{url:APP_URL+'?invite='+encodeURIComponent(planLaunch[1].toLowerCase())}}]]}});
       return json({ok:true});
     }
-    const m = msg.text.trim().match(/^\/start(?:\s+ref_(v[0-9a-z]+))?$/i);
+    const m = msg.text.trim().match(/^\/start(?:\s+(?:ref_(v[0-9a-z]+)|(tt_[a-z0-9][a-z0-9_]{0,60})))?$/i);
     if (!m) return json({ ok: true });
 
     const code = (m[1] ?? "").toLowerCase();
-    const webAppUrl = code ? `${APP_URL}?ref=${encodeURIComponent(code)}` : APP_URL;
+    const campaign = (m[2] ?? "").toLowerCase();
+    if (campaign && (msg.chat.type !== "private" || Number(msg.chat.id) !== Number(msg.from?.id))) {
+      return json({ ok: true });
+    }
+    const webAppUrl = code ? `${APP_URL}?ref=${encodeURIComponent(code)}`
+      : campaign ? `${APP_URL}?campaign=${encodeURIComponent(campaign)}` : APP_URL;
     const text = code
       ? english
         ? "You were invited to VYBE 💜\n\nOpen VYBE below. The referral counts after you create an 18+ profile."

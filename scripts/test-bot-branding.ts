@@ -51,6 +51,16 @@ try {
   assert.equal(calls[0].payload.reply_markup.inline_keyboard[0][0].web_app.url, "https://restsva-ui.github.io/vibe-app/?ref=v123");
   assert.equal(calls[0].payload.reply_markup.inline_keyboard[0][0].text, "Open VYBE ✨");
 
+  calls.length=0;
+  assert.equal((await handler!(request("/start tt_261011_plans"))).status,200);
+  assert.equal(calls[0].payload.reply_markup.inline_keyboard[0][0].web_app.url,"https://restsva-ui.github.io/vibe-app/?campaign=tt_261011_plans");
+  assert.ok(!calls[0].payload.caption.includes("реферал"),"marketing links must not create referral rewards");
+  calls.length=0;
+  assert.equal((await handler!(request("/start tt_name?user=42"))).status,200);
+  assert.equal(calls.length,0,"invalid campaign tags must be ignored");
+  const groupRequest=new Request("https://fixture.invalid/telegram-bot",{method:"POST",headers:{"Content-Type":"application/json","x-telegram-bot-api-secret-token":"fixture-webhook-secret"},body:JSON.stringify({message:{chat:{id:-42,type:"group"},from:{id:42},text:"/start tt_261011_plans"}})});
+  assert.equal((await handler!(groupRequest)).status,200);assert.equal(calls.length,0,"marketing launches only apply in the user's private bot chat");
+
   calls.length = 0;
   failPhoto = true;
   assert.equal((await handler!(request("/start"))).status, 200);
