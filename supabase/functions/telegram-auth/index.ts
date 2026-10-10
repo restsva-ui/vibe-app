@@ -6,6 +6,7 @@ import { parseInterests, parseMapArea, parseMapBounds } from "../_shared/discove
 import { DUET_ACTIONS, handleDuetAction } from "../_shared/duet-api.ts";
 import { PLAN_ACTIONS, handlePlanAction } from "../_shared/plans-api.ts";
 import { PLAN_GROWTH_ACTIONS, handlePlanGrowth } from "../_shared/plan-invites.ts";
+import { parseRegistrationInput } from "../_shared/owner-registrations.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -108,6 +109,7 @@ const ACTION_RATE_LIMITS: Record<string, RateLimitPolicy> = {
   admin_refund_star_order: { windowSeconds: 3600, maxHits: 20 },
   admin_finance_reconcile: { windowSeconds: 600, maxHits: 6 },
   admin_growth_summary: { windowSeconds: 60, maxHits: 30 },
+  admin_registrations_list: { windowSeconds: 60, maxHits: 30 },
   star_invoice: { windowSeconds: 600, maxHits: 10 },
   star_test_refund: { windowSeconds: 3600, maxHits: 5 },
   star_order_close: { windowSeconds: 600, maxHits: 30 },
@@ -1733,6 +1735,25 @@ Deno.serve(async (req: Request) => {
       }));
       const code = referralCode(user.telegram_id);
       return json({ ok: true, code, invited: rows.length, activated, rewards });
+    }
+
+    if (action === "admin_registrations_list") {
+      if (await getAdminRole(db, user.id) !== "owner") return json({ ok: false, error: "OWNER_REQUIRED" }, 403);
+      let input: ReturnType<typeof parseRegistrationInput>;
+      try { input = parseRegistrationInput(body); }
+      catch { return json({ ok: false, error: "INVALID_REGISTRATION_INPUT" }, 400); }
+      try {
+        const registrations = await rpc("vybe_owner_registrations", {
+          p_actor: user.id, p_range: input.range, p_limit: 25,
+          p_before_time: input.cursor?.registered_at ?? null,
+          p_before_id: input.cursor?.id ?? null,
+          p_snapshot: input.cursor?.snapshot_at ?? null,
+        });
+        return json({ ok: true, admin_role: "owner", registrations });
+      } catch (error) {
+        if (String((error as Error)?.message || "").includes("OWNER_REQUIRED")) return json({ ok: false, error: "OWNER_REQUIRED" }, 403);
+        return json({ ok: false, error: "REGISTRATIONS_UNAVAILABLE" }, 503);
+      }
     }
 
     if (action === "admin_growth_summary") {

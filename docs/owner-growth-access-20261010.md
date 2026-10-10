@@ -63,3 +63,15 @@ allows, manual files for 30–31 October. February follows its actual day count.
 Native-only music is added in TikTok; the song is not distributed separately.
 The task adapts to mature performance data and preserves the requirement for
 moving people, a story, the VYBE spelling and relevant permitted trending audio.
+
+## Owner registration list
+
+Profile has a separate **Нові користувачі** item, visible only for `owner`. The list includes historical accounts, newest first, and provides all/today/last-seven-days filters, refresh and 25-row pagination.
+
+Rows contain display name (profile name, then Telegram first name), username or short internal ID, first registration time, current profile status and creation time, and last activity. All timestamps display in Europe/Kyiv. Missing legacy registration times display as unknown. Profile creation and last activity are separate from first registration.
+
+The signed Telegram API action `admin_registrations_list` resolves the current owner role on every request. Caller-supplied actor IDs, role and page size cannot authorize access. The SQL RPC `vybe_owner_registrations` also checks owner role, runs with invoker permissions and a fixed empty search path, and grants execution only to service_role. Normal admins cannot read this list.
+
+The list returns only seven specified fields. It does not export data or persist names in client analytics or local storage. Cursor validation preserves timestamp microseconds; time/id keyset pagination handles ties, unknown dates and a fixed snapshot. Refresh starts a new snapshot. Delayed responses cannot overwrite another screen, a closed sheet or a newer filter request, and a denied response clears loaded identities.
+
+Validation: 42 backend authorization/billing/notification checks and 36 UI checks pass, plus Deno type checking and hardening checks. `scripts/test-owner-registration-list.sql` verifies actual service-role execution, owner/admin boundaries, Kyiv dates, exact counts, cursor ordering, limit clamps and sensitive-field exclusion with every fixture rolled back. Production remains at four users and two profiles immediately after the test.
