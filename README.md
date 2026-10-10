@@ -2,10 +2,11 @@
 
 VYBE is an 18+ Telegram Mini App for social discovery, dating, friendship and private conversations. The core UX is based on a user's current intent ("vybe") rather than endless generic swiping.
 
-## Current beta — 0.9.54
+## Current beta — 0.9.55
 
 Implemented and wired to production Supabase:
 
+- consistent **VYBE** branding: the silver wordmark spells `vybe` with the owner-approved first variant and a clear straight descending `y`; the app, legal pages and bot welcome share the corrected assets
 - Telegram Mini App authentication with server-side initData validation
 - 18+ entry gate and legal/community pages
 - profiles with mandatory bio and photo, discovery filters and VYBE NOW intents
@@ -141,11 +142,11 @@ Leaflet 1.9.4 is pinned locally under `vendor/leaflet` with its license. OpenStr
 Validation: `node scripts/test-discovery-preferences.ts`; `scripts/test-discovery-query.sql` contains rollback-only synthetic database checks for matching, opt-in visibility, restrictions, both block directions, passes, keyset pagination and coarse-coordinate constraints.
 
 
-## Shared VYBE branding — 2026-10-06
+## Shared VYBE branding — 2026-10-10
 
-The app and Telegram bot use the owner's supplied white/silver lowercase `vibe` wordmark on black. `vibe-logo.jpg` preserves the supplied JPEG bytes unchanged. The self-contained SVG wrappers embed that same image: a close viewBox frames the full wordmark for the header, launch screen and age gate, while the square favicon keeps all four letters. The full square JPEG is also the Telegram avatar and /start image.
+The official product name is **VYBE**. Its white/silver lowercase wordmark spells `vybe`, with a clear straight descending `y` and no dotted `i`. The first of the three revised variants was selected by the owner on 2026-10-10. The transparent wordmark is shared by the header, launch screen, age gate and legal pages. The square icon and JPEG keep all four letters and are suitable for profile avatars and the bot's /start image.
 
-Active assets: `assets/vibe-logo.jpg`, `assets/vibe-wordmark.svg`, `assets/vibe-icon.svg`. Previous logo assets are removed; every app and legal-page logo uses the supplied wordmark.
+Active assets: `assets/vybe-logo-source.png` (transparent master), `assets/vybe-wordmark.webp` (encoded master), `assets/vybe-wordmark.svg` (self-contained transparent wrapper), `assets/vybe-icon.svg` and `assets/vybe-logo.jpg` (square avatar). Incorrect `vibe` logo assets are removed. New paths and cache keys prevent stale launch/header artwork from being reused. Existing repository, Mini App and referral URLs are stable technical addresses.
 
 The bot sends the logo with its existing welcome caption and Mini App button. If Telegram cannot fetch the image, it falls back to the same text and launch button. Webhook authentication, language selection, referral URLs and payment/support commands retain their existing behavior.
 

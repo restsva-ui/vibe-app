@@ -7,14 +7,14 @@ chromium.setGraphicsMode=false;
 const repo=process.cwd(),output=process.argv[3]||'/tmp/vybe-plans-qa';fs.mkdirSync(output,{recursive:true});
 const tile=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jWhkAAAAASUVORK5CYII=','base64');
 const meeting=new Date(Date.now()+86400000);meeting.setUTCHours(18,30,0,0);
-const seed={id:'44444444-4444-4444-8444-444444444444',owner_id:'host',host:{user_id:'host',name:'Олена',age:27,photo_url:'https://vybe-ui.test/assets/vibe-logo.jpg'},category:'pizza',title:'Піца й розмова після роботи',description:'Збираємося за піцою, знайомимося й ділимося планами на вихідні. Кожен оплачує своє замовлення.',city:'Київ',venue_label:'Піцерія біля парку',visibility:'public',map_lat:50.45,map_lng:30.5,starts_at:meeting.toISOString(),ends_at:new Date(meeting.getTime()+2*3600000).toISOString(),capacity:4,approved_count:2,status:'active',my_status:'none',pending_count:0};
+const seed={id:'44444444-4444-4444-8444-444444444444',owner_id:'host',host:{user_id:'host',name:'Олена',age:27,photo_url:'https://vybe-ui.test/assets/vybe-logo.jpg'},category:'pizza',title:'Піца й розмова після роботи',description:'Збираємося за піцою, знайомимося й ділимося планами на вихідні. Кожен оплачує своє замовлення.',city:'Київ',venue_label:'Піцерія біля парку',visibility:'public',map_lat:50.45,map_lng:30.5,starts_at:meeting.toISOString(),ends_at:new Date(meeting.getTime()+2*3600000).toISOString(),capacity:4,approved_count:2,status:'active',my_status:'none',pending_count:0};
 (async()=>{
  const browser=await browserType.launch({executablePath:await chromium.executablePath(),args:chromium.args,headless:true});
  const context=await browser.newContext({deviceScaleFactor:1,timezoneId:'Europe/Kyiv'});
  try{
   for(const [width,height] of [[320,568],[390,844],[430,932]].filter(([w])=>!process.env.VYBE_BROWSER_QA_WIDTH||String(w)===process.env.VYBE_BROWSER_QA_WIDTH)){
    const page=await context.newPage();await page.setViewportSize({width,height});const errors=[],requests=[];let plan={...seed},created=null,inviteEnabled=false,reminderEnabled=false;
-   const profile={user_id:'viewer',name:'Test',age:28,city:'Київ',bio:'Люблю прогулянки і нові знайомства',photo_present:true,photo_url:'https://vybe-ui.test/assets/vibe-logo.jpg',interests:['food'],map_enabled:false};
+   const profile={user_id:'viewer',name:'Test',age:28,city:'Київ',bio:'Люблю прогулянки і нові знайомства',photo_present:true,photo_url:'https://vybe-ui.test/assets/vybe-logo.jpg',interests:['food'],map_enabled:false};
    page.on('pageerror',e=>errors.push(e.message));
    await page.addInitScript(({height})=>{const noop=()=>{};window.Telegram={WebApp:{initData:'browser-fixture-init-data',initDataUnsafe:{user:{id:1,first_name:'Test'}},ready:noop,expand:noop,setHeaderColor:noop,setBackgroundColor:noop,enableClosingConfirmation:noop,viewportStableHeight:height,BackButton:{show:noop,hide:noop,onClick:noop},HapticFeedback:{notificationOccurred:noop,impactOccurred:noop},showAlert:noop,showConfirm:(_,cb)=>cb(true),isVersionAtLeast:()=>true,shareMessage:(id,cb)=>{window.__sharedPlan=id;cb(false);},downloadFile:params=>{window.__calendarDownload=params;}}};localStorage.clear();localStorage.setItem('vybe18','yes');localStorage.setItem('vybeAnalytics','false');},{height});
    await page.route('**/*',async route=>{

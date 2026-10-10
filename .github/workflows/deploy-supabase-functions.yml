@@ -76,3 +76,20 @@ jobs:
           test "$status" = "401"
 
           echo "VYBE production Edge smoke tests passed."
+
+      - name: Remove completed one-time branding worker
+        if: contains(github.event.head_commit.message, '[brand-cleanup]')
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          const url = `https://api.supabase.com/v1/projects/${process.env.SUPABASE_PROJECT_ID}/functions/vybe-brand-fix-20261010`;
+          const response = await fetch(url, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}` },
+          });
+          if (!response.ok && response.status !== 404) {
+            console.error(`Brand worker cleanup failed: HTTP ${response.status}`);
+            process.exit(1);
+          }
+          console.log("One-time VYBE branding worker removed.");
+          JS

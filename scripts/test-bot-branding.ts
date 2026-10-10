@@ -41,7 +41,7 @@ try {
   assert.equal((await handler!(request("/start"))).status, 200);
   assert.equal(calls.length, 1);
   assert.equal(calls[0].method, "sendPhoto");
-  assert.equal(calls[0].payload.photo, "https://restsva-ui.github.io/vibe-app/assets/vibe-logo.jpg?v=20261006-logo2");
+  assert.equal(calls[0].payload.photo, "https://restsva-ui.github.io/vibe-app/assets/vybe-logo.jpg?v=20261010-brand2");
   assert.ok(calls[0].payload.caption.includes("знайомства"));
   assert.equal(calls[0].payload.reply_markup.inline_keyboard[0][0].web_app.url, "https://restsva-ui.github.io/vibe-app/");
 
