@@ -7,6 +7,15 @@ const result=p=>({ok:true,plan:p,members:[],requests:[],messages:[],can_chat:fal
 let checks=0;
 const pass=name=>{checks++;console.log('PASS: '+name)};
 (async()=>{
+  const oldTimezone=process.env.TZ;process.env.TZ='Europe/Kyiv';
+  try{
+    const vm=require('node:vm'),context={};vm.createContext(context);vm.runInContext(fs.readFileSync('plans.js','utf8'),context);
+    const range=input=>vm.runInContext('vybePlanTimeRange('+JSON.stringify(input)+')',context);
+    let r=range({date:'2026-10-25',allDay:true});assert.equal(r.starts_from,'2026-10-24T21:00:00.000Z');assert.equal(r.starts_before,'2026-10-25T22:00:00.000Z');
+    r=range({date:'2026-03-29',allDay:true});assert.equal(Date.parse(r.starts_before)-Date.parse(r.starts_from),23*3600000);pass('whole-day ranges follow local midnight on both 23-hour and 25-hour days');
+    r=range({date:'2026-10-10',allDay:false,from:'18:30',to:'21:45'});assert.equal(r.starts_from,'2026-10-10T15:30:00.000Z');assert.equal(r.starts_before,'2026-10-10T18:45:00.000Z');pass('local clock times convert to exact UTC instants');
+    for(const input of [{date:'2026-02-30'},{date:'2026-10-10',allDay:false,from:'18:00',to:'17:00'},{date:'2026-10-10',allDay:false,from:'24:00',to:'25:00'},{date:'2026-03-29',allDay:false,from:'03:30',to:'05:00'}])assert.equal(range(input),null);pass('invalid dates, reversed windows and nonexistent local times are rejected');
+  }finally{if(oldTimezone===undefined)delete process.env.TZ;else process.env.TZ=oldTimezone;}
   let state={...base},deferred=null,failMessage=true;
   let f=await fixture(profile,'uk',{respond:async(body,fallback)=>{
     if(body.action==='plans_list'||body.action==='plans_my')return {ok:true,plans:[state]};
@@ -17,8 +26,19 @@ const pass=name=>{checks++;console.log('PASS: '+name)};
     return fallback;
   }});
   try{
-    f.w.eval('openPlansMap()');await pause();f.d.getElementById('planToggle').click();await pause();
+    f.w.eval('loadLeaflet=async()=>{throw new Error("No map tiles in jsdom")};openPlansMap()');await pause();f.d.getElementById('planToggle').click();await pause();
     assert.equal(f.d.getElementById('sheet').classList.contains('sheetPlans'),true);assert.ok(f.d.querySelector('[data-plan]'));pass('map and list open inside the existing fullscreen sheet');
+    assert.equal(f.d.getElementById('planDay'),null);assert.match(f.d.getElementById('planWhen').textContent,/Дата й час/);f.d.getElementById('planWhen').click();
+    assert.equal(f.d.getElementById('planFilterDate').type,'date');assert.equal(f.d.getElementById('planFilterAllDay').checked,true);assert.equal(f.d.getElementById('planFilterFrom').disabled,true);pass('date selection replaces the preset menu and starts with an optional all-day filter');
+    const picked=f.w.eval('vybePlanLocalDate(new Date(Date.now()+2*86400000))');f.d.getElementById('planFilterDate').value=picked;f.d.getElementById('planFilterAllDay').checked=false;f.d.getElementById('planFilterAllDay').dispatchEvent(new f.w.Event('change'));
+    f.d.getElementById('planFilterFrom').value='18:00';f.d.getElementById('planFilterTo').value='17:00';const beforeFilter=f.requests.filter(x=>x.action==='plans_list').length;
+    f.d.getElementById('planWhenForm').dispatchEvent(new f.w.Event('submit',{cancelable:true}));await pause();assert.equal(f.d.getElementById('planWhenError').hidden,false);assert.equal(f.requests.filter(x=>x.action==='plans_list').length,beforeFilter);pass('reversed time windows stay in the picker without issuing a search');
+    f.d.getElementById('planFilterTo').value='22:00';f.d.getElementById('planWhenForm').dispatchEvent(new f.w.Event('submit',{cancelable:true}));await pause();
+    const expected={starts_from:new f.w.Date(picked+'T18:00').toISOString(),starts_before:new f.w.Date(picked+'T22:00').toISOString()};let search=f.requests.filter(x=>x.action==='plans_list').at(-1);
+    assert.equal(search.starts_from,expected.starts_from);assert.equal(search.starts_before,expected.starts_before);assert.match(f.d.getElementById('planWhen').textContent,/18:00–22:00/);pass('applying a date and time window sends normalized endpoints to the server');
+    f.d.getElementById('planCategory').value='pizza';f.d.getElementById('planCategory').dispatchEvent(new f.w.Event('change'));await pause();f.d.getElementById('planToggle').click();await pause();search=f.requests.filter(x=>x.action==='plans_list').at(-1);assert.equal(search.category,'pizza');assert.equal(search.starts_from,expected.starts_from);assert.equal(search.starts_before,expected.starts_before);assert.ok(f.d.getElementById('planMap'));pass('category changes and map/list switching preserve the applied date and clock range');
+    f.d.getElementById('planWhen').click();f.d.getElementById('planFilterFrom').value='08:00';f.d.getElementById('planBack').click();await pause();assert.equal(f.requests.filter(x=>x.action==='plans_list').at(-1).starts_from,expected.starts_from);pass('back cancels unsubmitted date edits');
+    f.d.getElementById('planWhen').click();f.d.getElementById('planWhenReset').click();await pause();search=f.requests.filter(x=>x.action==='plans_list').at(-1);assert.equal('starts_from' in search,false);assert.equal('starts_before' in search,false);f.d.getElementById('planToggle').click();await pause();pass('reset removes the date window from both map and list searches');
     f.d.querySelector('[data-plan]').click();await pause();
     assert.equal(f.d.querySelector('.planAddress'),null);assert.equal(f.d.getElementById('planMessageForm'),null);assert.equal(f.d.querySelector('.planDetail h3').textContent,base.title);assert.equal(f.d.querySelector('.planDetail img[onerror]'),null);pass('public details escape user content and keep address and chat closed');
     f.d.getElementById('planNote').value='I would like to join';f.d.getElementById('planApply').click();await pause();await pause();assert.match(f.d.querySelector('.planAddress').textContent,/на розгляді/);assert.equal(f.d.getElementById('planMessageForm'),null);assert.equal(f.d.querySelector('.planAddress').textContent.includes('SECRET ADDRESS'),false);pass('an application stays pending until the organizer approves');

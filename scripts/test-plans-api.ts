@@ -8,7 +8,7 @@ globalThis.fetch=async(input:any,options:RequestInit={})=>{
   const url=new URL(String(input));assert.equal(url.origin,'https://plans-fixture.invalid','No real network');
   if(url.pathname==='/rest/v1/users')return Response.json([{id:actor,telegram_id:123,last_seen:new Date().toISOString(),account_status:restricted?'restricted':'active'}]);
   if(url.pathname==='/rest/v1/rpc/vybe_take_rate_limit')return Response.json({allowed:!limited,retry_after_seconds:9});
-  assert.equal(url.pathname,'/rest/v1/rpc/vybe_plan');calls.push(JSON.parse(String(options.body)));
+  assert.ok(['/rest/v1/rpc/vybe_plan','/rest/v1/rpc/vybe_plan_list'].includes(url.pathname));calls.push({...JSON.parse(String(options.body)),rpc:url.pathname});
   return rpcError?Response.json({message:rpcError},{status:400}):Response.json({ok:true,plan:{id:plan,host:{user_id:actor,name:'QA',photo_url:null}},notices:[],members:[],requests:[],messages:[]});
 };
 const fields={auth_date:String(Math.floor(Date.now()/1000)),user:JSON.stringify({id:123,first_name:'QA'})};
@@ -22,7 +22,7 @@ try{
   await import('../supabase/functions/telegram-auth/index.ts');
   for(const action of ['plans_list','plans_my','plans_get','plans_create','plans_apply','plans_respond','plans_leave','plans_cancel','plans_message']){
     calls=[];const response=await handler!(request(action,{...create,user_id:peer,decision:'approved',body:'QA message',note:'Private note',p_user:peer,owner_id:peer}));
-    assert.equal(response.status,200);const data=await response.json();assert.equal('notices' in data,false);assert.equal(calls[0].p_user,actor);assert.equal(calls[0].p_action,action.slice(6));assert.equal('owner_id' in calls[0].p_input,false);assert.equal('p_user' in calls[0].p_input,false);checks++;
+    assert.equal(response.status,200);const data=await response.json();assert.equal('notices' in data,false);assert.equal(calls[0].p_user,actor);assert.equal(calls[0].rpc,action==='plans_list'?'/rest/v1/rpc/vybe_plan_list':'/rest/v1/rpc/vybe_plan');if(action!=='plans_list')assert.equal(calls[0].p_action,action.slice(6));assert.equal('owner_id' in calls[0].p_input,false);assert.equal('p_user' in calls[0].p_input,false);checks++;
   }
   for(const [action,extra] of [
     ['plans_get',{plan_id:'bad'}],['plans_respond',{user_id:'bad',decision:'approved'}],['plans_respond',{user_id:peer,decision:'host'}],
@@ -33,6 +33,16 @@ try{
     ['plans_create',{...create,map_lng:181}],['plans_create',{...create,visibility:'secret'}],['plans_create',{...create,meeting_details:''}],
     ['plans_create',{...create,starts_at:'not-a-date'}],['plans_create',{...create,duration_hours:2.5}],['plans_create',{...create,title:'x'.repeat(81)}],
   ] as Array<[string,Record<string,unknown>]>){calls=[];assert.equal((await handler!(request(action,extra))).status,400,action+JSON.stringify(extra));assert.equal(calls.length,0);checks++;}
+  const range={starts_from:'2026-10-10T15:00:00.000Z',starts_before:'2026-10-10T19:00:00.000Z'};
+  for(const extra of [{starts_from:range.starts_from},{starts_before:range.starts_before},{...range,starts_from:null},{...range,starts_before:7},
+    {...range,starts_before:range.starts_from},{...range,starts_before:'2026-10-10T14:00:00.000Z'},
+    {...range,starts_before:'2026-10-12T19:00:00.000Z'},{...range,starts_from:'2026-02-30T15:00:00.000Z'},
+    {...range,starts_from:'2026-10-10T15:00'},{...range,day:'24h'}]){
+    calls=[];assert.equal((await handler!(request('plans_list',extra))).status,400,JSON.stringify(extra));assert.equal(calls.length,0);checks++;
+  }
+  for(const extra of [range,{starts_from:'2026-10-24T21:00:00.000Z',starts_before:'2026-10-25T22:00:00.000Z'}]){
+    calls=[];assert.equal((await handler!(request('plans_list',{...extra,owner_id:peer}))).status,200);assert.equal(calls[0].p_user,actor);assert.equal(calls[0].p_input.starts_from,extra.starts_from);assert.equal(calls[0].p_input.starts_before,extra.starts_before);assert.equal('owner_id' in calls[0].p_input,false);checks++;
+  }
   calls=[];assert.equal((await handler!(request('plans_get',{initData:''}))).status,400);assert.equal(calls.length,0);checks++;
   assert.equal((await handler!(request('plans_get',{initData:initData.replace('hash=','hash=00')}))).status,401);checks++;
   restricted=true;calls=[];assert.equal((await handler!(request('plans_my'))).status,403);assert.equal(calls.length,0);restricted=false;checks++;

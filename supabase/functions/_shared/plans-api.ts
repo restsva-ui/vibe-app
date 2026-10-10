@@ -3,6 +3,8 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const categories = new Set(['pizza','pub','walk','celebration','party','outdoors','other']);
 const text = (value: unknown, min: number, max: number) => typeof value === 'string' && value.trim().length >= min && value.trim().length <= max;
 const id = (value: unknown) => typeof value === 'string' && uuid.test(value);
+const instant = (value: unknown): value is string => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)
+  && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value;
 type Context = {
   userId: string;
   rpc: (name: string, input: Record<string,unknown>) => Promise<any>;
@@ -16,6 +18,11 @@ export async function handlePlanAction(action: string, body: Record<string,any>,
     if (body.category !== undefined && body.category !== '' && !categories.has(body.category)) return invalid();
     if (body.day !== undefined && !['all','24h','week'].includes(body.day)) return invalid();
     input.category = body.category || ''; input.day = body.day || 'all';
+    if (body.starts_from !== undefined || body.starts_before !== undefined) {
+      if (!instant(body.starts_from) || !instant(body.starts_before) || body.starts_from >= body.starts_before
+        || Date.parse(body.starts_before)-Date.parse(body.starts_from) > 26*3600000 || input.day !== 'all') return invalid();
+      input.starts_from = body.starts_from; input.starts_before = body.starts_before;
+    }
     if (body.bounds !== undefined) {
       const b = body.bounds;
       if (!b || typeof b !== 'object' || !['south','north','west','east'].every(k => typeof b[k] === 'number' && Number.isFinite(b[k]))
@@ -46,7 +53,9 @@ export async function handlePlanAction(action: string, body: Record<string,any>,
     }
   }
   try {
-    const result = await ctx.rpc('vybe_plan',{p_user:ctx.userId,p_action:operation,p_input:input});
+    const result = operation === 'list'
+      ? await ctx.rpc('vybe_plan_list',{p_user:ctx.userId,p_input:input})
+      : await ctx.rpc('vybe_plan',{p_user:ctx.userId,p_action:operation,p_input:input});
     const notices: Record<string,any>[] = result.notices || [];
     delete result.notices; // Internal recipient IDs and delivery keys never reach a client.
     const profiles: Record<string,any>[] = [];

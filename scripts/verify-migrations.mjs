@@ -56,6 +56,7 @@ const productionBaseline = [
   "20261010063454",
   "20261010080708",
   "20261010080803",
+  "20261010123628",
 ];
 
 const knownRepositoryOnly = [

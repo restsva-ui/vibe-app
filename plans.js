@@ -4,13 +4,28 @@ const VYBE_PLAN_CATEGORIES=Object.freeze([
   ['celebration','🎂','Святкування','Celebration'],['party','🎉','Тусовка','Party'],
   ['outdoors','🏕️','На природі','Outdoors'],['other','✨','Інше','Other']
 ]);
+function vybePlanLocalDate(date=new Date()){
+  return new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,10);
+}
+function vybePlanTimeRange({date,allDay=true,from='18:00',to='23:00'}){
+  if(typeof date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(date))return null;
+  const [year,month,day]=date.split('-').map(Number);
+  const local=(clock)=>{
+    if(typeof clock!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(clock))return null;
+    const [hour,minute]=clock.split(':').map(Number),value=new Date(year,month-1,day,hour,minute);
+    return value.getFullYear()===year&&value.getMonth()===month-1&&value.getDate()===day&&value.getHours()===hour&&value.getMinutes()===minute?value:null;
+  };
+  const start=local(allDay?'00:00':from),end=allDay?new Date(year,month-1,day+1):local(to);
+  if(!start||!end||!Number.isFinite(end.getTime())||end<=start)return null;
+  return {starts_from:start.toISOString(),starts_before:end.toISOString()};
+}
 function createVybePlans({api,getLang,getProfile,onPeople,onProfile,onSafety,onExtras=()=>{},onExit=()=>{},confirm,analytics=()=>{}}){
   const tr=(uk,en)=>getLang()==='en'?en:uk, esc=value=>escapeHtml(String(value??''));
   const cat=id=>VYBE_PLAN_CATEGORIES.find(x=>x[0]===id)||VYBE_PLAN_CATEGORIES[6];
   const catLabel=id=>{const c=cat(id);return c[1]+' '+c[getLang()==='en'?3:2]};
   const nonce=()=>crypto.randomUUID();
   let root=null,epoch=0,map=null,markers=null,timer=null,refreshTimer=null,busy=false,closed=true;
-  let view='map',previous='map',center=null,zoom=12,category='',day='all',plans=[],draft=null,detail=null,messageRetry=null;
+  let view='map',previous='map',center=null,zoom=12,category='',when=null,plans=[],draft=null,detail=null,messageRetry=null;
   const find=id=>root?.querySelector('#'+id),alive=token=>!closed&&root?.isConnected&&token===epoch;
   const errorText=code=>({PLAN_FULL:tr('Місця вже зайняті.','All seats are taken.'),PLAN_CLOSED:tr('План завершено або скасовано.','This plan has ended or was cancelled.'),PLAN_LIMIT:tr('Можна мати до 5 активних планів.','You can have up to 5 active plans.'),INVALID_PLAN_TIME:tr('Обери майбутній час у межах 90 днів.','Choose a future time within 90 days.'),PLAN_PROFILE_REQUIRED:tr('Спершу заповни анкету 18+ з фото.','Complete your 18+ profile with a photo first.'),PLAN_REQUEST_DECLINED:tr('Організатор відхилив заявку.','The host declined your request.'),PLAN_RETRY_CHANGED:tr('Попередній запит уже збережено. Онови план.','The previous request was saved. Refresh the plan.'),PLAN_UNAVAILABLE:tr('План недоступний.','This plan is unavailable.'),PLAN_JOIN_REQUIRED:tr('Чат доступний після схвалення заявки.','Chat is available once your request is approved.')})[code]||tr('Не вдалося завантажити. Спробуй ще раз.','Could not load. Please try again.');
   const status=id=>({host:tr('Ти організатор','You are the host'),pending:tr('Заявка на розгляді','Request pending'),approved:tr('Тебе схвалено','You are approved'),rejected:tr('Заявку відхилено','Request declined'),left:tr('Ти вийшов/-ла','You left')})[id]||'';
@@ -22,22 +37,46 @@ function createVybePlans({api,getLang,getProfile,onPeople,onProfile,onSafety,onE
   function options(selected){return VYBE_PLAN_CATEGORIES.map(c=>'<option value="'+c[0]+'" '+(selected===c[0]?'selected':'')+'>'+esc(catLabel(c[0]))+'</option>').join('');}
   function card(p){const free=Math.max(0,Number(p.capacity)-Number(p.approved_count));return '<button type="button" class="planCard" data-plan="'+esc(p.id)+'"><span class="planCardIcon" aria-hidden="true">'+cat(p.category)[1]+'</span><span><b>'+esc(p.title)+'</b><small>'+esc(time(p.starts_at))+' · '+esc(p.venue_label)+'</small><span class="planBadges"><em>'+esc(p.status==='cancelled'?tr('Скасовано','Cancelled'):p.status==='ended'?tr('Завершено','Ended'):free?tr('Ще '+free+' місц.',''+free+' seats left'):tr('Місця зайняті','Full'))+'</em>'+(p.visibility==='private'?'<em>🔒 '+tr('Приватна локація','Private venue')+'</em>':'')+(status(p.my_status)?'<em>'+esc(status(p.my_status))+'</em>':'')+(p.pending_count?'<em class="planAccent">'+p.pending_count+' '+tr('заявок','requests')+'</em>':'')+'</span></span><i aria-hidden="true">›</i></button>';}
   function bindCards(){root.querySelectorAll('[data-plan]').forEach(button=>button.onclick=()=>openDetail(button.dataset.plan));}
+  function whenLabel(){
+    if(!when)return '<span>'+tr('Дата й час','Date & time')+'</span>';
+    const date=new Date(when.date+'T12:00').toLocaleDateString(getLang()==='en'?'en-GB':'uk-UA',{day:'numeric',month:'short'});
+    return '<span><b>'+esc(date)+'</b><small>'+esc(when.allDay?tr('Увесь день','All day'):when.from+'–'+when.to)+'</small></span>';
+  }
+  function chooseWhen(){
+    const selected=when?{...when}:{date:vybePlanLocalDate(),allDay:true,from:'18:00',to:'23:00'};
+    const today=vybePlanLocalDate(),latest=new Date();latest.setDate(latest.getDate()+90);const max=vybePlanLocalDate(latest);
+    page(top(tr('Коли зустрічаємося?','When shall we meet?'),tr('Обери дату та зручний час.','Choose a date and a convenient time.'))+
+      '<div class="planScroll"><form id="planWhenForm" class="planForm planDateForm">'+
+      '<label class="planLabel" for="planFilterDate">'+tr('Дата','Date')+'<input id="planFilterDate" type="date" required min="'+today+'" max="'+max+'" value="'+esc(selected.date)+'"></label>'+
+      '<label class="planAllDay" for="planFilterAllDay"><span>'+tr('Увесь день','All day')+'</span><input id="planFilterAllDay" type="checkbox" '+(selected.allDay?'checked':'')+'></label>'+
+      '<div id="planFilterTimes" class="planFieldPair" '+(selected.allDay?'hidden':'')+'><label class="planLabel" for="planFilterFrom">'+tr('Час від','From')+'<input id="planFilterFrom" type="time" step="60" value="'+esc(selected.from)+'"></label><label class="planLabel" for="planFilterTo">'+tr('Час до','Until')+'<input id="planFilterTo" type="time" step="60" value="'+esc(selected.to)+'"></label></div>'+
+      '<p class="planHint">'+tr('Покажемо плани, що починаються у вибраний день і час. Час — за налаштуваннями твого пристрою.','Shows plans starting on the selected date and within the chosen time window. Times follow your device settings.')+'</p><p id="planWhenError" class="planError" role="alert" hidden></p></form></div>'+
+      '<footer class="planFooter planDateFooter"><button id="planWhenReset" type="button" class="choice">'+tr('Скинути','Reset')+'</button><button type="submit" form="planWhenForm" class="primary">'+tr('Показати плани','Show plans')+'</button></footer>','when');
+    const toggle=()=>{const allDay=find('planFilterAllDay').checked;find('planFilterTimes').hidden=allDay;for(const id of ['planFilterFrom','planFilterTo']){find(id).disabled=allDay;find(id).required=!allDay;}};
+    find('planFilterAllDay').onchange=toggle;toggle();
+    find('planWhenReset').onclick=()=>{when=null;browse(previous);};
+    find('planWhenForm').onsubmit=event=>{
+      event.preventDefault();const next={date:find('planFilterDate').value,allDay:find('planFilterAllDay').checked,from:find('planFilterFrom').value,to:find('planFilterTo').value};
+      const error=find('planWhenError');
+      if(next.date<today||next.date>max||!vybePlanTimeRange(next)){error.hidden=false;error.textContent=tr('Обери дату в межах 90 днів. Час «до» має бути пізнішим за «від» у той самий день.','Choose a date within 90 days. The end time must be later than the start time on the same day.');return;}
+      when=next;browse(previous);
+    };
+  }
   async function browse(mode=view==='list'?'list':'map'){
     previous=mode;detail=null;messageRetry=null;
     const token=page(top(tr('Зустрінемося?','Meet up?'),tr('Обери привід і знайди компанію.','Pick a plan and find your people.'),false)+
       '<div class="planModes"><button id="planPeople" type="button">'+tr('Люди','People')+'</button><button type="button" class="selected" aria-current="page">'+tr('Плани','Plans')+'</button><button id="planMine" type="button">'+tr('Мої плани','My plans')+'</button></div>'+
-      '<div class="planFilters"><label class="srOnly" for="planCategory">'+tr('Категорія','Category')+'</label><select id="planCategory"><option value="">'+tr('Усі плани','All plans')+'</option>'+options(category)+'</select><label class="srOnly" for="planDay">'+tr('Коли','When')+'</label><select id="planDay"><option value="all">'+tr('Будь-коли','Any time')+'</option><option value="24h">'+tr('За 24 години','Next 24 hours')+'</option><option value="week">'+tr('За тиждень','Next week')+'</option></select></div>'+
+      '<div class="planFilters"><label class="srOnly" for="planCategory">'+tr('Категорія','Category')+'</label><select id="planCategory"><option value="">'+tr('Усі плани','All plans')+'</option>'+options(category)+'</select><button id="planWhen" type="button" class="planWhenFilter '+(when?'selected':'')+'" aria-label="'+tr('Обрати дату й час','Choose date and time')+'"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>'+whenLabel()+'<i aria-hidden="true">›</i></button></div>'+
       '<div class="planBrowseTools"><label class="srOnly" for="planCity">'+tr('Місто','City')+'</label><select id="planCity"><option value="">'+tr('Перейти до міста','Go to city')+'</option>'+mapCityOptions()+'</select><button id="planToggle" type="button">'+(mode==='map'?tr('☷ Список','☷ List'):tr('📍 Карта','📍 Map'))+'</button></div>'+
       (mode==='map'?'<div class="planMapWrap"><div id="planMap" class="planMap" role="region" aria-label="'+tr('Карта планів','Plans map')+'"></div><div id="planMapNotice" class="planMapNotice" role="status">'+tr('Завантаження карти…','Loading map…')+'</div></div><div id="planPreview" class="planPreview" role="status"></div>':'<div id="planList" class="planScroll"><p class="planEmpty">'+tr('Завантаження…','Loading…')+'</p></div>')+
       '<footer class="planFooter"><button id="planCreate" type="button" class="primary">＋ '+tr('Створити план','Create a plan')+'</button></footer>',mode);
-    find('planDay').value=day;
     find('planPeople').onclick=()=>onPeople();find('planMine').onclick=myPlans;
     find('planToggle').onclick=()=>browse(mode==='map'?'list':'map');find('planCreate').onclick=createForm;
-    find('planCategory').onchange=event=>{category=event.target.value;load();};find('planDay').onchange=event=>{day=event.target.value;load();};
+    find('planCategory').onchange=event=>{category=event.target.value;load();};find('planWhen').onclick=chooseWhen;
     find('planCity').onchange=event=>{const city=VYBE_MAP_CITIES[Number(event.target.value)];if(event.target.value===''||!city)return;center=[city[2],city[3]];if(map)map.setView(center,12);else browse(mode);};
     let fetchToken=0;
     const bounds=()=>{if(!map){const c=center||mapCityCenter(getProfile()?.city);return {south:Math.max(-85,c[0]-.18),north:Math.min(85,c[0]+.18),west:Math.max(-180,c[1]-.25),east:Math.min(180,c[1]+.25)};}const b=map.getBounds();return {south:Math.max(-85,b.getSouth()),north:Math.min(85,b.getNorth()),west:((b.getWest()+180)%360+360)%360-180,east:((b.getEast()+180)%360+360)%360-180};};
-    async function load(){const request=++fetchToken;const result=await api('plans_list',{category,day,bounds:bounds()});if(!alive(token)||request!==fetchToken)return;
+    async function load(){const request=++fetchToken;const result=await api('plans_list',{category,...(when?vybePlanTimeRange(when):{}),bounds:bounds()});if(!alive(token)||request!==fetchToken)return;
       const target=mode==='map'?find('planPreview'):find('planList');if(!result.ok){target.innerHTML='<p class="planEmpty">'+esc(errorText(result.error))+'</p><button id="planRetry" type="button" class="choice">'+tr('Спробувати ще раз','Try again')+'</button>';find('planRetry').onclick=load;return;}
       plans=result.plans||[];
       if(mode==='map'){
@@ -113,7 +152,7 @@ function createVybePlans({api,getLang,getProfile,onPeople,onProfile,onSafety,onE
     find('planLeave')?.addEventListener('click',()=>act('plans_leave'));
     find('planMessageForm')?.addEventListener('submit',async event=>{event.preventDefault();if(busy)return;const body=find('planMessage').value.trim();if(!body)return;if(!messageRetry||messageRetry.body!==body||messageRetry.plan_id!==p.id)messageRetry={plan_id:p.id,body,client_nonce:nonce()};busy=true;find('planSend').disabled=true;find('planMessage').readOnly=true;const r=await api('plans_message',messageRetry);if(!alive(token))return;busy=false;if(!r.ok){find('planSend').disabled=false;find('planMessage').readOnly=false;find('planError').hidden=false;find('planError').textContent=errorText(r.error);return;}messageRetry=null;await openDetail(p.id);});
   }
-  function back(){if(closed||!root?.isConnected)return false;if(view==='pick'){createForm();return true;}if(view==='create'){collect();if(previous==='my')myPlans();else browse(previous);return true;}if(view==='detail'){if(previous==='my')myPlans();else browse(previous);return true;}if(view==='my'){browse('map');return true;}return false;}
+  function back(){if(closed||!root?.isConnected)return false;if(view==='when'){browse(previous);return true;}if(view==='pick'){createForm();return true;}if(view==='create'){collect();if(previous==='my')myPlans();else browse(previous);return true;}if(view==='detail'){if(previous==='my')myPlans();else browse(previous);return true;}if(view==='my'){browse('map');return true;}return false;}
   function exit(event){if(event.target.closest?.('#planExit'))onExit();}
   function mount(target,initialId){dispose();root=target;root.addEventListener('click',exit);closed=false;center=mapCityCenter(getProfile()?.city);previous='map';if(initialId)openDetail(initialId);else browse('map');}
   return {mount,dispose,back,isMounted:()=>!closed&&!!root?.isConnected};
