@@ -172,7 +172,7 @@ function uiText(value){
 function uiLocale(){return currentLang==="en"?"en-US":"uk-UA"}
 function skipI18nElement(el){
   if(!el?.closest)return false;
-  return !!el.closest(".msgBubble,.bio,.meta,#profileBio,#profileMeta,#profileName,#hello,.nameRow h2,.chatTitle h2,.blockedRow b,.chatOpen .itemMain small,.matchOpen .itemMain small,.msgSender,.avatar,.generatedAvatar,.chatAvatar,.msgAvatar,.userNameNoI18n,.mapShell,.interestPicker,.interestTags,.mediaShell,.emojiShell,.photoShell,.profileFieldChoices,.profileCityShell,.startGuide");
+  return !!el.closest(".msgBubble,.bio,.meta,#profileBio,#profileMeta,#profileName,#hello,.nameRow h2,.chatTitle h2,.blockedRow b,.chatOpen .itemMain small,.matchOpen .itemMain small,.msgSender,.avatar,.generatedAvatar,.chatAvatar,.msgAvatar,.userNameNoI18n,.mapShell,.plansShell,.interestPicker,.interestTags,.mediaShell,.emojiShell,.photoShell,.profileFieldChoices,.profileCityShell,.startGuide");
 }
 function localizeDom(root=document){
   document.documentElement.lang=currentLang==="en"?"en":"uk";
@@ -245,7 +245,7 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.50",
+      app_version:"0.9.51",
       platform:"telegram_mini_app",
       language:currentLang,
       ...properties,
@@ -264,7 +264,7 @@ const realtimeClient=window.supabase?.createClient?.(SUPABASE_URL,SUPABASE_KEY,{
 });
 let realtimeUserTopic=null,realtimeUserChannel=null,realtimeUserChannelTopic=null,realtimeConnected=false;
 const realtimeMatchChannels=new Map();
-let chatMedia=null,chatEmoji=null,chatDuet=null,photoViewer=null,profileFields=null,startGuide=null,chatRequestId=0;
+let chatMedia=null,chatEmoji=null,chatDuet=null,photoViewer=null,profileFields=null,startGuide=null,planUI=null,chatRequestId=0;
 let activeChat=null,chatRefreshTimer=null,socialRefreshTimer=null,typingStopTimer=null,incomingTypingTimer=null,lastTypingSentAt=0,localTypingActive=false;
 
 function teardownSocialRealtime(){
@@ -286,6 +286,7 @@ function teardownSocialRealtime(){
   setRealtimeBadge(false);
 }
 function enterRestrictedMode(reason=null,{showNotice=true}={}){
+  if(planUI?.isMounted()){planUI.dispose();content.innerHTML='';sheet.classList.add('hidden');sheet.classList.remove('sheetPlans');}
   chatMedia?.stop();
   accountStatus="restricted";
   restrictionReason=reason||restrictionReason||null;
@@ -520,6 +521,7 @@ async function openPublicProfile(userId,options={}){
   sheet.classList.remove("hidden");tg?.BackButton?.show?.();
   setSheetFullscreen(false);
   const photoButton=$("publicPhotoBtn");if(photoButton)photoButton.onclick=()=>photoViewer?.open(p.photo_url,name);
+  if(options.returnPlan){const back=document.createElement('button');back.className='choice';back.textContent=currentLang==='en'?'Back to plan':'Назад до плану';back.onclick=()=>openPlansMap(options.returnPlan);content.querySelector('.publicProfileBody').appendChild(back);}
   const mapBack=$("publicBackMapBtn");if(mapBack)mapBack.onclick=openPeopleMap;
   const like=$("publicMapLikeBtn");if(like)like.onclick=async()=>{like.disabled=true;const result=await secureApi("like",{target_user_id:userId,kind:"like"});if(!result.ok){like.disabled=false;showAlert("Не вдалося надіслати VYBE. Спробуй ще раз.");return}analyticsCapture("like_sent");await loadPeople();if(result.matched){await loadMatches();openMatchSuccess({id:userId})}else{like.textContent=uiText("VYBE надіслано")}};
   const report=$("publicReportBtn");if(report)report.onclick=()=>openReport(userId,name);
@@ -660,6 +662,11 @@ function notificationCenterTime(iso){
 }
 function notificationPresentation(n){
   const payload=n.payload||{};
+  if(payload.plan_id&&String(payload.kind||'').startsWith('plan_')){
+    const labels={plan_request:['Нова заявка на план','New plan request'],plan_approved:['Тебе схвалено на зустріч','Your meetup request was approved'],plan_rejected:['Відповідь на заявку','Your request was reviewed'],plan_cancelled:['План скасовано','Plan cancelled'],plan_message:['Повідомлення у плані','Message in your plan']};
+    const label=labels[payload.kind]||['План оновлено','Plan updated'];
+    return {icon:'📍',title:currentLang==='en'?label[1]:label[0],subtitle:currentLang==='en'?'Open your meetup plan':'Відкрий свій план зустрічі',action:'plan'};
+  }
   if(n.event_type==="like"){
     const superV=payload.variant==="super";
     return {
@@ -693,6 +700,7 @@ function openLikeNotificationUpsell(){
 }
 async function openNotificationTarget(n){
   const p=notificationPresentation(n);
+  if(p.action==='plan'){openPlansMap(n.payload.plan_id);return;}
   if((p.action==="chat"||p.action==="likes")&&n.match_id){
     await loadMatches();
     const target=matches.find(x=>String(x.match_id)===String(n.match_id));
@@ -1075,6 +1083,7 @@ async function begin(){
   const launchTicket=launchParams.get("ticket");
   const launchReport=launchParams.get("report");
   const launchChat=launchParams.get("chat");
+  const launchPlan=launchParams.get("plan");
 
   if(accountStatus==="restricted"){
     if(profile)renderProfile();
@@ -1095,6 +1104,9 @@ async function begin(){
     history.replaceState({},document.title,location.pathname);
   }else if(launchParams.get("support")==="ticket"){
     await openSupportInfo();
+    history.replaceState({},document.title,location.pathname);
+  }else if(launchPlan&&profile&&hasProfileBio(profile.bio)&&hasProfilePhoto()){
+    openPlansMap(launchPlan);
     history.replaceState({},document.title,location.pathname);
   }else if(launchChat){
     const chatTarget=matches.find(x=>String(x.match_id)===String(launchChat));
@@ -1343,6 +1355,9 @@ function renderNow(){
 const sheet=$("sheet"),content=$("sheetContent");
 const sheetPresentationObserver=new MutationObserver(()=>{
   sheet.classList.toggle("sheetChat",!!content.querySelector(".chatComposer"));
+  const plansActive=!sheet.classList.contains('hidden')&&!!content.querySelector('.plansShell');
+  sheet.classList.toggle('sheetPlans',plansActive);
+  if(!plansActive)planUI?.dispose();
 });
 sheetPresentationObserver.observe(content,{childList:true});
 function setSheetFullscreen(enabled){
@@ -1352,6 +1367,8 @@ function closeSheetView(){
   if(chatDuet?.close())return;
   if(profileFields?.close())return;
   if(photoViewer?.close())return;
+  if(planUI?.back())return;
+  planUI?.dispose();sheet.classList.remove('sheetPlans');
   chatDuet?.dispose();
   chatEmoji?.dispose();
   chatMedia?.disposeRecording();
@@ -1702,7 +1719,7 @@ function openLegalPage(page){
 }
 
 function openPrivacyInfo(){
-  content.innerHTML='<h2>Приватність 🔐</h2><p>VYBE використовує Telegram-авторизацію та зберігає лише дані, потрібні для роботи сервісу: Telegram ID, анкету, фото, VYBE NOW, лайки, збіги, приватні повідомлення, блокування, скарги та бонуси.</p><p>Фото зберігаються у Supabase Storage. Тексти приватних повідомлень не передаються в Realtime Broadcast — через realtime передаються лише технічні сигнали про зміни.</p><p>Ти можеш видалити акаунт у Налаштуваннях. Соціальні дані та звернення в підтримку видаляються; мінімальні записи про завершені платежі можуть зберігатися окремо для повернення Stars і фінансової звірки.</p><button id="fullPrivacyBtn" class="choice safetyChoice">'+uiText("Повна політика приватності")+'</button>';
+  content.innerHTML='<h2>Приватність 🔐</h2><p>VYBE використовує Telegram-авторизацію та зберігає лише дані, потрібні для роботи сервісу: Telegram ID, анкету, фото, VYBE NOW, лайки, збіги, приватні повідомлення, плани зустрічей, заявки, групові повідомлення, блокування, скарги та бонуси.</p><p>У «Планах» назва, опис і район або публічне місце видимі іншим користувачам. Точні деталі зустрічі та чат доступні лише організатору й схваленим учасникам. Для домашньої локації карта показує лише приблизний район. Доступ до адреси закривається після завершення; збережену адресу видаляємо щогодини, а історію показуємо за 30 днів. План і його чат видаляються разом з акаунтом організатора.</p><p>Фото зберігаються у Supabase Storage. Тексти приватних повідомлень не передаються в Realtime Broadcast — через realtime передаються лише технічні сигнали про зміни.</p><p>Ти можеш видалити акаунт у Налаштуваннях. Соціальні дані та звернення в підтримку видаляються; мінімальні записи про завершені платежі можуть зберігатися окремо для повернення Stars і фінансової звірки.</p><button id="fullPrivacyBtn" class="choice safetyChoice">'+uiText("Повна політика приватності")+'</button>';
   sheet.classList.remove("hidden");
   $("fullPrivacyBtn").onclick=()=>openLegalPage("privacy.html");
 }
@@ -2285,8 +2302,10 @@ function pickProfileMapArea(){
   launchVibeMap({picker:true,center:onboardingMapPoint?[onboardingMapPoint.lat,onboardingMapPoint.lng]:mapCityCenter($("obCity").value),onPick:point=>{if(!point)return;onboardingMapPoint=point;$("obMapEnabled").checked=true;updateOnboardingMapStatus();closeSheetView()}});
 }
 function openPeopleMap(){
+  planUI?.dispose();sheet.classList.remove('sheetPlans');
   destroyVibeMap();setSheetFullscreen(true);
   content.innerHTML=mapShellMarkup();sheet.classList.remove("hidden");sheet.classList.add("sheetMap");tg?.BackButton?.show?.();
+  if($("mapPlans"))$("mapPlans").onclick=()=>openPlansMap();
   const ownPoint=profile?.map_enabled?snapMapPoint(Number(profile.map_lat),Number(profile.map_lng)):null;
   launchVibeMap({
     center:mapViewState?.center||(ownPoint?[ownPoint.lat,ownPoint.lng]:mapCityCenter(discoverFilters.city||profile?.city)),zoom:mapViewState?.zoom||11,
@@ -2299,6 +2318,17 @@ function openPeopleMap(){
   analyticsCapture("map_open");
 }
 $("mapBtn").onclick=openPeopleMap;
+function openPlansMap(planId){
+  destroyVibeMap();planUI?.dispose();
+  chatDuet?.dispose();chatEmoji?.dispose();chatMedia?.disposeRecording();
+  sendTyping(activeChat?.matchId,false);activeChat=null;syncMatchRealtimeChannels();
+  setSheetFullscreen(true);content.innerHTML='<div class="plansShell"></div>';
+  sheet.classList.remove('hidden');sheet.classList.add('sheetPlans');tg?.BackButton?.show?.();
+  planUI?.mount(content.querySelector('.plansShell'),planId);
+}
+planUI=createVybePlans({api:secureApi,getLang:()=>currentLang,getProfile:()=>profile,onPeople:openPeopleMap,
+  onExit:()=>{planUI?.dispose();content.innerHTML='';closeSheetView();},
+  onProfile:(id,planId)=>openPublicProfile(id,{returnPlan:planId}),onSafety:(id,name)=>openUserSafety(id,name),confirm:confirmAction,analytics:analyticsCapture});
 const mapLifecycleObserver=new MutationObserver(()=>{
   const active=!sheet.classList.contains("hidden")&&!!content.querySelector(".mapShell");
   document.body.classList.toggle("mapViewing",active);

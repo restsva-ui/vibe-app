@@ -2,13 +2,14 @@
 
 VYBE is an 18+ Telegram Mini App for social discovery, dating, friendship and private conversations. The core UX is based on a user's current intent ("vybe") rather than endless generic swiping.
 
-## Current beta — 0.9.47
+## Current beta — 0.9.51
 
 Implemented and wired to production Supabase:
 
 - Telegram Mini App authentication with server-side initData validation
 - 18+ entry gate and legal/community pages
 - profiles with mandatory bio and photo, discovery filters and VYBE NOW intents
+- **Map → Plans** adds hosted meetups with applications, approval, private meeting details and a member group chat; see [docs/plans.md](docs/plans.md)
 - optional **Start in VYBE** guide in Profile recommends the next step, remembers per-account milestones on the device and can be hidden/restored; see [docs/start-guide.md](docs/start-guide.md)
 - onboarding selects and previews a photo before saving; the backend validates and stores the photo together with the profile, preserves the current photo on failed replacement, and blocks removing the only profile photo
 - Discovery shows only active VYBE NOW profiles, excludes existing matches, filters by the selected vibe, and remembers passes for the current intent session

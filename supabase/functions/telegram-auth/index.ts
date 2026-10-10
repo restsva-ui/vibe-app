@@ -4,6 +4,7 @@ import { boundedJson } from "../_shared/chat-media.ts";
 import { MEDIA_ACTIONS, handleMediaAction, flushMediaCleanup } from "../_shared/chat-media-api.ts";
 import { parseInterests, parseMapArea, parseMapBounds } from "../_shared/discovery-preferences.ts";
 import { DUET_ACTIONS, handleDuetAction } from "../_shared/duet-api.ts";
+import { PLAN_ACTIONS, handlePlanAction } from "../_shared/plans-api.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -77,6 +78,15 @@ type RateLimitPolicy = {
 };
 
 const ACTION_RATE_LIMITS: Record<string, RateLimitPolicy> = {
+  plans_list: { windowSeconds: 60, maxHits: 60 },
+  plans_my: { windowSeconds: 60, maxHits: 30 },
+  plans_get: { windowSeconds: 60, maxHits: 60 },
+  plans_create: { windowSeconds: 3600, maxHits: 12 },
+  plans_apply: { windowSeconds: 600, maxHits: 20 },
+  plans_respond: { windowSeconds: 60, maxHits: 40 },
+  plans_leave: { windowSeconds: 60, maxHits: 20 },
+  plans_cancel: { windowSeconds: 60, maxHits: 12 },
+  plans_message: { windowSeconds: 60, maxHits: 20 },
   notification_settings_update: { windowSeconds: 60, maxHits: 30 },
   photo_upload: { windowSeconds: 600, maxHits: 8 },
   photo_remove: { windowSeconds: 600, maxHits: 20 },
@@ -3499,6 +3509,30 @@ Deno.serve(async (req: Request) => {
         matches: signedMatches,
         unread_total: signedMatches.reduce((n: number, m: any) => n + Number(m.unread_count || 0), 0),
       });
+    }
+
+    if (PLAN_ACTIONS.has(String(action))) {
+      const result = await handlePlanAction(String(action), body, {
+        userId:String(user.id),rpc,signPhotos:signProfilePhotoUrls,
+        notify:async notice=>{
+          try {
+            const prefs=await getNotificationPreferences(db,String(notice.recipient_id));
+            if(prefs.messages_enabled!==true)return;
+            const claim=await rpc('vybe_claim_plan_notice',{p_recipient:notice.recipient_id,p_actor:user.id,p_source_key:notice.source_key});
+            if(claim?.claimed!==true||!claim.delivery_id)return;
+            const recipient=(await db(`users?id=eq.${encodeURIComponent(notice.recipient_id)}&select=telegram_id&limit=1`))?.[0];
+            if(!recipient)return;
+            const labels:Record<string,string>={plan_request:'New request to join your plan / Нова заявка на твій план',plan_approved:'Your request was approved / Твою заявку схвалено',plan_rejected:'Your request was declined / Твою заявку відхилено',plan_cancelled:'The plan was cancelled / План скасовано',plan_message:'New message in your plan / Нове повідомлення у твоєму плані'};
+            try {
+              const sent=await telegramApi(botToken,'sendMessage',{chat_id:Number(recipient.telegram_id),text:'VYBE 📍\n\n'+(labels[notice.kind]||'Your plan was updated / Твій план оновлено'),reply_markup:{inline_keyboard:[[{text:'Open plan / Відкрити план',web_app:{url:`https://restsva-ui.github.io/vibe-app/?plan=${encodeURIComponent(notice.plan_id)}`}}]]}});
+              await db(`notification_deliveries?id=eq.${encodeURIComponent(claim.delivery_id)}`,{method:'PATCH',body:JSON.stringify({telegram_message_id:Number(sent?.message_id)||null})});
+            } catch {
+              await db(`notification_deliveries?id=eq.${encodeURIComponent(claim.delivery_id)}`,{method:'DELETE'});
+            }
+          } catch { console.warn('plan_notification_failed'); }
+        },
+      });
+      return json(result.data,result.status);
     }
 
     if (DUET_ACTIONS.has(String(action))) {

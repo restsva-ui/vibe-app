@@ -45,6 +45,7 @@ jobs:
           node --check discovery-vibe.js
           node --check duet.js
           node --check start-guide.js
+          node --check plans.js
 
       - name: Test chat emoji, fullscreen and profile completion UI
         run: |
@@ -57,6 +58,7 @@ jobs:
           node scripts/test-discovery-vibe-ui.cjs /tmp/vybe-emoji-test
           node scripts/test-duet-ui.cjs /tmp/vybe-emoji-test
           node scripts/test-start-guide-ui.cjs /tmp/vybe-emoji-test
+          node scripts/test-plans-ui.cjs /tmp/vybe-emoji-test
 
       - name: Test mandatory bio and photo with API access boundaries
         run: |
@@ -79,6 +81,11 @@ jobs:
         run: |
           npx --yes esbuild@0.25.11 scripts/test-duet-api.ts --bundle --platform=node --format=esm --outfile=/tmp/test-duet-api.mjs
           node /tmp/test-duet-api.mjs
+
+      - name: Test plans authentication and privacy boundaries
+        run: |
+          npx --yes esbuild@0.25.11 scripts/test-plans-api.ts --bundle --platform=node --format=esm --outfile=/tmp/test-plans-api.mjs
+          node /tmp/test-plans-api.mjs
 
       - name: Test native WebRTC audio and video transfer
         run: |
