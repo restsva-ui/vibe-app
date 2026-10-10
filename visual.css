@@ -13,6 +13,15 @@
   --accent-ink:#15181d;
   --accent-soft:#dce1e814;
   --green:#94bbaa;
+  --tone-like:#ff8eaf;
+  --tone-like-soft:#ff80a41a;
+  --tone-super:#bc9cff;
+  --tone-super-soft:#b794ff1a;
+  --tone-chat:#89c7f0;
+  --tone-chat-soft:#7abfed1a;
+  --tone-profile:#98d3be;
+  --tone-profile-soft:#91ccb71a;
+  --tone-notice:#e8c080;
 }
 html{font-size:100%;scroll-behavior:smooth}
 body{background:var(--bg);line-height:1.45;-webkit-font-smoothing:antialiased}
@@ -32,9 +41,9 @@ button:not(:disabled):active{filter:brightness(1.12)}
 .hello{font-size:1rem;line-height:1.2;letter-spacing:-.01em;font-weight:550;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#c3c5c8}
 .topbarActions{display:flex;gap:8px;flex-shrink:0}
 .iconBtn{display:grid;place-items:center;width:44px;height:44px;border-radius:14px;background:var(--card);border:1px solid var(--line);color:#e1e3e6}
-.notificationIconBtn{background:var(--card)!important;border-color:var(--line)!important}
-.premiumIconBtn{background:var(--accent-soft);border-color:#dce1e845;color:var(--accent);box-shadow:none}
-.notificationBadge{font-size:0.75rem;min-width:22px;height:22px;right:-5px;top:-5px;background:var(--accent);border-color:var(--bg);color:var(--accent-ink)}
+.notificationIconBtn{background:var(--card)!important;border-color:var(--line)!important;color:var(--tone-notice)}
+.premiumIconBtn{background:var(--tone-super-soft);border-color:#b794ff55;color:var(--tone-super);box-shadow:none}
+.notificationBadge{font-size:0.75rem;min-width:22px;height:22px;right:-5px;top:-5px;background:var(--tone-notice);border-color:var(--bg);color:var(--accent-ink)}
 .nowCard{gap:11px;flex-wrap:wrap;padding:11px 12px;margin:14px 0 0;border:1px solid var(--line);border-radius:18px;background:var(--card);box-shadow:none}
 .nowIcon{display:grid;place-items:center;flex:0 0 38px;width:38px;height:44px;border:1px solid #dce1e830;border-radius:11px;color:var(--accent);background:var(--accent-soft)}
 .nowCopy{min-width:0;flex:1 1 8rem;overflow-wrap:anywhere}
@@ -100,10 +109,13 @@ button:not(:disabled):active{filter:brightness(1.12)}
 .actionGroup small{font-size:0.75rem;font-weight:550;color:var(--muted)}
 .action{display:grid;place-items:center;width:56px;height:56px;border:1px solid var(--line);background:var(--surface);color:#c7c9cc;box-shadow:0 5px 16px #00000020;transition:transform .16s}
 .action .uiIcon{width:25px;height:25px}
-.action.like{width:60px;height:60px;background:var(--accent);color:var(--accent-ink);box-shadow:0 7px 20px #dce1e818;border:1px solid #bfc8d4}
+.action.like{width:60px;height:60px;background:linear-gradient(145deg,#381e2a,#462331);color:var(--tone-like);box-shadow:0 7px 20px #fb6d9422;border:1px solid #e970966e}
 .action.like .uiIcon{fill:currentColor;stroke-width:1.3}
-.action.super{width:56px;height:56px;background:var(--card);border:1px solid #dce1e866;color:var(--accent);box-shadow:none}
-.actionGroup.superGroup small{color:var(--accent)}
+.action.like+small{color:var(--tone-like)}
+.action.super{width:56px;height:56px;background:linear-gradient(145deg,#29213b,#211c2e);border:1px solid #b997ff66;color:var(--tone-super);box-shadow:0 5px 18px #9970ed12}
+.actionGroup.superGroup small{color:var(--tone-super)}
+.action.like:focus-visible{outline-color:var(--tone-like)}
+.action.super:focus-visible,.premiumIconBtn:focus-visible{outline-color:var(--tone-super)}
 /* Discovery actions and navigation share one fixed footer so neither can overlap. */
 .appFooter{position:fixed;left:50%;bottom:calc(12px + max(env(safe-area-inset-bottom),var(--tg-safe-bottom,0px)));transform:translateX(-50%);width:min(calc(100% - 28px),524px);display:grid;gap:8px;z-index:10}
 .appFooter #discoverActions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:4px 10px 6px;border:0;border-radius:0;background:var(--bg);box-shadow:none}
@@ -116,13 +128,18 @@ body:has(.sheet:not(.hidden),.overlay:not(.hidden),#vybeCall) .appFooter{visibil
 @media(max-width:360px){.discoveryTools .filterButton{min-width:36px;padding:0}.discoveryTools .filterButton>span{display:none}}
 .nav{position:static;left:auto;bottom:auto;transform:none;width:100%;padding:7px 5px 8px;border:1px solid var(--line);border-radius:21px;background:#16191ef5;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 8px 30px #0000004d;z-index:10}
 .navItem{position:relative;min-width:0;min-height:54px;gap:3px;color:var(--muted);padding:0 3px}
-.navIcon{display:grid;place-items:center;width:43px;height:32px;border-radius:11px;transition:background .16s,color .16s}
+.navItem[data-target="discoverView"]{--nav-color:var(--tone-super);--nav-tint:var(--tone-super-soft)}
+.navItem[data-target="matchesView"]{--nav-color:var(--tone-like);--nav-tint:var(--tone-like-soft)}
+.navItem[data-target="chatView"]{--nav-color:var(--tone-chat);--nav-tint:var(--tone-chat-soft)}
+.navItem[data-target="profileView"]{--nav-color:var(--tone-profile);--nav-tint:var(--tone-profile-soft)}
+.navIcon{display:grid;place-items:center;width:43px;height:32px;border-radius:11px;transition:background .16s,color .16s;color:var(--nav-color,var(--accent))}
 .navIcon .uiIcon{width:22px;height:22px}
 .navItem small{max-width:100%;overflow-wrap:anywhere;font-size:0.75rem;font-weight:550;line-height:1.2}
-.navItem.active{color:var(--accent)}
-.navItem.active .navIcon{background:var(--accent-soft);color:var(--accent)}
+.navItem.active{color:var(--nav-color,var(--accent))}
+.navItem.active .navIcon{background:var(--nav-tint,var(--accent-soft));color:var(--nav-color,var(--accent))}
 .navItem.active small{font-weight:750}
-.navUnread{position:absolute;top:0;right:calc(50% - 27px);display:grid;place-items:center;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-size:0.6875rem;font-weight:800;line-height:1;border:2px solid var(--card)}
+.navItem:focus-visible{outline-color:var(--nav-color,var(--accent))}
+.navUnread{position:absolute;top:0;right:calc(50% - 27px);display:grid;place-items:center;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:var(--nav-color,var(--tone-chat));color:var(--accent-ink);font-size:0.6875rem;font-weight:800;line-height:1;border:2px solid var(--card)}
 .pill{min-width:30px;display:grid;place-items:center;font-size:0.875rem;font-weight:700;background:var(--accent-soft);color:var(--accent);border:1px solid #dce1e830;padding:5px 9px}
 .statusDot{font-size:0.75rem;letter-spacing:0;font-weight:500;white-space:nowrap}
 .list{gap:10px}
@@ -140,8 +157,8 @@ body:has(.sheet:not(.hidden),.overlay:not(.hidden),#vybeCall) .appFooter{visibil
 .chatTime{font-size:0.75rem;color:var(--muted)}
 .chatTail{gap:8px;align-self:stretch;justify-content:center}
 .chevron{display:none}
-.unreadBadge{font-size:0.75rem;min-width:23px;height:23px;background:var(--accent);color:var(--accent-ink)}
-.newMatchDot{color:var(--accent)}
+.unreadBadge{font-size:0.75rem;min-width:23px;height:23px;background:var(--tone-chat);color:var(--accent-ink)}
+.newMatchDot{color:var(--tone-like)}
 .onlineMini{color:#94bbaa}
 #matchesList:has(.matchOpen){grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .matchOpen{display:block;padding:0;overflow:hidden;border-radius:22px;position:relative}
@@ -150,11 +167,15 @@ body:has(.sheet:not(.hidden),.overlay:not(.hidden),#vybeCall) .appFooter{visibil
 .matchOpen .itemMain b{font-size:1.125rem;overflow-wrap:anywhere;line-height:1.2}
 .matchOpen .itemMain small{font-size:0.75rem;color:#c3c5c8}
 .matchOpen .matchCity{margin-top:5px;color:var(--muted)}
-.matchOpen .matchMark{position:absolute;top:10px;right:10px;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#0d0f12c9;backdrop-filter:blur(10px);color:var(--accent);border:1px solid #ffffff24}
+.matchOpen .matchMark{position:absolute;top:10px;right:10px;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#0d0f12c9;backdrop-filter:blur(10px);color:var(--tone-like);border:1px solid #ff80a43d}
 .matchMark .uiIcon{width:17px;height:17px;fill:#dce1e824}
 .emptyState,.discoverEmpty{text-align:center;margin:22px 0 0;padding:34px 22px 28px;border:1px solid var(--line);border-radius:24px;background:var(--card);box-shadow:none}
 .emptyState{margin-top:10px}
 .emptyStateIcon,.discoverEmptyIcon{display:grid;place-items:center;width:70px;height:70px;margin:0 auto 20px;border-radius:24px;color:var(--accent);background:var(--surface);border:1px solid var(--line);box-shadow:none}
+.discoverEmptyIcon{color:var(--tone-super)}
+#matchesView .emptyStateIcon{color:var(--tone-like)}
+#matchesView .pill{background:var(--tone-like-soft);color:var(--tone-like);border-color:#ff80a43d}
+#chatView .emptyStateIcon{color:var(--tone-chat)}
 .emptyStateIcon .uiIcon,.discoverEmptyIcon .uiIcon{width:31px;height:31px;stroke-width:1.5}
 .emptyState h3,.discoverEmpty h3{font-size:1.375rem;font-weight:700;letter-spacing:-.035em;line-height:1.3;margin:0;color:var(--text)}
 .emptyState p,.discoverEmpty p{font-size:0.9375rem;color:var(--muted);max-width:330px;line-height:1.55;margin:12px auto 22px}
@@ -267,10 +288,10 @@ body.profileCityViewing{overflow:hidden}
 .msgRow.mine .msgBubble{background:#303943;border-color:#455260;color:var(--text);border-bottom-right-radius:5px}
 .msgRow.theirs .msgBubble{border-bottom-left-radius:5px;color:var(--text)}
 .msgMeta{font-size:0.6875rem;line-height:1.2;margin-top:6px;gap:7px;color:var(--muted)}
-.msgReceipt.read{color:var(--accent)}
+.msgReceipt.read{color:var(--tone-chat)}
 .sheetChat .chatComposer{flex:0 0 auto;display:flex;align-items:flex-end;gap:9px;border-top:1px solid var(--line);padding:12px 0 0;background:transparent}
 .sheetChat .chatComposer textarea{min-height:54px;height:calc(1.5em + 26px);max-height:140px;overflow-y:auto;scrollbar-width:none;resize:none;margin:0;padding:12px 14px;border-radius:17px;flex:1;background:var(--card);border-color:var(--line)}
-.sheetChat .sendButton{width:50px;height:50px;min-height:50px;padding:0;flex:0 0 50px;display:grid;place-items:center;border-radius:16px;background:var(--accent);color:var(--accent-ink)}
+.sheetChat .sendButton{width:50px;height:50px;min-height:50px;padding:0;flex:0 0 50px;display:grid;place-items:center;border-radius:16px;background:var(--tone-chat);color:var(--accent-ink)}
 .sendButton .uiIcon{width:22px;height:22px;margin-left:-2px}
 .chatEmpty{padding:35px 14px;font-size:0.9375rem;color:var(--muted);margin:auto}
 .price,.starProduct{border-color:var(--line);background:var(--card);border-radius:18px}
