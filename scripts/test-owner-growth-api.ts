@@ -4,7 +4,7 @@ import {parseRegistrationInput} from "../supabase/functions/_shared/owner-regist
 import {deliverGrowthAlerts,growthMessage} from "../supabase/functions/_shared/owner-growth.ts";
 const originalFetch=globalThis.fetch,originalDeno=(globalThis as any).Deno;
 const base="https://growth-fixture.invalid",bot="growth-test-token",actor="11111111-1111-4111-8111-111111111111",peer="22222222-2222-4222-8222-222222222222";
-let handler:(r:Request)=>Promise<Response>,role:string|null=null,restricted=false,paidPlus=false,failSummary=false,failList:string|null=null;
+let handler:(r:Request)=>Promise<Response>,role:string|null=null,restricted=false,paidPlus=false,failSummary=false,failList:string|null=null,testAccess=false;
 let calls:Array<{path:string;method:string;body:any}>=[];
 (globalThis as any).Deno={env:{get:(key:string)=>({SUPABASE_URL:base,SUPABASE_SERVICE_ROLE_KEY:"test-key",TELEGRAM_BOT_TOKEN:bot} as Record<string,string>)[key]},serve:(fn:typeof handler)=>handler=fn};
 globalThis.fetch=async(input:any,init:RequestInit={})=>{
@@ -14,6 +14,7 @@ globalThis.fetch=async(input:any,init:RequestInit={})=>{
  if(u.pathname==="/rest/v1/admin_users")return Response.json(role?[{role}]:[]);
  if(u.pathname.endsWith("/vybe_take_rate_limit"))return Response.json({allowed:true});
  if(u.pathname.endsWith("/vybe_admin_growth_summary")){assert.equal(body.p_actor,actor);return failSummary?Response.json({message:"private failure"},{status:500}):Response.json({users_total:1423,profiles_total:1001,new_users_today:23,snapshot_at:new Date().toISOString()});}
+ if(u.pathname.endsWith("/vybe_has_test_access")){assert.equal(body.p_user_id,actor);return Response.json(testAccess);}
  if(u.pathname.endsWith("/vybe_owner_registrations")){
   assert.equal(body.p_actor,actor);assert.equal(body.p_limit,25);assert.equal(role,"owner");
   return failList?Response.json({message:failList},{status:500}):Response.json({users:[],total:1423,snapshot_at:"2026-10-10T19:00:00.123456+00:00",has_more:false,next_cursor:null});
@@ -50,6 +51,13 @@ try{
  }
  failList=null;
  calls=[];assert.ok((await handler!(request("admin_registrations_list",{initData:"bad"}))).status>=400);assert.equal(calls.length,0);checks++;
+ role=null;testAccess=true;calls=[];
+ const testEntitlements=await (await handler!(request("entitlements",{user_id:peer,test_access:false,admin_role:"owner"}))).json();
+ assert.equal(testEntitlements.owner_access,false);assert.equal(testEntitlements.test_access,true);assert.deepEqual(testEntitlements.balances,{supervybe:0,spotlight:0});checks++;
+ assert.equal((await handler!(request("likes_received"))).status,200);checks++;
+ assert.equal((await handler!(request("admin_registrations_list"))).status,403);assert.equal((await handler!(request("admin_growth_summary"))).status,403);checks++;
+ calls=[];assert.equal((await handler!(request("star_invoice",{product_key:"supervybe_5",terms_accepted:true}))).status,409);assert.equal(calls.some(c=>c.path.includes("star_orders")),false);checks++;
+ testAccess=false;const spoof=await (await handler!(request("entitlements",{test_access:true,owner_access:true,user_id:peer}))).json();assert.equal(spoof.test_access,false);assert.equal(spoof.owner_access,false);checks++;
  role=null;paidPlus=true;assert.equal((await handler!(request("likes_received"))).status,200);paidPlus=false;checks++;
  role="owner";calls=[];assert.equal((await handler!(request("star_invoice",{product_key:"supervybe_5",terms_accepted:true}))).status,409);assert.equal(calls.some(c=>c.path.includes("star_orders")),false);checks++;
  for(const action of ["super_like","spotlight_use"]){assert.equal((await handler!(request(action,{target_user_id:peer,user_id:peer,p_user_id:peer}))).status,200);checks++;}

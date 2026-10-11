@@ -1769,6 +1769,7 @@ Deno.serve(async (req: Request) => {
 
     if (action === "entitlements") {
       const ownerAccess = await getAdminRole(db, user.id) === "owner";
+      const testAccess = !ownerAccess && await rpc("vybe_has_test_access", { p_user_id: user.id }) === true;
       const [rewards, paidRewards, uses] = await Promise.all([
         db(`referral_rewards?user_id=eq.${encodeURIComponent(user.id)}&select=reward_type,reward_amount,granted_at`) ?? [],
         db(`paid_rewards?user_id=eq.${encodeURIComponent(user.id)}&select=reward_type,reward_amount,granted_at`) ?? [],
@@ -1796,7 +1797,7 @@ Deno.serve(async (req: Request) => {
       });
       return json({
         ok: true,
-        owner_access: ownerAccess,
+        owner_access: ownerAccess, test_access: testAccess,
         balances: { supervybe, spotlight },
         earned: { supervybe: earnedSupervybe, spotlight: earnedSpotlight },
         used: { supervybe: usedSupervybe, spotlight: usedSpotlight },
@@ -2802,6 +2803,7 @@ Deno.serve(async (req: Request) => {
 
     if (action === "star_invoice") {
       if (await getAdminRole(db, user.id) === "owner") return json({ ok: false, error: "OWNER_ACCESS_INCLUDED" }, 409);
+      if (await rpc("vybe_has_test_access", { p_user_id: user.id }) === true) return json({ ok: false, error: "TEST_ACCESS_INCLUDED" }, 409);
       const productKey = clean(body.product_key, 64);
       const language = body.lang === "en" ? "en" : "uk";
       const termsAccepted = body.terms_accepted === true;
@@ -2955,11 +2957,12 @@ Deno.serve(async (req: Request) => {
 
     if (action === "likes_received") {
       const ownerAccess = await getAdminRole(db, user.id) === "owner";
+      const testAccess = !ownerAccess && await rpc("vybe_has_test_access", { p_user_id: user.id }) === true;
       const nowIso = new Date().toISOString();
       const plusRows = await db(
         `user_entitlements?user_id=eq.${encodeURIComponent(user.id)}&vybe_plus_until=gt.${encodeURIComponent(nowIso)}&select=vybe_plus_until&limit=1`,
       ) ?? [];
-      if (!ownerAccess && !plusRows?.length) return json({ ok: false, error: "VYBE+ required" }, 403);
+      if (!ownerAccess && !testAccess && !plusRows?.length) return json({ ok: false, error: "VYBE+ required" }, 403);
 
       const [likes, blockedIds, currentMatches] = await Promise.all([
         db(`likes?to_user_id=eq.${encodeURIComponent(user.id)}&select=from_user_id,kind,created_at&order=created_at.desc&limit=200`) ?? [],
@@ -2974,7 +2977,7 @@ Deno.serve(async (req: Request) => {
         .filter((id: string) => !blockedIds.has(id) && !matchedIds.has(id)))];
 
       if (!senderIds.length) {
-        return json({ ok: true, owner_access: ownerAccess, vybe_plus_until: plusRows[0]?.vybe_plus_until ?? null, people: [] });
+        return json({ ok: true, owner_access: ownerAccess, test_access: testAccess, vybe_plus_until: plusRows[0]?.vybe_plus_until ?? null, people: [] });
       }
 
       const [profiles, statuses] = await Promise.all([
@@ -3003,7 +3006,7 @@ Deno.serve(async (req: Request) => {
         liked_at: latestLikeByUser.get(id)?.created_at ?? null,
       }));
 
-      return json({ ok: true, owner_access: ownerAccess, vybe_plus_until: plusRows[0]?.vybe_plus_until ?? null, people });
+      return json({ ok: true, owner_access: ownerAccess, test_access: testAccess, vybe_plus_until: plusRows[0]?.vybe_plus_until ?? null, people });
     }
 
     if (action === "spotlight_use") {

@@ -75,3 +75,11 @@ The signed Telegram API action `admin_registrations_list` resolves the current o
 The list returns only seven specified fields. It does not export data or persist names in client analytics or local storage. Cursor validation preserves timestamp microseconds; time/id keyset pagination handles ties, unknown dates and a fixed snapshot. Refresh starts a new snapshot. Delayed responses cannot overwrite another screen, a closed sheet or a newer filter request, and a denied response clears loaded identities.
 
 Validation: 42 backend authorization/billing/notification checks and 36 UI checks pass, plus Deno type checking and hardening checks. `scripts/test-owner-registration-list.sql` verifies actual service-role execution, owner/admin boundaries, Kyiv dates, exact counts, cursor ordering, limit clamps and sensitive-field exclusion with every fixture rolled back. Production remains at four users and two profiles immediately after the test.
+
+## Second test account access
+
+A separately verified Telegram test account can receive a revocable, no-expiry grant in private.vybe_test_access. The grant has no admin role or access to owner analytics, registration identities, finances or moderation. Grants are not exposed to anon/authenticated and the test-access RPC is service-only.
+
+Verified initData determines the account for the access check. Entitlements and received likes return test_access separately from owner_access. Test access includes VYBE+, received likes, unlimited SuperVYBE and Spotlight. The client labels this as full test access and removes purchase buttons. Invoice creation rejects test accounts with TEST_ACCESS_INCLUDED. SQL feature use skips reward deductions and leaves payment ledgers unchanged while preserving blocks and restricted-account checks.
+
+47 backend checks and 38 UI checks pass. scripts/test-test-access.sql validates actual feature use, revocation, restrictions, zero charge records and owner-only boundaries in a rolled-back transaction. The real grant is provisioned separately from schema migrations, using the account's verified Telegram ID.
