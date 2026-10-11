@@ -6,6 +6,7 @@ import { parseInterests, parseMapArea, parseMapBounds } from "../_shared/discove
 import { DUET_ACTIONS, handleDuetAction } from "../_shared/duet-api.ts";
 import { PLAN_ACTIONS, handlePlanAction } from "../_shared/plans-api.ts";
 import { PLAN_GROWTH_ACTIONS, handlePlanGrowth } from "../_shared/plan-invites.ts";
+import { prepareQuizShare } from "../_shared/vibe-quiz.ts";
 import { parseRegistrationInput } from "../_shared/owner-registrations.ts";
 
 const corsHeaders = {
@@ -101,6 +102,7 @@ const ACTION_RATE_LIMITS: Record<string, RateLimitPolicy> = {
   photo_remove: { windowSeconds: 600, maxHits: 20 },
   save_profile: { windowSeconds: 600, maxHits: 30 },
   referral_claim: { windowSeconds: 3600, maxHits: 10 },
+  vibe_quiz_share: { windowSeconds: 3600, maxHits: 30 },
   support_create: { windowSeconds: 3600, maxHits: 6 },
   admin_moderation_update: { windowSeconds: 60, maxHits: 60 },
   admin_moderation_restrict: { windowSeconds: 60, maxHits: 30 },
@@ -1642,6 +1644,13 @@ Deno.serve(async (req: Request) => {
         await db(`referrals?id=eq.${encodeURIComponent(referral[0].id)}`, { method: "PATCH", body: JSON.stringify({ activated_at: new Date().toISOString() }) });
       }
       return json({ ok: true, user_id: user.id, profile: rows?.[0] ?? payload, photo_present: true, ...(uploadedPhotoUrl ? { photo_url: uploadedPhotoUrl } : {}) });
+    }
+
+    if (action === "vibe_quiz_share") {
+      const profile = await getProfile(db, user.id);
+      if (!profile || !Number.isInteger(Number(profile.age)) || Number(profile.age) < 18) return json({ok:false,error:"PROFILE_REQUIRED"},403);
+      const result = await prepareQuizShare(body, {telegramId:Number(telegram.user.id),telegram:(method,payload)=>telegramApi(botToken,method,payload)});
+      return json(result.data,result.status);
     }
 
     if (action === "referral_claim") {

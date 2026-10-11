@@ -1,3 +1,4 @@
+import { parseQuizStart } from "../_shared/vibe-quiz.ts";
 import { serviceRoleAuthHeaders } from "../_shared/supabase-service-auth.ts";
 
 const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
@@ -475,6 +476,15 @@ Deno.serve(async (req: Request) => {
       await telegram('sendMessage',{chat_id:msg.chat.id,
         text:english?'You were invited to a VYBE meetup 📍\nView the plan before filling out your profile. Participation requires an 18+ profile and host approval.':'Тебе запросили на зустріч у VYBE 📍\nПереглянь план перед заповненням анкети. Для участі потрібні анкета 18+ і схвалення організатора.',
         reply_markup:{inline_keyboard:[[{text:english?'View the plan 📍':'Переглянути план 📍',web_app:{url:APP_URL+'?invite='+encodeURIComponent(planLaunch[1].toLowerCase())}}]]}});
+      return json({ok:true});
+    }
+    const quiz = parseQuizStart(textInput.match(/^\/start\s+(\S+)$/i)?.[1]);
+    if (quiz) {
+      if (msg.chat.type !== "private" || Number(msg.chat.id) !== Number(msg.from?.id)) return json({ok:true});
+      const quizUrl = APP_URL+"?quiz="+quiz.type+(quiz.referral?"&ref="+quiz.referral:"");
+      await telegram("sendMessage", {chat_id:msg.chat.id,
+        text:english?"What's your vibe? ✨\n5 questions, a result card and a reason to meet someone. For adults 18+.":"Який твій вайб? ✨\n5 запитань, картка результату й привід познайомитися. Для дорослих 18+.",
+        reply_markup:{inline_keyboard:[[{text:english?"Discover my vibe ✨":"Дізнатися свій вайб ✨",web_app:{url:quizUrl}}]]}});
       return json({ok:true});
     }
     const m = msg.text.trim().match(/^\/start(?:\s+(?:ref_(v[0-9a-z]+)|(tt_[a-z0-9][a-z0-9_]{0,60})))?$/i);

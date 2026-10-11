@@ -26,6 +26,7 @@ const tuser=tg?.initDataUnsafe?.user;const $=id=>document.getElementById(id),sto
 
 
 const I18N_PAIRS=[
+  ["Який твій вайб?","What is your vibe?"],
   ["Старт у VYBE","Start in VYBE"],["Переглянути людей","Browse people"],["Запросити друга","Invite a friend"],
   ["Не вдалося оновити пошук.","Could not refresh discovery."],["Перевір з’єднання й спробуй ще раз.","Check your connection and try again."],
   ["Не вдалося увімкнути VYBE NOW. Спробуй ще раз.","Could not activate VYBE NOW. Please try again."],
@@ -215,7 +216,7 @@ function setLanguage(next){
   renderChats();
   setRealtimeBadge(realtimeConnected);
   $("hello").textContent=uiText("Привіт, ")+(tuser?.first_name||profile?.name||"");
-  if(!sheet.classList.contains("hidden"))openSettings();
+  if(vibeQuiz?.isMounted())vibeQuiz.refresh();else if(!sheet.classList.contains("hidden"))openSettings();
 }
 const languageObserver=new MutationObserver(records=>{
   for(const record of records){
@@ -239,6 +240,8 @@ let analyticsDistinctId=null;
 let analyticsEnabled=load("vybeAnalytics",true)!==false;
 let campaignAttribution=null;
 const launchCampaign=window.VybeCampaign?.fromLaunch(location.href,tg)||null;
+const quizLaunch=window.VybeQuiz?.fromLaunch(location.href,tg)||null;
+let pendingQuizEntry=!!quizLaunch;
 function analyticsCapture(event,properties={},useBeacon=false){
   if(!analyticsEnabled||!analyticsDistinctId||!event)return;
   const payload={
@@ -247,10 +250,11 @@ function analyticsCapture(event,properties={},useBeacon=false){
     properties:{
       distinct_id:analyticsDistinctId,
       "$process_person_profile":false,
-      app_version:"0.9.56",
+      app_version:"0.9.57",
       platform:"telegram_mini_app",
       language:currentLang,
       ...window.VybeCampaign?.properties(campaignAttribution),
+      ...(quizLaunch?{campaign_source:"telegram",campaign_id:"vibe_quiz",utm_source:"telegram",utm_medium:"referral",utm_campaign:"vibe_quiz",acquisition_source:"telegram",acquisition_campaign:"vibe_quiz",quiz_invited_result:quizLaunch.type}:{}),
       ...properties,
     },
   };
@@ -267,7 +271,7 @@ const realtimeClient=window.supabase?.createClient?.(SUPABASE_URL,SUPABASE_KEY,{
 });
 let realtimeUserTopic=null,realtimeUserChannel=null,realtimeUserChannelTopic=null,realtimeConnected=false;
 const realtimeMatchChannels=new Map();
-let chatMedia=null,chatEmoji=null,chatDuet=null,photoViewer=null,profileFields=null,startGuide=null,planUI=null,planExtras=null,pendingPlanInvitation=null,invitationEntry=false,chatRequestId=0;
+let chatMedia=null,chatEmoji=null,chatDuet=null,photoViewer=null,profileFields=null,startGuide=null,vibeQuiz=null,planUI=null,planExtras=null,pendingPlanInvitation=null,invitationEntry=false,chatRequestId=0;
 let activeChat=null,chatRefreshTimer=null,socialRefreshTimer=null,typingStopTimer=null,incomingTypingTimer=null,lastTypingSentAt=0,localTypingActive=false;
 
 function teardownSocialRealtime(){
@@ -289,6 +293,8 @@ function teardownSocialRealtime(){
   setRealtimeBadge(false);
 }
 function enterRestrictedMode(reason=null,{showNotice=true}={}){
+  if(vibeQuiz?.isMounted()){vibeQuiz.dispose();content.innerHTML="";sheet.classList.add("hidden");setSheetFullscreen(false);}
+  $("vibeQuizBtn")?.setAttribute("hidden","");pendingQuizEntry=false;
   if(planUI?.isMounted()||planExtras?.isMounted()){planUI?.dispose();planExtras?.dispose();pendingPlanInvitation=null;content.innerHTML='';sheet.classList.add('hidden');sheet.classList.remove('sheetPlans');}
   chatMedia?.stop();
   accountStatus="restricted";
@@ -466,11 +472,20 @@ setInterval(()=>{
 async function claimReferral(){
   const initParams=new URLSearchParams(tg?.initData||"");
   const pageParams=new URLSearchParams(location.search);
-  const code=String(tg?.initDataUnsafe?.start_param||initParams.get("start_param")||pageParams.get("tgWebAppStartParam")||pageParams.get("ref")||"").trim().toLowerCase();
-  if(!code||code.startsWith('plan_'))return;
+  const start=String(initParams.get("start_param")||tg?.initDataUnsafe?.start_param||pageParams.get("tgWebAppStartParam")||pageParams.get("ref")||"").trim().toLowerCase();
+  const code=quizLaunch?.referral||start.replace(/^ref_/,"");
+  if(!/^v[0-9a-z]{1,14}$/.test(code))return;
   const r=await secureApi("referral_claim",{code});
   if(r.ok&&(r.claimed===true||r.reason==="already_claimed"))localStorage.setItem("vybeReferral:"+code,"1");
   else console.warn("VYBE referral claim failed",r);
+}
+function quizAllowed(){return window.__vybeAuth?.ok===true&&profileHydrated&&accountStatus==="active"&&!!profile&&hasProfileBio(profile.bio)&&hasProfilePhoto();}
+function openVibeQuiz(options={}){
+  if(!quizAllowed()||!vibeQuiz)return;
+  destroyVibeMap();planUI?.dispose();planExtras?.dispose();vibeQuiz.dispose();chatDuet?.dispose();chatEmoji?.dispose();chatMedia?.disposeRecording();
+  sendTyping(activeChat?.matchId,false);activeChat=null;syncMatchRealtimeChannels();setSheetFullscreen(true);
+  content.innerHTML='<div class="vibeQuiz"></div>';sheet.classList.remove("hidden");tg?.BackButton?.show?.();
+  vibeQuiz.open(content.querySelector(".vibeQuiz"),options);
 }
 async function openReferral(){
   const r=await secureApi("referral_stats");if(!r.ok){showAlert("Не вдалося завантажити реферальну статистику.");return}
@@ -1073,7 +1088,7 @@ async function hydrateProfile(){
     document.querySelectorAll(".mood").forEach(x=>x.classList.toggle("active",x.dataset.mood===filter));renderNow();
   }
   analyticsDistinctId=r.user_id||null;
-  campaignAttribution=window.VybeCampaign?.forAccount(analyticsDistinctId,launchCampaign,{enabled:analyticsEnabled})||null;
+  campaignAttribution=window.VybeCampaign?.forAccount(analyticsDistinctId,launchCampaign,{enabled:analyticsEnabled&&!quizLaunch})||null;
   adminRole=r.admin_role||null;
   accountStatus=r.account_status||"active";
   restrictionReason=r.restriction_reason||null;
@@ -1130,6 +1145,9 @@ async function begin(){
   }else if(launchChat){
     const chatTarget=matches.find(x=>String(x.match_id)===String(launchChat));
     if(chatTarget)await openChat(chatTarget.match_id,chatTarget.name,chatTarget.id);
+    history.replaceState({},document.title,location.pathname);
+  }else if(pendingQuizEntry&&quizAllowed()){
+    pendingQuizEntry=false;openVibeQuiz({invitedType:quizLaunch?.type});
     history.replaceState({},document.title,location.pathname);
   }
 }
@@ -1242,6 +1260,7 @@ $("saveProfile").onclick=async()=>{
     if(firstProfile)analyticsCapture("profile_created");
     await loadPeople();
     if(pendingPlanInvitation){analyticsCapture('plan_invitation_profile_completed');await loadEntitlements();await loadNotificationSettings();await loadMatches();await loadSupportCounts();await resumePlanInvitation();}
+    else if(pendingQuizEntry){pendingQuizEntry=false;openVibeQuiz({invitedType:quizLaunch?.type});}
     else if(firstProfile){showAppView("profileView");startGuide?.show()}
     tg?.HapticFeedback?.notificationOccurred("success");
   }finally{button.disabled=false;$("obPhotoBtn").disabled=false;if($("obPhotoBtn").getAttribute("aria-invalid")==="true")$("obPhotoBtn").focus()}
@@ -1249,6 +1268,7 @@ $("saveProfile").onclick=async()=>{
 $("editProfile").onclick=showOnboarding;
 function renderProfile(){
   startGuide?.refresh();
+  const quizButton=$("vibeQuizBtn");if(quizButton)quizButton.hidden=!quizAllowed();
   if(!profile)return;
   $("profileName").textContent=profile.name+", "+profile.age+(profile.verified?" ✓":"");
   $("profileMeta").textContent=[profile.city,profile.gender,profile.looking&&uiText("Шукаю: ")+profile.looking].filter(Boolean).join(" • ");
@@ -1381,6 +1401,8 @@ const sheetPresentationObserver=new MutationObserver(()=>{
   sheet.classList.toggle("sheetChat",!!content.querySelector(".chatComposer"));
   const plansActive=!sheet.classList.contains('hidden')&&!!content.querySelector('.plansShell');
   sheet.classList.toggle('sheetPlans',plansActive);
+  const quizActive=!sheet.classList.contains("hidden")&&!!content.querySelector(".vibeQuiz");
+  sheet.classList.toggle("sheetQuiz",quizActive);if(!quizActive)vibeQuiz?.dispose();
   if(!plansActive){planUI?.dispose();planExtras?.dispose();}
 });
 sheetPresentationObserver.observe(content,{childList:true});
@@ -1388,6 +1410,7 @@ function setSheetFullscreen(enabled){
   sheet.classList.toggle("sheetFullscreen",enabled===true);
 }
 function closeSheetView(){
+  vibeQuiz?.dispose();
   if(chatDuet?.close())return;
   if(profileFields?.close())return;
   if(photoViewer?.close())return;
@@ -1847,6 +1870,7 @@ async function deleteAccount(){
   realtimeMatchChannels.clear();
   analyticsCapture("account_deleted",{},true);
   window.VybeCampaign?.clear(analyticsDistinctId);campaignAttribution=null;
+  vibeQuiz?.clear(analyticsDistinctId);vibeQuiz?.dispose();
   resetLocalVYBE();
   profile=null;now=null;matches=[];remotePeople=[];activeChat=null;
   profileHydrated=false;matchesLoaded=false;startGuide?.refresh();
@@ -2321,7 +2345,7 @@ function openSettings(){
   $("analyticsToggleBtn").onclick=()=>{
     analyticsEnabled=!analyticsEnabled;
     store("vybeAnalytics",analyticsEnabled);
-    campaignAttribution=window.VybeCampaign?.forAccount(analyticsDistinctId,launchCampaign,{enabled:analyticsEnabled})||null;
+    campaignAttribution=window.VybeCampaign?.forAccount(analyticsDistinctId,launchCampaign,{enabled:analyticsEnabled&&!quizLaunch})||null;
     if(analyticsEnabled)analyticsCapture("analytics_opt_in");
     openSettings();
   };
@@ -2353,6 +2377,7 @@ const ageTermsBtn=document.getElementById("ageTermsBtn"),agePrivacyBtn=document.
 if(ageTermsBtn)ageTermsBtn.onclick=()=>openLegalPage("terms.html");
 if(agePrivacyBtn)agePrivacyBtn.onclick=()=>openLegalPage("privacy.html");
 if(ageRulesBtn)ageRulesBtn.onclick=()=>openLegalPage("community.html");
+$("vibeQuizBtn").onclick=()=>openVibeQuiz();
 const referralBtn=document.getElementById("referralBtn");if(referralBtn)referralBtn.onclick=openReferral;const blockedUsersBtn=document.getElementById("blockedUsersBtn");if(blockedUsersBtn)blockedUsersBtn.onclick=openBlockedUsers;const supportBtn=document.getElementById("supportBtn");if(supportBtn)supportBtn.onclick=openSupportInfo;
 const settingsBtn=document.getElementById("settingsBtn");if(settingsBtn)settingsBtn.onclick=openSettings;
 const adminRegistrationsBtn=document.getElementById("adminRegistrationsBtn");if(adminRegistrationsBtn)adminRegistrationsBtn.onclick=openOwnerRegistrations;
@@ -2450,6 +2475,8 @@ chatDuet=window.VybeDuet?.create({document,api:secureApi,getChat:()=>activeChat,
 }});
 
 photoViewer=window.VybePhoto?.create({language:()=>currentLang,interrupted:()=>!!$("vybeCall"),onOpen:syncSheetBackButton,onClose:syncSheetBackButton});
+vibeQuiz=window.VybeQuiz?.create({document,api:secureApi,telegram:tg,getLang:()=>currentLang,getUserId:()=>analyticsDistinctId,allowed:quizAllowed,capture:analyticsCapture,onFind:()=>{closeSheetView();showAppView("discoverView");}});
+
 profileFields=window.VybeProfileFields.create({language:()=>currentLang,interrupted:()=>!!$("vybeCall"),onOpen:syncSheetBackButton,onClose:syncSheetBackButton});
 
 startGuide=window.VybeStartGuide?.create({document,getLang:()=>currentLang,capture:analyticsCapture,

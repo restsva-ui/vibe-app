@@ -154,3 +154,10 @@ The bot sends the logo with its existing welcome caption and Mini App button. If
 Validation: `scripts/test-bot-branding.ts` covers unauthorized webhook requests, Ukrainian welcome, English referrals, image-delivery fallback, terms and retryable delivery errors.
 
 The shared interface palette uses graphite surfaces, silver primary actions and white text. Only semantic status colors retain muted green, red or amber. It applies to discovery, chats, emoji/media controls, the map, admin tools and legal pages; Telegram header/background colors match the app.
+
+
+## VYBE 0.9.57 · optional vibe quiz and referral cards
+
+Profile now includes a five-question vibe game with four results and eight public Ukrainian/English card variants. Personal card invitations preserve the existing referral code, and required profile completion resumes the invited quiz. Native sharing is explicit, cancellation never opens another dialog, and raw answers or profile details are not included in the card.
+
+The quiz adds account-scoped local result storage, server-authenticated prepared messages and opt-out-aware conversion events. Existing referral milestone rewards and account permissions are preserved. See [quiz behavior and verification](docs/vibe-quiz.md).

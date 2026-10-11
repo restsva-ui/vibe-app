@@ -48,9 +48,13 @@ jobs:
           node --check plans.js
           node --check plan-invites.js
           node --check campaign-attribution.js
+          node --check vibe-quiz.js
 
       - name: Test campaign attribution scope and expiry
         run: node scripts/test-campaign-attribution.cjs
+
+      - name: Test quiz scoring and invitation launches
+        run: node scripts/test-vibe-quiz.cjs
 
       - name: Test chat emoji, fullscreen and profile completion UI
         run: |
@@ -67,6 +71,7 @@ jobs:
           node scripts/test-plans-ui.cjs /tmp/vybe-emoji-test
           node scripts/test-plan-invites-ui.cjs /tmp/vybe-emoji-test
           node scripts/test-owner-growth-ui.cjs /tmp/vybe-emoji-test
+          node scripts/test-vibe-quiz-ui.cjs /tmp/vybe-emoji-test
 
       - name: Test mandatory bio and photo with API access boundaries
         run: |
@@ -109,6 +114,11 @@ jobs:
         run: |
           npm install --prefix /tmp/vybe-rtc-test @roamhq/wrtc@0.10.0 --no-audit --no-fund
           node scripts/test-webrtc-loopback.mjs /tmp/vybe-rtc-test
+
+      - name: Test quiz sharing authentication and identity boundaries
+        run: |
+          npx --yes esbuild@0.25.11 scripts/test-vibe-quiz-api.ts --bundle --platform=node --format=esm --outfile=/tmp/test-vibe-quiz-api.mjs
+          node /tmp/test-vibe-quiz-api.mjs
 
       - name: Test Telegram initData validation
         run: |

@@ -1,0 +1,30 @@
+.vibeQuiz{max-width:440px;margin:0 auto;padding:4px 0 10px;overflow-wrap:anywhere}
+.quizEyebrow{font-size:10px;font-weight:800;letter-spacing:.14em;color:var(--muted);margin-bottom:12px}
+.vibeQuiz h2{font-size:clamp(20px,5.7vw,26px);line-height:1.25;margin:14px 0 20px;outline:none}
+.quizProgress{display:flex;justify-content:space-between;gap:10px;color:var(--muted);font-size:11px}
+.quizProgressBar{display:block;width:100%;height:4px;border:0;border-radius:8px;overflow:hidden;margin:10px 0 18px;accent-color:#bda6ee}
+.quizProgressBar::-webkit-progress-bar{background:var(--line);border-radius:8px}
+.quizProgressBar::-webkit-progress-value{background:#bda6ee;border-radius:8px}
+.quizProgressBar::-moz-progress-bar{background:#bda6ee}
+.quizOptions{display:grid;gap:10px;border:0;padding:0;margin:0;min-width:0}
+.quizOption{display:flex;align-items:center;gap:12px;min-height:54px;padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:var(--card);cursor:pointer;font-size:14px;line-height:1.35}
+.quizOption input{margin:0;flex:0 0 18px;width:18px;height:18px;accent-color:#bda6ee}
+.quizOption:has(input:checked){border-color:#bda6ee;background:#bda6ee12}
+.quizOption:focus-within{outline:2px solid #bda6ee;outline-offset:2px}
+.quizQuestionActions{display:grid;grid-template-columns:1fr 2fr;gap:10px;margin-top:20px}
+.quizQuestionActions button,.quizActions button{min-height:46px;margin:0!important;width:100%}
+.quizQuestionActions button:disabled,.quizActions button:disabled{opacity:.45}
+.quizHint{font-size:11px;color:var(--muted);line-height:1.45;margin:16px 0 0}
+.quizResultCard{display:block;width:min(100%,270px);height:auto;margin:0 auto 18px;border:1px solid var(--line);border-radius:20px;background:#151820}
+.quizComparison{font-size:13px;line-height:1.5;color:var(--text);margin:0 0 16px}
+.quizActions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.quizActions .primary{grid-column:1/-1}
+.quizActions .choice{font-size:12px;padding:10px;line-height:1.35}
+.quizActions .choice:last-child:nth-child(2){grid-column:1/-1}
+.quizNotice{min-height:20px;color:var(--muted);font-size:12px;line-height:1.5;word-break:break-word;margin:12px 0}
+.quizNotice a{color:#bda6ee}
+.quizFooter{display:flex;justify-content:space-between;gap:14px}
+.quizFooter button{padding:10px 0;border:0;background:none;color:var(--text);font-size:12px;min-height:44px}
+.quizFooter button:focus-visible{outline:2px solid #bda6ee;outline-offset:2px}
+.vibeQuiz .visuallyHidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-height:700px){.vibeQuiz h2{margin:10px 0 14px}.quizOption{min-height:48px;padding:10px 12px}.quizOptions{gap:8px}.quizQuestionActions{margin-top:14px}.quizResultCard{width:min(100%,220px)}}
